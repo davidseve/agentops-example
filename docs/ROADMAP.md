@@ -10,9 +10,10 @@
 ## Phase 1 - Research and Validation
 
 - [ ] Research RHOAI 3.x component availability and versions
+- [ ] Deploy RHOAI 3.x with required dependencies on target cluster
 - [ ] Validate OpenShell deployment method and constraints
-- [ ] Validate NeMo Guardrails integration with RHOAI
-- [ ] Validate OGX API availability and endpoints
+- [x] NeMo Guardrails integration: via TrustyAI operator (decided)
+- [x] OGX: confirmed GA
 - [ ] Validate MLflow tracing + prompt registry capabilities
 - [ ] Document MaaS options available in demo.redhat.com
 - [ ] Map each demo feature to Red Hat product/component (study guide)
@@ -50,8 +51,7 @@
 
 ## Open Questions
 
-- Exact RHOAI 3.x component versions: MLflow, OGX, OpenShell availability
-- NeMo Guardrails integration method with RHOAI (operator, sidecar, or standalone?)
 - demo.redhat.com catalog: which RHOAI demos exist that we can reuse as base?
 - MaaS endpoints available: which models, rate limits, auth method?
-- OGX maturity: is it GA or Tech Preview in RHOAI 3.x?
+- Which agent framework/harness to use?
+- What is the agent use case?

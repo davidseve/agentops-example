@@ -60,9 +60,9 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 | AI Platform | RHOAI 3.x (pinned version) | ML/AI platform on OpenShift |
 | Model Serving | MaaS externo | LLM inference (external endpoint) |
 | LLM | TBD (best available with tool-calling) | Agent brain |
-| Guardrails | NeMo Guardrails | Input/output filtering, topic control, jailbreak detection |
+| Guardrails | NeMo Guardrails via TrustyAI | Deployed through TrustyAI operator on OCP |
 | Sandbox | OpenShell | Agent execution isolation, zero-trust sandboxing |
-| API Abstraction | OGX | Unified API between agent and model services |
+| API Abstraction | OGX (GA) | Unified API between agent and model services |
 | Observability | MLflow (tracing) | OpenTelemetry-based agent execution traces |
 | Prompt Management | MLflow (prompt registry) | Versioned prompts, A/B testing |
 | Agent | TBD framework or harness | See options below |
@@ -104,9 +104,9 @@ This maps demo features to specific Red Hat products/components:
 | AI Platform | Red Hat OpenShift AI | RHOAI 3.x Operator (pinned version) |
 | Agent Tracing | RHOAI - MLflow | MLflow + OpenTelemetry |
 | Prompt Registry | RHOAI - MLflow | MLflow Prompt Registry |
-| Guardrails | NeMo Guardrails (NVIDIA partnership) | Deployed as service on OCP |
+| Guardrails | NeMo Guardrails (NVIDIA partnership) | Deployed via TrustyAI operator on OCP |
 | Agent Sandboxing | OpenShell | Sandboxed execution environment |
-| API Gateway | OGX | API abstraction for model access |
+| API Gateway | OGX (GA) | API abstraction for model access |
 | Model Serving | MaaS (external) | External model endpoint |
 | Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
 | Cost Governance | MaaS Dashboard | Token billing/showback (nice-to-have) |
@@ -158,10 +158,7 @@ agentops-example/
 
 ## Open Questions
 
-- Exact component versions in RHOAI 3.x (MLflow, OGX, OpenShell)
-- NeMo Guardrails integration method (operator, sidecar, standalone?)
 - MaaS endpoints available in demo.redhat.com (models, rate limits, auth)
-- OGX maturity level (GA or Tech Preview?)
 - Which agent framework/harness to use
 - What the agent's actual use case will be
 - Initial pinned version manifest (CSV versions for all operators)
