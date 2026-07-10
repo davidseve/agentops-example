@@ -1,0 +1,37 @@
+global:
+  namespace: evaluation
+
+namespace:
+  enabled: true
+
+postgresql:
+  host: maas-db.redhat-ods-applications.svc
+  port: 5432
+  user: maas
+  password: maas-eval-password
+  database: evalhub
+
+evalhub:
+  enabled: true
+  name: evalhub
+  namespace: evaluation
+  replicas: 1
+  database:
+    type: postgresql
+    secret: evalhub-db
+  modelAuth:
+    secretName: model-auth
+  providers:
+    - lm-evaluation-harness
+    - guidellm
+    - garak
+    - lighteval
+  collections:
+    - leaderboard-v2
+  otel:
+    enabled: false
+
+mlflow:
+  name: mlflow
+
+hookImage: registry.redhat.io/openshift4/ose-cli-rhel9:latest
