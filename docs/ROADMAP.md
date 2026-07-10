@@ -5,12 +5,12 @@
 - [x] Generate `AGENTS.md` - project context, stack, constraints
 - [x] Generate `docs/ROADMAP.md` - this roadmap
 - [x] Create `README.md` with project overview
-- [ ] Initial commit and push to GitHub
+- [x] Initial commit and push to GitHub
 
 ## Phase 1 - Research and Validation
 
-- [ ] Research RHOAI 3.x component availability and versions
-- [ ] Deploy RHOAI 3.x with required dependencies on target cluster
+- [x] Research RHOAI 3.x component availability and versions
+- [x] Deploy RHOAI 3.x with required dependencies on target cluster
 - [ ] Validate OpenShell deployment method and constraints
 - [x] NeMo Guardrails integration: via TrustyAI operator (decided)
 - [x] OGX: confirmed GA
@@ -41,7 +41,7 @@
 
 ## Phase 4 - Packaging and Polish
 
-- [ ] Scaffold Helm charts for one-command deployment
+- [x] Scaffold Helm charts for one-command deployment
 - [ ] Write step-by-step demo script with timing marks (10-13 min)
 - [ ] Create health-check and warm-up scripts
 - [ ] Record fallback video
