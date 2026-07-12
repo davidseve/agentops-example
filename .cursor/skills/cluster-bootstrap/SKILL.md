@@ -19,28 +19,53 @@ Deploy all platform components to a fresh OpenShift cluster for the AgentOps dem
 cd deploy && make deploy-all
 ```
 
-This installs in order: operators -> platform -> database -> mlflow -> evalhub.
+`make deploy-all` is the single entry point. It installs charts in order and **blocks
+between steps** until OpenShift dependencies are ready. Do not run raw `helm` commands
+for the happy path — the Makefile handles synchronization.
 
-After deploy, wait for operators to reconcile and validate:
+### Install order (with built-in waits)
+
+| Step | Make target | Waits before proceeding |
+|------|-------------|-------------------------|
+| 1 | `wait-operators` → `deploy-platform` | CSV Succeeded, operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, platform CRDs |
+| 2 | `deploy-database` | — |
+| 3 | `wait-mlflow-crd` → `deploy-mlflow` | `mlflows.mlflow.opendatahub.io` CRD |
+| 4 | `wait-evalhub-crd` → `deploy-evalhub` | `evalhubs.trustyai.opendatahub.io` CRD |
+
+These waits are **required** for a reliable install. Without them, Helm fails with
+missing CRDs or unprocessed finalizers. The skill does not duplicate this logic —
+it relies on the Makefile.
+
+## Validate
+
+After `deploy-all` completes, run the full health check:
 
 ```bash
-# Wait for RHOAI operator
-oc wait --for=condition=Ready pod -l name=rhods-operator \
-  -n redhat-ods-operator --timeout=300s
+cd deploy && make validate
+```
 
-# Wait for database
-oc wait --for=condition=Available deployment/maas-db \
-  -n redhat-ods-applications --timeout=120s
+`make validate` checks:
 
-# Wait for MLflow
-oc wait --for=condition=Ready pod -l app=mlflow \
-  -n redhat-ods-applications --timeout=300s
+- 5 `rhoai-*` Helm releases deployed
+- RHOAI operator CSV Succeeded, pods Ready
+- DSC conditions: OGX, MLflow operator, TrustyAI, Dashboard ready
+- PostgreSQL `maas-db` Available
+- MLflow CR Available with route URL
+- EvalHub Ready
 
-# Validate
-oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'
-oc get mlflow mlflow
+If platform components are still reconciling (common in the first ~60s after deploy),
+wait and re-run `make validate`.
+
+### Optional: inspect individual resources
+
+```bash
+oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}{"\n"}'
+oc get mlflow mlflow -n redhat-ods-applications
 oc get evalhub evalhub -n evaluation
 ```
+
+These `oc get` commands are for human inspection only — they are not a substitute
+for `make validate`.
 
 ## Expected Result
 
@@ -57,42 +82,18 @@ oc get evalhub evalhub -n evaluation
 | EvalHub | Ready |
 
 Note: DSC may show "Not Ready" because `modelsAsService` requires a Gateway we don't deploy.
-This is expected -- the individual components (TrustyAI, MLflow, OGX) are all functional.
+`make validate` treats this as a WARN, not a failure. Individual components (TrustyAI,
+MLflow, OGX, Dashboard) are all functional.
 
 ## Troubleshooting
 
-If `make deploy-all` fails, deploy step by step:
+Only use these steps when `make deploy-all` or `make validate` fails. Do not run them
+as part of the normal flow — the Makefile waits already cover CSV, DSCI, and CRD
+synchronization.
 
-### Step 1: Operators
+### Platform: OdhDashboardConfig conflict
 
-```bash
-cd deploy
-helm upgrade --install rhoai-operators helm/operators
-```
-
-Wait for CSV to succeed:
-
-```bash
-until oc get csv -n redhat-ods-operator 2>/dev/null | grep -q Succeeded; do sleep 15; done
-```
-
-### Step 2: Platform
-
-Wait for DSCI to be auto-created, then deploy:
-
-```bash
-sleep 30
-helm upgrade --install rhoai-platform helm/platform
-```
-
-On first install, `OdhDashboardConfig` may fail if the CRD isn't ready yet. Run the
-upgrade again after DSC reconciles:
-
-```bash
-helm upgrade --install rhoai-platform helm/platform
-```
-
-If the dashboard config resource already exists (operator auto-created it), adopt it:
+If the operator auto-created `odh-dashboard-config` before Helm could manage it:
 
 ```bash
 oc annotate odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
@@ -102,25 +103,37 @@ oc label odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
 helm upgrade --install rhoai-platform helm/platform
 ```
 
-### Step 3: Database
+### Platform: CRD not ready on first attempt
+
+Re-run the platform chart after DSC reconciles:
 
 ```bash
-helm upgrade --install rhoai-database helm/database
-oc wait --for=condition=Available deployment/maas-db \
-  -n redhat-ods-applications --timeout=120s
+helm upgrade --install rhoai-platform helm/platform
 ```
 
-### Step 4: MLflow
+### DSC components still reconciling
+
+Wait 60s and re-run validation:
 
 ```bash
-helm upgrade --install rhoai-mlflow helm/mlflow
+sleep 60 && make validate
 ```
 
-### Step 5: EvalHub (optional)
+### Manual step-by-step deploy
+
+If `deploy-all` fails repeatedly, deploy individual Makefile targets in order:
 
 ```bash
-helm upgrade --install rhoai-evalhub helm/evalhub
+cd deploy
+make deploy-platform    # includes wait-operators
+make deploy-database
+make deploy-mlflow      # includes wait-mlflow-crd
+make deploy-evalhub     # includes wait-evalhub-crd
+make validate
 ```
+
+Do **not** call bare `helm upgrade --install` without the corresponding `make` target —
+you will skip the required waits.
 
 ## Notes
 
