@@ -38,13 +38,16 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 > **Note**: Implementation in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for current status.
 
 ```bash
-# Prerequisites: Access to an OpenShift cluster with RHOAI 3.x
-# Deploy the full stack
-make deploy
+# Prerequisites: oc logged in to an OpenShift cluster, helm 3.x installed
+
+# Deploy the full stack (includes waits between steps)
+cd deploy && make deploy-all
 
 # Verify all components are healthy
-./tests/health-check.sh
+./tests/health-check.sh        # or: cd deploy && make validate
 
+# Teardown (deletes DSCI before operator to avoid stuck finalizers)
+cd deploy && make undeploy-all
 ```
 
 ## Project Structure

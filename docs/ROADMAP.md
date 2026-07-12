@@ -11,6 +11,8 @@
 
 - [x] Research RHOAI 3.x component availability and versions
 - [x] Deploy RHOAI 3.x with required dependencies on target cluster
+- [x] Add deploy waits (CSV, DSCI, CRDs) and post-deploy validation (`make validate`)
+- [x] Fix cleanup order (DSCI before operator) and add cleanup validation (`make validate-cleanup`)
 - [ ] Validate OpenShell deployment method and constraints
 - [x] NeMo Guardrails integration: via TrustyAI operator (decided)
 - [x] OGX: confirmed GA
@@ -43,7 +45,8 @@
 
 - [x] Scaffold Helm charts for one-command deployment
 - [ ] Write step-by-step demo script with timing marks (10-13 min)
-- [ ] Create health-check and warm-up scripts
+- [x] Create health-check script (`tests/health-check.sh`)
+- [ ] Create warm-up script
 - [ ] Record fallback video
 - [ ] Build presentation slides (5-8 min theory)
 - [ ] Rehearsal runs (minimum 3x full run-throughs)
