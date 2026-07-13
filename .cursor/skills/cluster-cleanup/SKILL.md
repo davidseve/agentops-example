@@ -7,6 +7,8 @@ description: "Clean up the demo cluster, removing deployed operators and platfor
 
 Remove all platform components from the cluster to reset it to a clean state.
 
+**Full guide:** [docs/cluster-bootstrap.md](../../docs/cluster-bootstrap.md) (Teardown section)
+
 ## Prerequisites
 
 - `oc` CLI authenticated against the target cluster
