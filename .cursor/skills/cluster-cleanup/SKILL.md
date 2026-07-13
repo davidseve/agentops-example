@@ -19,40 +19,42 @@ Remove all platform components from the cluster to reset it to a clean state.
 cd deploy && make undeploy-all
 ```
 
-Then remove the operator and its managed resources:
+`make undeploy-all` handles the full teardown in the correct order:
+
+| Step | Make target | What it does |
+|------|-------------|-------------|
+| 1 | `undeploy-apps` | Helm uninstall: evalhub, mlflow, database, platform |
+| 2 | `purge-dsci` | Delete DSCInitialization while operator can still process finalizers |
+| 3 | `undeploy-operators` | Helm uninstall: operators |
+| 4 | `cleanup-orphans` | Remove residual subscription/CSV, orphan deployments, and namespaces |
+
+The order is **critical**: DSCI must be deleted before the operator CSV is removed.
+If the operator is gone first, the DSCI finalizer cannot be processed and gets stuck
+in `Terminating`. The Makefile enforces this order automatically and includes a
+finalizer patch fallback if the DSCI delete times out.
+
+## Validate
+
+After cleanup, verify the cluster is clean:
 
 ```bash
-# Delete DSCI while operator can still process the finalizer
-oc delete dscinitialization --all --timeout=60s 2>/dev/null || true
-
-# Remove subscription and CSV
-oc delete subscription rhods-operator -n redhat-ods-operator 2>/dev/null || true
-CSV=$(oc get csv -n redhat-ods-operator -o name 2>/dev/null | grep rhods)
-[ -n "$CSV" ] && oc delete "$CSV" -n redhat-ods-operator
-
-# Remove orphan deployments left by the operator
-oc delete deployment --all -n redhat-ods-applications 2>/dev/null || true
-oc delete service --all -n redhat-ods-applications 2>/dev/null || true
-
-# Remove operator namespace
-oc delete namespace redhat-ods-operator --wait=false 2>/dev/null || true
-oc delete namespace evaluation --wait=false 2>/dev/null || true
+cd deploy && make validate-cleanup
 ```
 
-Validate:
+`make validate-cleanup` checks:
 
-```bash
-helm list -A | grep rhoai
-oc get dscinitialization --no-headers 2>/dev/null
-oc get datasciencecluster --no-headers 2>/dev/null
-oc get pods -n redhat-ods-applications --no-headers 2>/dev/null
-```
+- No `rhoai-*` Helm releases remain
+- No DSCInitialization or DataScienceCluster resources
+- Demo namespaces removed (`redhat-ods-operator`, `redhat-ods-applications`, `redhat-ods-monitoring`, `evaluation`)
 
 ## Troubleshooting
 
+Only use these steps when `make undeploy-all` or `make validate-cleanup` reports
+failures. Do not run them as part of the normal flow.
+
 ### DSCI stuck in Terminating
 
-If the operator CSV was deleted before DSCI, the finalizer can't be processed:
+If the operator CSV was deleted before DSCI (should not happen with current Makefile):
 
 ```bash
 oc patch dscinitialization default-dsci --type=merge -p '{"metadata":{"finalizers":[]}}'
@@ -82,6 +84,6 @@ oc delete deployment --all -n redhat-ods-applications 2>/dev/null || true
 
 ## Notes
 
-- Cleanup order: EvalHub/MLflow first, then database, then platform, then operator
-- CRITICAL: Always delete DSCI BEFORE removing the operator CSV
+- Cleanup order is enforced by Makefile dependencies: apps, then DSCI, then operator, then orphans
 - After full cleanup, wait ~2 minutes for all pods to terminate before re-bootstrapping
+- `purge-dsci` automatically patches finalizers if the delete times out (60s)
