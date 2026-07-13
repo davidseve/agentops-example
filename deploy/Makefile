@@ -1,7 +1,19 @@
-# deploy/Makefile - RHOAI installation for agentops-example
-# Usage: make deploy-all    (full stack)
-#        make validate     (post-deploy health checks)
-#        make undeploy-all (teardown)
+# deploy/Makefile - AgentOps demo deploy targets
+#
+# RHOAI (full platform):
+#   make deploy-all    (full stack)
+#   make validate      (post-deploy health checks)
+#   make undeploy-all  (teardown)
+#
+# OpenShell (cluster):
+#   make openshell-prereqs    # Agent Sandbox + namespace (once per cluster)
+#   make openshell-install    # Helm install wrapper chart
+#   make openshell-scc        # Grant SCC after install (if prereqs ran before Helm)
+#   make openshell-status
+#   make openshell-uninstall
+
+SHELL := /bin/bash
+ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 
 HELM := helm
 HELM_OPTS ?=
@@ -204,3 +216,68 @@ validate-cleanup:
 	fi
 	@echo ""
 	@echo "Cleanup validation complete."
+
+# --- OpenShell (cluster) ---
+
+HELM_CHART_DIR := $(ROOT_DIR)/deploy/helm/openshell
+OPENSHIFT_KUSTOMIZE := $(ROOT_DIR)/deploy/openshift/openshell
+
+RELEASE_NAME ?= openshell
+NAMESPACE ?= openshell
+HELM_TIMEOUT ?= 10m
+DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
+
+.PHONY: help openshell-deps openshell-prereqs openshell-scc openshell-install openshell-upgrade openshell-status openshell-uninstall helm-env
+
+helm-env:
+	@mkdir -p $(DOCKER_CONFIG)
+	@test -f $(DOCKER_CONFIG)/config.json || printf '{}' > $(DOCKER_CONFIG)/config.json
+
+help:
+	@echo "OpenShell cluster targets:"
+	@echo "  make openshell-deps       Update Helm chart dependencies (Chart.lock)"
+	@echo "  make openshell-prereqs    Install Agent Sandbox + namespace"
+	@echo "  make openshell-install    Install OpenShell gateway (Helm)"
+	@echo "  make openshell-scc        Grant privileged SCC to sandbox SA"
+	@echo "  make openshell-upgrade    Upgrade release with current values"
+	@echo "  make openshell-status     Show release and pod status"
+	@echo "  make openshell-uninstall  Remove Helm release"
+
+openshell-deps: helm-env
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm dependency update
+
+openshell-prereqs:
+	$(ROOT_DIR)/scripts/openshift-openshell-prereqs.sh
+
+openshell-scc:
+	$(ROOT_DIR)/scripts/openshift-openshell-scc.sh
+
+openshell-install: helm-env openshell-deps
+	oc apply -k $(OPENSHIFT_KUSTOMIZE)
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade --install $(RELEASE_NAME) . \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		-f values.yaml \
+		-f values-openshift.yaml \
+		--wait \
+		--timeout $(HELM_TIMEOUT)
+	$(ROOT_DIR)/scripts/openshift-openshell-scc.sh
+	@$(MAKE) openshell-status
+
+openshell-upgrade: helm-env openshell-deps
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade $(RELEASE_NAME) . \
+		--namespace $(NAMESPACE) \
+		-f values.yaml \
+		-f values-openshift.yaml \
+		--wait \
+		--timeout $(HELM_TIMEOUT)
+	@$(MAKE) openshell-status
+
+openshell-status:
+	@echo "--- Helm ---"
+	@DOCKER_CONFIG=$(DOCKER_CONFIG) helm list -n $(NAMESPACE) 2>/dev/null || true
+	@echo "--- Workloads ---"
+	@oc -n $(NAMESPACE) get statefulset,pods,svc,secret 2>/dev/null | grep -E 'NAME|openshell' || true
+
+openshell-uninstall: helm-env
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) || true

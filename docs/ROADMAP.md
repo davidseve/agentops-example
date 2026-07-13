@@ -13,7 +13,10 @@
 - [x] Deploy RHOAI 3.x with required dependencies on target cluster
 - [x] Add deploy waits (CSV, DSCI, CRDs) and post-deploy validation (`make validate`)
 - [x] Fix cleanup order (DSCI before operator) and add cleanup validation (`make validate-cleanup`)
-- [ ] Validate OpenShell deployment method and constraints
+- [x] Document OpenShell local install (macOS and Linux) — see [openshell-installation.md](openshell-installation.md)
+- [x] Add `scripts/install-openshell.sh` — one-command local stack installer (macOS and Linux)
+- [x] Add `scripts/uninstall-openshell.sh` — remove local OpenShell stack (macOS and Linux)
+- [x] Validate OpenShell deployment method and constraints on target cluster — see [openshell-installation.md § OpenShift](openshell-installation.md#openshift--rhoai-cluster-deployment) (chart `0.0.80`, TLS + certgen hook on OCP)
 - [x] NeMo Guardrails integration: via TrustyAI operator (decided)
 - [x] OGX: confirmed GA
 - [ ] Validate MLflow tracing + prompt registry capabilities
@@ -43,7 +46,7 @@
 
 ## Phase 4 - Packaging and Polish
 
-- [x] Scaffold Helm charts for one-command deployment
+- [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: [`deploy/helm/openshell/`](../deploy/helm/openshell/) + `make -C deploy openshell-install`
 - [ ] Write step-by-step demo script with timing marks (10-13 min)
 - [x] Create health-check script (`tests/health-check.sh`)
 - [ ] Create warm-up script
