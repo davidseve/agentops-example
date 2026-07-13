@@ -49,6 +49,8 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 ├── README.md              # This file
 ├── docs/                  # Documentation
 │   ├── ROADMAP.md         # Task tracking
+│   ├── stack-decisions.md # Architecture decisions (executive summary)
+│   ├── adr/               # Architecture Decision Records
 │   ├── cluster-bootstrap.md   # RHOAI platform deploy on OpenShift
 │   └── openshell-installation.md  # OpenShell install (local + cluster)
 ├── deploy/                # Deployment manifests (Helm, Kustomize)
@@ -65,6 +67,8 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap and task tracking
 - [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)
+- [docs/stack-decisions.md](docs/stack-decisions.md) - Architecture decisions executive summary
+- [docs/adr/](docs/adr/) - Full Architecture Decision Records
 
 ## Target Environment
 

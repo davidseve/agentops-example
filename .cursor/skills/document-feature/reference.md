@@ -6,7 +6,10 @@
 agentops-example/
 ├── docs/
 │   ├── ROADMAP.md                    # check off completed tasks
-│   ├── stack-decisions.md            # ADR: why this component, version, alternatives
+│   ├── adr/                          # Architecture Decision Records (one file per decision)
+│   │   ├── README.md                 # ADR index (technical)
+│   │   └── NNNN-<slug>.md           # Individual ADR files
+│   ├── stack-decisions.md            # ADR executive summary (by layer)
 │   ├── architecture.md               # topology diagrams (Phase 2+)
 │   ├── demo-script.md                # demo steps with timing (Phase 4)
 │   └── <component>-installation.md   # install, deploy, verify, troubleshoot

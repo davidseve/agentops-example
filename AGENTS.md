@@ -133,6 +133,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy openshell-install` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
+| `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/); required before reversing Accepted decisions |
 | `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure |
 
 ## Project Structure
@@ -147,9 +148,12 @@ agentops-example/
 │   ├── ROADMAP.md                 # Phased task list
 │   ├── cluster-bootstrap.md       # RHOAI platform deploy on OpenShift
 │   ├── openshell-installation.md  # OpenShell install (local + OpenShift Helm)
+│   ├── adr/                       # Architecture Decision Records
+│   │   ├── README.md              # ADR index (technical)
+│   │   └── NNNN-<slug>.md         # Individual ADRs
+│   ├── stack-decisions.md         # ADR executive summary (by layer)
 │   ├── architecture.md            # Detailed architecture (Phase 2)
-│   ├── demo-script.md             # Step-by-step demo script (Phase 4)
-│   └── stack-decisions.md         # ADR-style tech decisions (Phase 1-2)
+│   └── demo-script.md             # Step-by-step demo script (Phase 4)
 ├── deploy/
 │   ├── Makefile               # make deploy-all, validate, openshell-install, …
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
@@ -172,10 +176,24 @@ agentops-example/
     └── demo-reset.sh          # Reset demo state
 ```
 
+## Architecture Decisions (ADRs)
+
+Binding stack decisions live in [docs/adr/](docs/adr/). Read [stack-decisions.md](docs/stack-decisions.md) before changing platform components, deploy manifests, or version pins.
+
+| Rule | Detail |
+|---|---|
+| **Accepted ADRs** | Must be followed. Conflicts require an ADR update via the `adr` skill — do not override silently. |
+| **Proposed ADRs** | Directional only; flag conflicts with Accepted ADRs. |
+| **New decisions** | Use the `adr` skill; update both indexes (`docs/adr/README.md`, `docs/stack-decisions.md`). |
+| **Rationale location** | Keep the "why" in ADRs; link from here and other docs instead of duplicating. |
+
+The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
+
 ## Constraints and Rules
 
+- **ADR alignment**: Consult [stack-decisions.md](docs/stack-decisions.md) and relevant Accepted ADRs before architectural or deploy changes
 - **Target platform**: RHOAI 3.x on demo.redhat.com - everything must be deployable there
-- **Pinned versions**: All operators and components use explicit version pinning. No automatic updates. Version bumps are deliberate and tested.
+- **Pinned versions**: All operators and components use explicit version pinning (see [ADR-0006](docs/adr/0006-explicit-version-pinning.md)). No automatic updates. Version bumps are deliberate and tested.
 - **No secrets in repo**: This is a public repo. Use environment variables, sealed secrets, or external secret management
 - **English**: All code, comments, docs, and demo content in English
 - **GitOps**: All configuration as code, no manual cluster changes
@@ -200,3 +218,4 @@ agentops-example/
 - [NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails)
 - [MLflow](https://mlflow.org/)
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift) — cluster deployment; validated flow in [docs/openshell-installation.md](docs/openshell-installation.md)
+- [Architecture Decision Records](docs/adr/README.md) — full ADR index; executive summary in [docs/stack-decisions.md](docs/stack-decisions.md)

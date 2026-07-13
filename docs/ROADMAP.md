@@ -18,8 +18,9 @@
 - [x] Add `scripts/install-openshell.sh` — one-command local stack installer (macOS and Linux)
 - [x] Add `scripts/uninstall-openshell.sh` — remove local OpenShell stack (macOS and Linux)
 - [x] Validate OpenShell deployment method and constraints on target cluster — see [openshell-installation.md § OpenShift](openshell-installation.md#openshift--rhoai-cluster-deployment) (chart `0.0.80`, TLS + certgen hook on OCP)
-- [x] NeMo Guardrails integration: via TrustyAI operator (decided)
-- [x] OGX: confirmed GA
+- [x] NeMo Guardrails integration: via TrustyAI operator — see [ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md)
+- [x] OGX: confirmed GA — see [ADR-0005](adr/0005-ogx-api-abstraction.md)
+- [x] Establish ADR process and retroactive records — see [docs/adr/](adr/README.md)
 - [ ] Validate MLflow tracing + prompt registry capabilities
 - [ ] Document MaaS options available in demo.redhat.com
 - [ ] Map each demo feature to Red Hat product/component (study guide)

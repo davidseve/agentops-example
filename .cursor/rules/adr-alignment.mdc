@@ -1,0 +1,48 @@
+---
+description: "Architecture decisions are binding. Read ADRs before changing stack, deploy, or platform behavior."
+alwaysApply: true
+---
+
+# ADR Alignment
+
+Accepted Architecture Decision Records (ADRs) are the **binding source of truth** for this project. Do not contradict them without updating the ADR first.
+
+## Before You Act
+
+1. Read [docs/stack-decisions.md](../../docs/stack-decisions.md) for the executive summary.
+2. For the affected layer (Infrastructure, Platform, Inference, Agent, Demo, Cross-cutting), open the linked ADR(s) in [docs/adr/](../../docs/adr/).
+3. Check **Version Pinning** tables in relevant ADRs before changing manifests, Helm values, or operator versions.
+
+## Status Rules
+
+| Status | Agent behavior |
+|---|---|
+| **Accepted** | Follow strictly. If the task conflicts, stop and propose an ADR update (use the `adr` skill) — do not silently override. |
+| **Proposed** | Treat as direction, not locked. Flag conflicts with Accepted ADRs; suggest accepting, amending, or superseding. |
+| **Deprecated / Superseded** | Ignore; follow the superseding ADR instead. |
+
+## When to Create or Update an ADR
+
+Use the `adr` skill when the task would:
+
+- Add, remove, or swap a platform component (operators, charts, sandbox, guardrails, API layer)
+- Change deployment topology or version pinning policy
+- Reverse an Accepted decision (e.g., adopt Kagenti, llm-d, or SPIFFE/SPIRE — currently excluded per ADR-0007)
+
+Implementation-only work (bug fixes, docs typos, scripts that follow existing ADRs) does **not** require a new ADR.
+
+## Conflict Resolution
+
+Priority order:
+
+1. **Accepted ADRs** in `docs/adr/`
+2. Official docs per [documentation-sources.mdc](./documentation-sources.mdc)
+3. `AGENTS.md` and other docs — link to ADRs; do not restate full rationale inline
+
+## After Architectural Changes
+
+When code or deploy manifests change stack behavior:
+
+- Update the ADR **Validation** section (or create an ADR if missing)
+- Run the `document-feature` skill for guides and cross-links
+- Cite the ADR number in commit/PR descriptions when the change implements a decision
