@@ -47,7 +47,7 @@ cd deploy && make validate-cleanup
 
 - No `rhoai-*` Helm releases remain
 - No DSCInitialization or DataScienceCluster resources
-- Demo namespaces removed (`redhat-ods-operator`, `redhat-ods-applications`, `redhat-ods-monitoring`, `evaluation`)
+- Demo namespaces removed (`redhat-ods-operator`, `redhat-ods-applications`, `redhat-ods-monitoring`, `evaluation`, `models-as-a-service`, `rhoai-model-registries`, `agent-sandbox-system`)
 
 ## Troubleshooting
 
@@ -65,7 +65,7 @@ oc patch dscinitialization default-dsci --type=merge -p '{"metadata":{"finalizer
 ### Namespace stuck in Terminating
 
 ```bash
-for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation; do
+for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system; do
   PHASE=$(oc get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null)
   if [ "$PHASE" = "Terminating" ]; then
     echo "Removing finalizers from stuck namespace: $ns"
