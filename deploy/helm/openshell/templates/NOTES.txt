@@ -1,0 +1,16 @@
+OpenShell gateway installed for the AgentOps demo.
+
+Release:   {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Chart:     {{ .Chart.Name }}-{{ .Chart.Version }} (upstream {{ .Values.openshell.image.tag }})
+
+Verify:
+  oc -n {{ .Release.Namespace }} rollout status statefulset/{{ .Release.Name }}
+  oc -n {{ .Release.Namespace }} get pods,secret | grep -E 'NAME|openshell'
+
+Connect (from your workstation):
+  oc -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }} 8080:8080
+  openshell gateway add https://127.0.0.1:8080 --local --name openshift
+
+Documentation:
+  docs/openshell-installation.md

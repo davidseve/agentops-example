@@ -1,0 +1,35 @@
+# Default values for agentops-openshell.
+# Upstream chart values are nested under the `openshell` alias (see Chart.yaml).
+
+openshell:
+  # Pin images to match chart appVersion (0.0.80).
+  image:
+    repository: ghcr.io/nvidia/openshell/gateway
+    tag: "0.0.80"
+    pullPolicy: IfNotPresent
+
+  supervisor:
+    image:
+      repository: ghcr.io/nvidia/openshell/supervisor
+      tag: "0.0.80"
+
+  # TLS + certgen hook (default). Do not disable pkiInitJob on OpenShift.
+  # See: https://github.com/NVIDIA/OpenShell/issues/2089
+  server:
+    disableTls: false
+    sandboxImage: ghcr.io/nvidia/openshell-community/sandboxes/base:latest
+    logLevel: info
+
+  pkiInitJob:
+    enabled: true
+
+  replicaCount: 1
+  workload:
+    kind: statefulset
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  networkPolicy:
+    enabled: true

@@ -119,21 +119,41 @@ This maps demo features to specific Red Hat products/components:
 4. **Red Teaming** (2-3 min, if time): Automated GARC scan
 5. **Wrap-up** (1 min): "Your Agent, Our Platform, Production-Ready"
 
+## Cursor Skills
+
+Project-level skills live in `.cursor/skills/`. Use them when the task matches their description:
+
+| Skill | When to use |
+|---|---|
+| `openshift-mcp` | Any OpenShift/Kubernetes cluster operation — prefer MCP (`user-kubernetes`) over `oc`/`kubectl` |
+| `openshell-local-install` | Install OpenShell CLI + local gateway on macOS/Linux — see [openshell-installation.md](docs/openshell-installation.md) |
+| `openshell-local-cleanup` | Uninstall local OpenShell stack on macOS/Linux |
+| `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy openshell-install` |
+| `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
+| `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
+| `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure |
+
 ## Project Structure
 
 ```
 agentops-example/
+├── .cursor/skills/            # Project-level Cursor agent skills
+│   ├── document-feature/      # Document new components after implementation
 ├── AGENTS.md                  # This file - AI agent context
 ├── README.md                  # Project overview, quick start
 ├── docs/
-│   ├── ROADMAP.md             # Phased task list
-│   ├── architecture.md        # Detailed architecture (Phase 2)
-│   ├── demo-script.md         # Step-by-step demo script (Phase 4)
-│   └── stack-decisions.md     # ADR-style tech decisions (Phase 1-2)
+│   ├── ROADMAP.md                 # Phased task list
+│   ├── openshell-installation.md  # OpenShell install (local + OpenShift Helm)
+│   ├── architecture.md            # Detailed architecture (Phase 2)
+│   ├── demo-script.md             # Step-by-step demo script (Phase 4)
+│   └── stack-decisions.md         # ADR-style tech decisions (Phase 1-2)
 ├── deploy/
-│   ├── helm/                  # Helm charts (Phase 4)
+│   ├── Makefile               # make openshell-install, openshell-uninstall, …
+│   ├── helm/
+│   │   └── openshell/         # Wrapper chart (pins upstream OpenShell OCI chart)
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
-│   └── Makefile               # One-command deploy/teardown
+│   └── openshift/
+│       └── openshell/         # Namespace manifest for OpenShell
 ├── agent/
 │   ├── src/                   # Agent source code (Phase 3)
 │   ├── prompts/               # Versioned prompts (Phase 3)
@@ -142,6 +162,10 @@ agentops-example/
 │   ├── health-check.sh        # Pre-demo health verification
 │   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
 └── scripts/
+    ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
+    ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
+    ├── openshift-openshell-prereqs.sh # Agent Sandbox + namespace (cluster)
+    ├── openshift-openshell-scc.sh    # Grant privileged SCC to sandbox SA
     ├── warm-up.sh             # Pre-warm model
     └── demo-reset.sh          # Reset demo state
 ```
@@ -155,6 +179,8 @@ agentops-example/
 - **GitOps**: All configuration as code, no manual cluster changes
 - **Idempotent**: Deploy/teardown must be repeatable with a single command
 - **BYOA principle**: The agent layer is intentionally decoupled from the platform. The platform works regardless of which framework/harness is chosen
+- **Document new functionality**: After implementing or validating a component, integration, script, or skill, run the `document-feature` skill — update `docs/`, `ROADMAP.md`, and cross-links in the same session
+- **Pull requests**: Use the `create-pr` skill — body must follow [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure (`Summary`, `Details`, `Test plan`); no default assignee unless the user requests one
 
 ## Open Questions
 
@@ -170,3 +196,4 @@ agentops-example/
 - [RHOAI Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai/)
 - [NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails)
 - [MLflow](https://mlflow.org/)
+- [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift) — cluster deployment; validated flow in [docs/openshell-installation.md](docs/openshell-installation.md)

@@ -1,0 +1,17 @@
+# OpenShift / RHOAI overlay.
+# Validated on OpenShift 4.x with SCC restricted (gateway) + privileged (sandboxes).
+#
+# Prerequisites (not installed by this chart):
+#   - Agent Sandbox controller: deploy/openshift/openshell or scripts/openshift-openshell-prereqs.sh
+#   - SCC grant for openshell-sandbox service account
+
+openshell:
+  server:
+    disableTls: false
+
+  # Let OpenShift SCC admission assign UID and fsGroup.
+  podSecurityContext:
+    fsGroup: null
+
+  securityContext:
+    runAsUser: null
