@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rhoai-operators
+description: RHOAI operator subscription for agentops-example
+type: application
+version: 0.1.0
+appVersion: "3.4"

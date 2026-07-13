@@ -1,0 +1,8 @@
+{{- if .Values.namespace.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "evalhub.namespace" . }}
+  labels:
+    {{- include "evalhub.labels" . | nindent 4 }}
+{{- end }}

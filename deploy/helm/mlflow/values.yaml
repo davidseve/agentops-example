@@ -1,0 +1,17 @@
+postgresql:
+  host: maas-db.redhat-ods-applications.svc
+  port: 5432
+  user: maas
+  password: maas-eval-password
+  database: mlflow
+
+mlflow:
+  enabled: true
+  name: mlflow
+  replicas: 1
+  serveArtifacts: true
+  artifactsDestination: "file:///mlflow/artifacts"
+  storage:
+    size: 10Gi
+  route:
+    enabled: true

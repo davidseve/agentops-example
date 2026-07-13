@@ -1,0 +1,16 @@
+{{- if and (ne (.Values.dashboard.crEnabled | toString) "false") (.Capabilities.APIVersions.Has "opendatahub.io/v1alpha") }}
+apiVersion: opendatahub.io/v1alpha
+kind: OdhDashboardConfig
+metadata:
+  name: odh-dashboard-config
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  dashboardConfig:
+    genAiStudio: {{ .Values.dashboard.genAiStudio }}
+    modelAsService: {{ .Values.dashboard.modelAsService }}
+    disablePerformanceMetrics: {{ .Values.dashboard.disablePerformanceMetrics | default false }}
+    disableModelCatalog: {{ .Values.dashboard.disableModelCatalog | default false }}
+    disableModelRegistry: {{ .Values.dashboard.disableModelRegistry | default false }}
+{{- end }}

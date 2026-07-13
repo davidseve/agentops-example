@@ -1,0 +1,67 @@
+---
+description: "Authoritative documentation sources: Red Hat docs are the single source of truth for all platform decisions."
+globs: "**"
+alwaysApply: true
+---
+
+# Documentation as Source of Truth
+
+All decisions about platform components MUST be validated against official documentation. Do NOT rely on training data or assumptions — fetch and verify.
+
+## Source Priority (highest to lowest)
+
+1. **Red Hat Official Documentation** — GA status, supported configs, operator setup
+2. **Upstream project documentation** — API reference, CRD fields, feature details
+3. **Upstream source code** — conflict resolution, CRD source of truth
+
+## Authoritative References by Component
+
+### RHOAI (Platform)
+
+- **RHOAI 3.x docs:** https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/
+- **Supported configs:** https://access.redhat.com/articles/rhoai-supported-configs-3.x
+- **Release notes:** https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes/
+
+### MLflow (Tracing + Prompt Registry)
+
+- **RHOAI MLflow Operator:** https://github.com/opendatahub-io/mlflow-operator
+- **MLflow docs:** https://mlflow.org/docs/latest/
+- **Red Hat KB:** https://access.redhat.com/articles/7136121
+
+### NeMo Guardrails
+
+- **GitHub:** https://github.com/NVIDIA/NeMo-Guardrails
+- **Docs:** https://docs.nvidia.com/nemo/guardrails/
+- **TrustyAI (RHOAI):** https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/serving_models/serving-large-models_serving-large-models#about-trustyai-operator
+
+### OpenShell (Sandbox)
+
+- **GitHub:** https://github.com/nicholasgasior/openshell (TBD — update when public)
+
+### OGX (API Abstraction)
+
+- **RHOAI docs:** check latest RHOAI release notes for GA status and config
+
+### MaaS (Model Serving)
+
+- **MaaS guide:** https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index
+- **Upstream:** https://opendatahub-io.github.io/models-as-a-service/latest/
+
+## Validation Rules
+
+1. **Do NOT guess** CRD fields, operator versions, or API endpoints — look them up.
+2. **Use `WebFetch`** or MCP tools to retrieve current docs when implementing changes.
+3. **Cite the source** in ADRs, commit messages, and docs when a decision is based on official docs.
+4. **Conflict resolution**: Red Hat docs win. If upstream has a feature not in Red Hat docs, treat it as TP/unsupported until confirmed.
+5. **Version pinning**: Always verify the exact operator version and channel from Red Hat docs before setting in manifests.
+
+## When to Consult
+
+| Question | Where to look |
+|----------|---------------|
+| Is feature X GA? | Red Hat docs release notes |
+| What CRD fields are available? | Upstream docs or CRD definitions |
+| What operator channel to use? | Red Hat docs |
+| How to configure component Y? | Red Hat docs first, then upstream |
+| Bug / unexpected behavior? | Upstream repo issues/PRs |
+| Supported RHOAI version matrix? | access.redhat.com supported configs |

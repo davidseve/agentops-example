@@ -1,0 +1,7 @@
+rhoai:
+  enabled: true
+  namespace: redhat-ods-operator
+  channel: stable-3.4
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
