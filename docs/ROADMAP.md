@@ -13,6 +13,7 @@
 - [x] Deploy RHOAI 3.x with required dependencies on target cluster
 - [x] Add deploy waits (CSV, DSCI, CRDs) and post-deploy validation (`make validate`)
 - [x] Fix cleanup order (DSCI before operator) and add cleanup validation (`make validate-cleanup`)
+- [x] Document cluster bootstrap (RHOAI platform deploy) — see [cluster-bootstrap.md](cluster-bootstrap.md)
 - [x] Document OpenShell local install (macOS and Linux) — see [openshell-installation.md](openshell-installation.md)
 - [x] Add `scripts/install-openshell.sh` — one-command local stack installer (macOS and Linux)
 - [x] Add `scripts/uninstall-openshell.sh` — remove local OpenShell stack (macOS and Linux)

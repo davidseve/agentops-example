@@ -37,18 +37,10 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 
 > **Note**: Implementation in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for current status.
 
-```bash
-# Prerequisites: oc logged in to an OpenShift cluster, helm 3.x installed
-
-# Deploy the full stack (includes waits between steps)
-cd deploy && make deploy-all
-
-# Verify all components are healthy
-./tests/health-check.sh        # or: cd deploy && make validate
-
-# Teardown (deletes DSCI before operator to avoid stuck finalizers)
-cd deploy && make undeploy-all
-```
+| Step | Guide |
+|---|---|
+| Bootstrap RHOAI platform on OpenShift | [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) |
+| Install OpenShell (local or cluster) | [docs/openshell-installation.md](docs/openshell-installation.md) |
 
 ## Project Structure
 
@@ -56,32 +48,23 @@ cd deploy && make undeploy-all
 ├── AGENTS.md              # AI agent context (for Cursor/Claude)
 ├── README.md              # This file
 ├── docs/                  # Documentation
-│   └── ROADMAP.md         # Task tracking
+│   ├── ROADMAP.md         # Task tracking
+│   ├── cluster-bootstrap.md   # RHOAI platform deploy on OpenShift
+│   └── openshell-installation.md  # OpenShell install (local + cluster)
 ├── deploy/                # Deployment manifests (Helm, Kustomize)
-│   ├── Makefile           # Cluster deploy targets (openshell-install, …)
-│   └── helm/openshell/    # OpenShell wrapper chart for OpenShift
+│   ├── Makefile           # Cluster deploy targets (deploy-all, openshell-install, …)
+│   └── helm/              # RHOAI platform + OpenShell wrapper charts
 ├── agent/                 # Agent source code, prompts, guardrails config
 ├── tests/                 # Health checks, red teaming
 └── scripts/               # Utility scripts
-    ├── install-openshell.sh   # OpenShell stack installer (macOS, Linux)
-    └── uninstall-openshell.sh # Remove OpenShell stack (macOS, Linux)
 ```
 
 ## Documentation
 
 - [AGENTS.md](AGENTS.md) - Full project context and tech stack definition
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap and task tracking
+- [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)
-- [deploy/helm/openshell/](deploy/helm/openshell/) - OpenShell wrapper chart for OpenShift
-- [deploy/Makefile](deploy/Makefile) - Cluster deploy targets (`make openshell-install`)
-- [scripts/install-openshell.sh](scripts/install-openshell.sh) - One-command OpenShell stack installer
-- [scripts/uninstall-openshell.sh](scripts/uninstall-openshell.sh) - Remove local OpenShell stack
-- [.cursor/skills/openshell-local-install/](.cursor/skills/openshell-local-install/SKILL.md) - Local workstation install
-- [.cursor/skills/openshell-local-cleanup/](.cursor/skills/openshell-local-cleanup/SKILL.md) - Local workstation uninstall
-- [.cursor/skills/openshell-cluster-install/](.cursor/skills/openshell-cluster-install/SKILL.md) - OpenShift cluster deploy
-- [.cursor/skills/openshell-cluster-cleanup/](.cursor/skills/openshell-cluster-cleanup/SKILL.md) - OpenShift cluster uninstall
-- [.cursor/skills/create-pr/](.cursor/skills/create-pr/SKILL.md) - PR template ([PR #1](https://github.com/davidseve/agentops-example/pull/1))
-- [.cursor/skills/document-feature/](.cursor/skills/document-feature/SKILL.md) - Document new components and integrations
 
 ## Target Environment
 

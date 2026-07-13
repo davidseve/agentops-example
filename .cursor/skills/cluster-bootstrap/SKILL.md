@@ -7,6 +7,8 @@ description: "Bootstrap the demo cluster with all required operators and platfor
 
 Deploy all platform components to a fresh OpenShift cluster for the AgentOps demo.
 
+**Full guide:** [docs/cluster-bootstrap.md](../../docs/cluster-bootstrap.md)
+
 ## Prerequisites
 
 - `oc` CLI authenticated against the target cluster

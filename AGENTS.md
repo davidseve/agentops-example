@@ -126,6 +126,8 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | Skill | When to use |
 |---|---|
 | `openshift-mcp` | Any OpenShift/Kubernetes cluster operation — prefer MCP (`user-kubernetes`) over `oc`/`kubectl` |
+| `cluster-bootstrap` | Deploy RHOAI platform stack on OpenShift — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
+| `cluster-cleanup` | Remove RHOAI platform stack from OpenShift — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | `openshell-local-install` | Install OpenShell CLI + local gateway on macOS/Linux — see [openshell-installation.md](docs/openshell-installation.md) |
 | `openshell-local-cleanup` | Uninstall local OpenShell stack on macOS/Linux |
 | `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy openshell-install` |
@@ -143,14 +145,14 @@ agentops-example/
 ├── README.md                  # Project overview, quick start
 ├── docs/
 │   ├── ROADMAP.md                 # Phased task list
+│   ├── cluster-bootstrap.md       # RHOAI platform deploy on OpenShift
 │   ├── openshell-installation.md  # OpenShell install (local + OpenShift Helm)
 │   ├── architecture.md            # Detailed architecture (Phase 2)
 │   ├── demo-script.md             # Step-by-step demo script (Phase 4)
 │   └── stack-decisions.md         # ADR-style tech decisions (Phase 1-2)
 ├── deploy/
-│   ├── Makefile               # make openshell-install, openshell-uninstall, …
-│   ├── helm/
-│   │   └── openshell/         # Wrapper chart (pins upstream OpenShell OCI chart)
+│   ├── Makefile               # make deploy-all, validate, openshell-install, …
+│   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
 │   └── openshift/
 │       └── openshell/         # Namespace manifest for OpenShell
@@ -194,6 +196,7 @@ agentops-example/
 - [Red Hat AI Agentic Strategy 2026](assets/strategy-image.png)
 - [BYOA Blog Post](https://www.redhat.com/en/blog/operationalizing-bring-your-own-agent-red-hat-ai-openclaw-edition)
 - [RHOAI Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai/)
+- [Cluster Bootstrap Guide](docs/cluster-bootstrap.md) — RHOAI platform deploy, validate, teardown
 - [NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails)
 - [MLflow](https://mlflow.org/)
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift) — cluster deployment; validated flow in [docs/openshell-installation.md](docs/openshell-installation.md)

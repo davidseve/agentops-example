@@ -281,3 +281,6 @@ openshell-status:
 
 openshell-uninstall: helm-env
 	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) || true
+	@echo "Deleting namespace $(NAMESPACE)..."
+	-@oc delete ns $(NAMESPACE) --wait=false 2>/dev/null || true
+	@echo "OpenShell cluster cleanup complete."

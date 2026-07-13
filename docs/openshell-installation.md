@@ -651,6 +651,7 @@ See [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging) f
 - [`deploy/helm/openshell/`](../deploy/helm/openshell/) — wrapper chart for OpenShift cluster deploy
 - [`deploy/Makefile`](../deploy/Makefile) — `make -C deploy openshell-install`
 - [AGENTS.md](../AGENTS.md) — platform stack and OpenShell role in the demo
+- [Cluster Bootstrap Guide](cluster-bootstrap.md) — RHOAI platform deploy (prerequisite for OpenShell on cluster)
 - [ROADMAP.md](ROADMAP.md) — Phase 1 validation tasks
 
 ## References
