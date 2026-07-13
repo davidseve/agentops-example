@@ -123,6 +123,9 @@ cleanup-orphans:
 	-@oc delete namespace redhat-ods-applications --wait=false 2>/dev/null || true
 	-@oc delete namespace redhat-ods-monitoring --wait=false 2>/dev/null || true
 	-@oc delete namespace evaluation --wait=false 2>/dev/null || true
+	-@oc delete namespace models-as-a-service --wait=false 2>/dev/null || true
+	-@oc delete namespace rhoai-model-registries --wait=false 2>/dev/null || true
+	-@oc delete namespace agent-sandbox-system --wait=false 2>/dev/null || true
 	@echo "Orphan cleanup complete."
 
 undeploy-all: undeploy-apps purge-dsci undeploy-operators cleanup-orphans
@@ -203,7 +206,7 @@ validate-cleanup:
 	fi
 	@echo "=== Namespaces ==="
 	@ALL_CLEAN=true; \
-	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation; do \
+	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system; do \
 		PHASE=$$(oc get namespace "$$ns" -o jsonpath='{.status.phase}' 2>/dev/null); \
 		if [ -n "$$PHASE" ]; then \
 			echo "WARN: namespace $$ns still $$PHASE"; ALL_CLEAN=false; \

@@ -239,7 +239,7 @@ cd deploy && make validate-cleanup
 
 - No `rhoai-*` Helm releases remain
 - No DSCInitialization or DataScienceCluster resources
-- Demo namespaces removed (`redhat-ods-operator`, `redhat-ods-applications`, `redhat-ods-monitoring`, `evaluation`)
+- Demo namespaces removed (`redhat-ods-operator`, `redhat-ods-applications`, `redhat-ods-monitoring`, `evaluation`, `models-as-a-service`, `rhoai-model-registries`, `agent-sandbox-system`)
 
 Wait ~2 minutes after full cleanup before re-bootstrapping to allow namespaces to finish terminating.
 
