@@ -28,12 +28,14 @@ Copy this checklist and complete every applicable item:
 
 ```
 Documentation progress:
+- [ ] 0. Check Accepted ADRs in docs/stack-decisions.md — ensure the feature aligns (see adr-alignment rule)
 - [ ] 1. Identify feature type and target doc location
 - [ ] 2. Write or extend the primary guide in docs/
 - [ ] 3. Cross-link README.md, AGENTS.md, ROADMAP.md
 - [ ] 4. Add skill (if repeatable agent workflow)
 - [ ] 5. Cite upstream official docs (verify, do not guess)
 - [ ] 6. Record validated versions and constraints
+- [ ] 7. Update ADR Validation section (or create ADR via adr skill if architectural)
 ```
 
 ### Step 1 — Choose where to document
@@ -41,7 +43,7 @@ Documentation progress:
 | Feature kind | Primary location | Also update |
 |---|---|---|
 | Install / deploy procedure | `docs/<component>-installation.md` or `docs/<component>/` | `scripts/`, `deploy/` |
-| Architecture decision | `docs/stack-decisions.md` | `docs/architecture.md` when it exists |
+| Architecture decision | `docs/adr/NNNN-slug.md` (use `adr` skill) | `docs/adr/README.md`, `docs/stack-decisions.md`, `docs/architecture.md` when it exists |
 | Demo narrative step | `docs/demo-script.md` | — |
 | Agent-operable workflow | `.cursor/skills/<name>/SKILL.md` | `AGENTS.md` § Cursor Skills |
 | Version manifest | `docs/` or `deploy/` values | `AGENTS.md` § Version Pinning |
@@ -120,5 +122,5 @@ Full mapping: [reference.md](reference.md)
 ## Additional resources
 
 - Templates and file map: [reference.md](reference.md)
-- ADR-style decisions: use the `adr` skill for `docs/stack-decisions.md` entries
+- ADR-style decisions: use the `adr` skill — creates `docs/adr/NNNN-slug.md` and updates both indexes (`docs/adr/README.md` + `docs/stack-decisions.md`)
 - OpenShift operations during validation: `openshift-mcp` skill
