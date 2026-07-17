@@ -18,7 +18,7 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 | User intent | Action |
 |---|---|
 | Deploy OpenShell on OpenShift | `make -C deploy openshell-install` |
-| First-time cluster setup | `make -C deploy openshell-prereqs` then install |
+| First-time cluster setup | `make -C deploy deploy-operators` then install |
 | Refresh local mTLS certs only | `make -C deploy openshell-sync-mtls` |
 | Check deployment | `make -C deploy openshell-status` |
 | Upgrade release | `make -C deploy openshell-upgrade` |
@@ -26,13 +26,13 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 ## Workflow
 
 1. **Verify cluster context** — correct OpenShift cluster/project (`configuration_contexts_list` or `oc config current-context`).
-2. **Prerequisites (once per cluster)**:
+2. **Prerequisites (once per cluster)** — Agent Sandbox Operator is installed via OLM as part of the operators chart:
 
 ```bash
-make -C deploy openshell-prereqs
+make -C deploy deploy-operators
 ```
 
-Installs Agent Sandbox controller (`v0.5.1`). Idempotent.
+Installs RHOAI + Red Hat build of Agent Sandbox Operator. Idempotent.
 
 3. **Install gateway**:
 
@@ -79,7 +79,7 @@ openshell status
 
 - **Do not** set `pkiInitJob.enabled=false` without external JWT secret bootstrap.
 - **Confirm namespace** — default `openshell`.
-- **Agent Sandbox** is cluster-wide; prereqs install it once, not per release.
+- **Agent Sandbox** is cluster-wide; installed via OLM with the operators chart, not per OpenShell release.
 - **Helm OCI on Podman hosts** — Makefile sets `DOCKER_CONFIG` automatically.
 - **mTLS sync** writes only under `~/.config/openshell/` (never into the git repo). Re-run after every redeploy or after `gateway add --local`.
 

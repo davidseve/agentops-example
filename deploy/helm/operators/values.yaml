@@ -5,3 +5,11 @@ rhoai:
   source: redhat-operators
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
+
+agentSandbox:
+  enabled: true
+  namespace: agent-sandbox-system
+  channel: preview-0.9
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
