@@ -49,6 +49,7 @@ Note: Agent Sandbox controller in `agent-sandbox-system` remains.
 |---|---|
 | Helm release / gateway StatefulSet | Yes |
 | TLS/JWT secrets | Yes |
+| SCC RoleBinding (privileged) | Yes (managed by Helm) |
 | Namespace `openshell` | Yes |
 | PVC data | Yes (with namespace) |
 | Agent Sandbox controller | No |

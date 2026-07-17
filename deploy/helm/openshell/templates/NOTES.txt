@@ -3,14 +3,22 @@ OpenShell gateway installed for the AgentOps demo.
 Release:   {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
 Chart:     {{ .Chart.Name }}-{{ .Chart.Version }} (upstream {{ .Values.openshell.image.tag }})
+{{- if .Values.openshift.scc.privilegedSandbox }}
+SCC:       privileged → {{ include "agentops-openshell.sandboxSA" . }} (post-install hook)
+{{- end }}
 
 Verify:
   oc -n {{ .Release.Namespace }} rollout status statefulset/{{ .Release.Name }}
   oc -n {{ .Release.Namespace }} get pods,secret | grep -E 'NAME|openshell'
+{{- if .Values.openshift.scc.privilegedSandbox }}
+  oc -n {{ .Release.Namespace }} get rolebinding | grep privileged
+{{- end }}
 
 Connect (from your workstation):
   oc -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }} 8080:8080
   openshell gateway add https://127.0.0.1:8080 --local --name openshift
+  make -C deploy openshell-sync-mtls   # required after gateway add --local
+  openshell status
 
 Documentation:
   docs/openshell-installation.md

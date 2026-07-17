@@ -1,26 +1,32 @@
 ---
 name: document-feature
 description: >-
-  Document new project functionality after implementation: guides, scripts,
-  skills, ROADMAP, AGENTS.md, and README cross-links. Use when adding or
+  Document new or modified project functionality: guides, scripts, skills,
+  ROADMAP, AGENTS.md, and README cross-links. Use when adding, modifying, or
   validating a component (e.g. OpenShell, MLflow, NeMo), integration, deploy
-  path, installer script, Helm chart, or Cursor skill — or when the user asks
-  to document a feature.
+  path, version pin, installer script, Helm chart, or Cursor skill — or when
+  the user asks to document a feature. Mandatory when the
+  technology-usage-docs rule applies.
 ---
 
 # Document Feature
 
-After implementing or validating new functionality, **update project documentation in the same session**. Do not wait for the user to ask unless they explicitly said not to document.
+After implementing, modifying, or validating functionality, **update project documentation in the same session**. Do not wait for the user to ask unless they explicitly said not to document.
+
+> **Note**: When the `technology-usage-docs` rule fires (any stack technology added or modified), running this skill is **mandatory**, not optional.
 
 ## When to run
 
 | Trigger | Example |
 |---|---|
 | New platform component validated on cluster | OpenShell Helm chart on OpenShift |
+| Existing component version or config changed | Chart version bump, new Helm values, operator CSV update |
+| Prerequisites or deploy path modified | New Makefile target, values file restructure, new dependency |
+| Verify or troubleshoot steps updated | New health check, validated error workaround |
 | New script or installer added | `scripts/install-openshell.sh` |
 | New Cursor skill added | `openshell-local-install`, `openshell-cluster-install`, etc. |
 | Deploy manifests or Helm values added | `deploy/helm/openshell/` |
-| Architecture or integration decision made | OGX, TrustyAI, MaaS wiring |
+| Architecture or integration decision made | TrustyAI, MaaS wiring |
 
 ## Workflow
 
@@ -32,7 +38,7 @@ Documentation progress:
 - [ ] 1. Identify feature type and target doc location
 - [ ] 2. Write or extend the primary guide in docs/
 - [ ] 3. Cross-link README.md, AGENTS.md, ROADMAP.md
-- [ ] 4. Add skill (if repeatable agent workflow)
+- [ ] 4. Update existing skills or add new ones for repeatable workflows
 - [ ] 5. Cite upstream official docs (verify, do not guess)
 - [ ] 6. Record validated versions and constraints
 - [ ] 7. Update ADR Validation section (or create ADR via adr skill if architectural)
@@ -75,9 +81,11 @@ Every component guide must include:
 
 Keep `AGENTS.md` and `README.md` **short** — link to `docs/`, do not duplicate procedures.
 
-### Step 4 — Skill (optional but recommended)
+### Step 4 — Skills (create or update)
 
-Create a skill when the workflow is:
+**Update existing skills** that describe the changed workflow. Search `.cursor/skills/` for skills whose commands, versions, chart values, or Makefile targets changed in this session. Update them to match the new process.
+
+**Create a new skill** when the workflow is:
 
 - Repeated by users or agents (install, cleanup, bootstrap, health-check)
 - Multi-step with project-specific conventions
@@ -106,6 +114,7 @@ Per `.cursor/rules/documentation-sources.mdc`:
 - Leave ROADMAP tasks unchecked after validation
 - Document from training data without verifying versions and CRD fields
 - Put long install procedures only in chat — they belong in `docs/`
+- Leave existing skills referencing deprecated commands, removed scripts, or old versions
 
 ## Example: OpenShell (reference implementation)
 

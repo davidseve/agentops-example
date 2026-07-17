@@ -25,6 +25,4 @@ All AI agents must follow the [adr-alignment rule](../../.cursor/rules/adr-align
 | [0002](0002-ocp-with-rhoai-as-platform.md) | OCP with RHOAI as base platform | Accepted | Infrastructure | 2026-07-13 |
 | [0003](0003-openshell-deployment-on-openshift.md) | OpenShell deployment on OpenShift | Accepted | Platform | 2026-07-13 |
 | [0004](0004-nemo-guardrails-via-trustyai.md) | NeMo Guardrails via TrustyAI | Accepted | Platform | 2026-07-13 |
-| [0005](0005-ogx-api-abstraction.md) | OGX as API abstraction (GA) | Proposed | Platform | 2026-07-13 |
 | [0006](0006-explicit-version-pinning.md) | Explicit version pinning policy | Accepted | Cross-cutting | 2026-07-13 |
-| [0007](0007-exclude-kagenti-llmd-spiffe.md) | Exclude Kagenti, llm-d, SPIFFE/SPIRE | Accepted | Cross-cutting | 2026-07-13 |

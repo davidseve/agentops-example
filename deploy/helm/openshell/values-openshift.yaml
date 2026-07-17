@@ -2,8 +2,13 @@
 # Validated on OpenShift 4.x with SCC restricted (gateway) + privileged (sandboxes).
 #
 # Prerequisites (not installed by this chart):
-#   - Agent Sandbox controller: deploy/openshift/openshell or scripts/openshift-openshell-prereqs.sh
-#   - SCC grant for openshell-sandbox service account
+#   - Agent Sandbox controller: scripts/openshift-openshell-prereqs.sh
+
+openshift:
+  namespace:
+    create: true
+  scc:
+    privilegedSandbox: true
 
 openshell:
   server:

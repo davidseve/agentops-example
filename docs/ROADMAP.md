@@ -17,9 +17,8 @@
 - [x] Document OpenShell local install (macOS and Linux) — see [openshell-installation.md](openshell-installation.md)
 - [x] Add `scripts/install-openshell.sh` — one-command local stack installer (macOS and Linux)
 - [x] Add `scripts/uninstall-openshell.sh` — remove local OpenShell stack (macOS and Linux)
-- [x] Validate OpenShell deployment method and constraints on target cluster — see [openshell-installation.md § OpenShift](openshell-installation.md#openshift--rhoai-cluster-deployment) (chart `0.0.80`, TLS + certgen hook on OCP)
+- [x] Validate OpenShell deployment method and constraints on target cluster — see [openshell-installation.md § OpenShift](openshell-installation.md#openshift--rhoai-cluster-deployment) (chart `0.0.80`, TLS + certgen hook on OCP; post-install mTLS sync via `make openshell-sync-mtls`)
 - [x] NeMo Guardrails integration: via TrustyAI operator — see [ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md)
-- [x] OGX: confirmed GA — see [ADR-0005](adr/0005-ogx-api-abstraction.md)
 - [x] Establish ADR process and retroactive records — see [docs/adr/](adr/README.md)
 - [ ] Validate MLflow tracing + prompt registry capabilities
 - [ ] Document MaaS options available in demo.redhat.com
@@ -49,6 +48,7 @@
 ## Phase 4 - Packaging and Polish
 
 - [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: [`deploy/helm/openshell/`](../deploy/helm/openshell/) + `make -C deploy openshell-install`
+- [x] Refactor OpenShell wrapper chart (`0.2.0`): absorb namespace + SCC RoleBinding into Helm; pin Agent Sandbox `v0.5.1`; retire kustomize + SCC script — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
 - [ ] Write step-by-step demo script with timing marks (10-13 min)
 - [x] Create health-check script (`tests/health-check.sh`)
 - [ ] Create warm-up script

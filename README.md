@@ -14,7 +14,6 @@ This project demonstrates the **BYOA (Bring Your Own Agent)** approach from the 
 Customer Agent (any framework) ─── BYOA
         │
         ├── NeMo Guardrails ─────── Input/Output security
-        ├── OGX ─────────────────── API abstraction
         ├── MLflow ──────────────── Tracing + Prompt Registry
         ├── OpenShell ───────────── Sandboxed execution
         │

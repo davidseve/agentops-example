@@ -14,7 +14,7 @@ Cross-cutting
 
 ## Context
 
-The AgentOps demo involves multiple architecture layers (infrastructure, platform, inference, agent) with decisions that affect each other. Early decisions about NeMo Guardrails, OGX, and OpenShell were recorded informally in `AGENTS.md` and `ROADMAP.md`, making rationale difficult to trace over time.
+The AgentOps demo involves multiple architecture layers (infrastructure, platform, inference, agent) with decisions that affect each other. Early decisions about NeMo Guardrails and OpenShell were recorded informally in `AGENTS.md` and `ROADMAP.md`, making rationale difficult to trace over time.
 
 A lightweight, file-per-decision record keeps the "why" alongside the "what" without requiring external tooling.
 

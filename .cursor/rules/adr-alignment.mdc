@@ -27,7 +27,7 @@ Use the `adr` skill when the task would:
 
 - Add, remove, or swap a platform component (operators, charts, sandbox, guardrails, API layer)
 - Change deployment topology or version pinning policy
-- Reverse an Accepted decision (e.g., adopt Kagenti, llm-d, or SPIFFE/SPIRE — currently excluded per ADR-0007)
+- Reverse an Accepted decision (e.g., adopt a previously excluded component)
 
 Implementation-only work (bug fixes, docs typos, scripts that follow existing ADRs) does **not** require a new ADR.
 

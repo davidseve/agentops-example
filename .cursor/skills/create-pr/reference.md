@@ -18,7 +18,7 @@ Extracts and adapts the RHOAI installation from `rhoai-platform-ops`, keeping on
 | Chart | Purpose |
 |-------|---------|
 | `operators` | RHOAI 3.4 operator subscription, namespace, OperatorGroup |
-| `platform` | DataScienceCluster (OGX/LlamaStack, MLflow, TrustyAI, KServe, MaaS) + Dashboard config |
+| `platform` | DataScienceCluster (MLflow, TrustyAI, KServe, MaaS) + Dashboard config |
 | `database` | Shared PostgreSQL 16 with init scripts for `mlflow` and `evalhub` databases |
 | `mlflow` | MLflow CR, Route, DB secret, DNS fix workaround |
 | `evalhub` | EvalHub CR, DB secret, model-auth Job (prepared, optional) |
