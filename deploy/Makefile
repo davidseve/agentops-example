@@ -6,9 +6,9 @@
 #   make undeploy-all  (teardown)
 #
 # OpenShell (cluster):
-#   make openshell-prereqs    # Agent Sandbox + namespace (once per cluster)
-#   make openshell-install    # Helm install wrapper chart
-#   make openshell-scc        # Grant SCC after install (if prereqs ran before Helm)
+#   make openshell-prereqs    # Agent Sandbox controller (once per cluster)
+#   make openshell-install    # Helm install wrapper chart (namespace + SCC + gateway + mTLS sync)
+#   make openshell-sync-mtls  # Sync cluster client TLS bundle to local CLI config
 #   make openshell-status
 #   make openshell-uninstall
 
@@ -156,11 +156,10 @@ validate:
 	@oc wait --for=condition=Ready pod -l name=rhods-operator -n redhat-ods-operator --timeout=60s >/dev/null
 	@echo "OK: operator CSV Succeeded, pods Ready"
 	@echo "=== Platform components ==="
-	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="LlamaStackOperatorReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="MLflowOperatorReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="TrustyAIReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="DashboardReady")].status}{"\n"}' | grep -q True
-	@echo "OK: OGX, MLflow operator, TrustyAI, Dashboard ready"
+	@echo "OK: MLflow operator, TrustyAI, Dashboard ready"
 	@DSC_PHASE=$$(oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'); \
 	DSC_MSG=$$(oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}'); \
 	if [ "$$DSC_PHASE" = "Ready" ]; then \
@@ -223,14 +222,13 @@ validate-cleanup:
 # --- OpenShell (cluster) ---
 
 HELM_CHART_DIR := $(ROOT_DIR)/deploy/helm/openshell
-OPENSHIFT_KUSTOMIZE := $(ROOT_DIR)/deploy/openshift/openshell
 
 RELEASE_NAME ?= openshell
 NAMESPACE ?= openshell
 HELM_TIMEOUT ?= 10m
 DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 
-.PHONY: help openshell-deps openshell-prereqs openshell-scc openshell-install openshell-upgrade openshell-status openshell-uninstall helm-env
+.PHONY: help openshell-deps openshell-prereqs openshell-install openshell-upgrade openshell-sync-mtls openshell-status openshell-uninstall helm-env
 
 helm-env:
 	@mkdir -p $(DOCKER_CONFIG)
@@ -239,10 +237,10 @@ helm-env:
 help:
 	@echo "OpenShell cluster targets:"
 	@echo "  make openshell-deps       Update Helm chart dependencies (Chart.lock)"
-	@echo "  make openshell-prereqs    Install Agent Sandbox + namespace"
-	@echo "  make openshell-install    Install OpenShell gateway (Helm)"
-	@echo "  make openshell-scc        Grant privileged SCC to sandbox SA"
-	@echo "  make openshell-upgrade    Upgrade release with current values"
+	@echo "  make openshell-prereqs    Install Agent Sandbox controller (once per cluster)"
+	@echo "  make openshell-install    Install OpenShell gateway (Helm — namespace + SCC + gateway + mTLS sync)"
+	@echo "  make openshell-upgrade    Upgrade release with current values (+ mTLS sync)"
+	@echo "  make openshell-sync-mtls  Sync openshell-client-tls to local CLI mTLS bundle"
 	@echo "  make openshell-status     Show release and pod status"
 	@echo "  make openshell-uninstall  Remove Helm release"
 
@@ -252,11 +250,10 @@ openshell-deps: helm-env
 openshell-prereqs:
 	$(ROOT_DIR)/scripts/openshift-openshell-prereqs.sh
 
-openshell-scc:
-	$(ROOT_DIR)/scripts/openshift-openshell-scc.sh
+openshell-sync-mtls:
+	NAMESPACE=$(NAMESPACE) $(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh
 
 openshell-install: helm-env openshell-deps
-	oc apply -k $(OPENSHIFT_KUSTOMIZE)
 	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade --install $(RELEASE_NAME) . \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
@@ -264,7 +261,7 @@ openshell-install: helm-env openshell-deps
 		-f values-openshift.yaml \
 		--wait \
 		--timeout $(HELM_TIMEOUT)
-	$(ROOT_DIR)/scripts/openshift-openshell-scc.sh
+	@$(MAKE) openshell-sync-mtls
 	@$(MAKE) openshell-status
 
 openshell-upgrade: helm-env openshell-deps
@@ -274,6 +271,7 @@ openshell-upgrade: helm-env openshell-deps
 		-f values-openshift.yaml \
 		--wait \
 		--timeout $(HELM_TIMEOUT)
+	@$(MAKE) openshell-sync-mtls
 	@$(MAKE) openshell-status
 
 openshell-status:
@@ -281,6 +279,8 @@ openshell-status:
 	@DOCKER_CONFIG=$(DOCKER_CONFIG) helm list -n $(NAMESPACE) 2>/dev/null || true
 	@echo "--- Workloads ---"
 	@oc -n $(NAMESPACE) get statefulset,pods,svc,secret 2>/dev/null | grep -E 'NAME|openshell' || true
+	@echo "--- SCC ---"
+	@oc -n $(NAMESPACE) get rolebinding 2>/dev/null | grep -E 'NAME|privileged' || true
 
 openshell-uninstall: helm-env
 	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) || true

@@ -50,7 +50,7 @@ cd deploy && make validate
 
 - 5 `rhoai-*` Helm releases deployed
 - RHOAI operator CSV Succeeded, pods Ready
-- DSC conditions: OGX, MLflow operator, TrustyAI, Dashboard ready
+- DSC conditions: MLflow operator, TrustyAI, Dashboard ready
 - PostgreSQL `maas-db` Available
 - MLflow CR Available with route URL
 - EvalHub Ready
@@ -75,7 +75,6 @@ for `make validate`.
 |---|---|
 | RHOAI Operator 3.4.x | CSV Succeeded |
 | Dashboard | Ready |
-| LlamaStack/OGX Operator | Ready |
 | MLflow Operator | Ready |
 | TrustyAI | Ready |
 | KServe | Ready |
@@ -85,7 +84,7 @@ for `make validate`.
 
 Note: DSC may show "Not Ready" because `modelsAsService` requires a Gateway we don't deploy.
 `make validate` treats this as a WARN, not a failure. Individual components (TrustyAI,
-MLflow, OGX, Dashboard) are all functional.
+MLflow, Dashboard) are all functional.
 
 ## Troubleshooting
 
@@ -140,7 +139,6 @@ you will skip the required waits.
 ## Notes
 
 - The RHOAI operator auto-creates DSCInitialization on startup (no COO needed)
-- `llamastackoperator: Managed` enables the OGX operator for API abstraction
 - TrustyAI requires `kserve` and `modelsAsService` to be Managed (CRD dependency)
 - MLflow requires the database to be ready first (dependency in Makefile)
 - EvalHub is optional and can be skipped with `make deploy-mlflow` instead of `make deploy-all`

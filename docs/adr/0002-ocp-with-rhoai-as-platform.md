@@ -16,7 +16,7 @@ Infrastructure
 
 The AgentOps demo needs a container platform that supports the full AI agent lifecycle: model serving, guardrails, sandboxing, tracing, and prompt management. The platform must be provisionable on demand (demo.redhat.com / RHPDS) and support operator-managed components with enterprise-grade security.
 
-Red Hat OpenShift AI (RHOAI) is an add-on to OpenShift Container Platform (OCP) that provides AI/ML-specific capabilities — DataScienceCluster CRD, model serving, MLflow, TrustyAI, OGX, and EvalHub — all managed through operators on top of OCP.
+Red Hat OpenShift AI (RHOAI) is an add-on to OpenShift Container Platform (OCP) that provides AI/ML-specific capabilities — DataScienceCluster CRD, model serving, MLflow, TrustyAI, and EvalHub — all managed through operators on top of OCP.
 
 ## Options Considered
 
@@ -28,25 +28,25 @@ Red Hat OpenShift AI (RHOAI) is an add-on to OpenShift Container Platform (OCP) 
 ### Option 2: OpenShift Container Platform (OCP) without RHOAI
 
 - **Pros:** Enterprise Kubernetes with built-in security (SCCs, OAuth, network policies); available on demo.redhat.com.
-- **Cons:** AI components (MLflow, TrustyAI, OGX) must be deployed and managed manually without operator support; no DataScienceCluster abstraction.
+- **Cons:** AI components (MLflow, TrustyAI) must be deployed and managed manually without operator support; no DataScienceCluster abstraction.
 
 ### Option 3: OpenShift Container Platform (OCP) with RHOAI 3.x add-on
 
-- **Pros:** Full operator-managed AI stack; DataScienceCluster CRD orchestrates MLflow, TrustyAI, OGX, and model serving; Red Hat supported; available on demo.redhat.com/RHPDS; aligns with BYOA strategy.
+- **Pros:** Full operator-managed AI stack; DataScienceCluster CRD orchestrates MLflow, TrustyAI, and model serving; Red Hat supported; available on demo.redhat.com/RHPDS; aligns with BYOA strategy.
 - **Cons:** Requires RHOAI operator subscription; tied to RHOAI release cadence.
 - **GA / support status:** GA — [RHOAI 3.4 docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [supported configs](https://access.redhat.com/articles/rhoai-supported-configs-3.x).
 
 ## Decision
 
-Use OpenShift Container Platform as the base infrastructure with Red Hat OpenShift AI (RHOAI) 3.x as the AI platform add-on. OCP provides the enterprise Kubernetes foundation (security, networking, storage, operator lifecycle), and RHOAI adds the AI-specific layer (MLflow, TrustyAI, OGX, model serving) managed through the DataScienceCluster CRD.
+Use OpenShift Container Platform as the base infrastructure with Red Hat OpenShift AI (RHOAI) 3.x as the AI platform add-on. OCP provides the enterprise Kubernetes foundation (security, networking, storage, operator lifecycle), and RHOAI adds the AI-specific layer (MLflow, TrustyAI, model serving) managed through the DataScienceCluster CRD.
 
-This is the foundation that every other ADR builds upon: OpenShell ([ADR-0003](0003-openshell-deployment-on-openshift.md)), guardrails ([ADR-0004](0004-nemo-guardrails-via-trustyai.md)), OGX ([ADR-0005](0005-ogx-api-abstraction.md)), and version pinning ([ADR-0006](0006-explicit-version-pinning.md)) all depend on OCP + RHOAI being the target platform.
+This is the foundation that every other ADR builds upon: OpenShell ([ADR-0003](0003-openshell-deployment-on-openshift.md)), guardrails ([ADR-0004](0004-nemo-guardrails-via-trustyai.md)), and version pinning ([ADR-0006](0006-explicit-version-pinning.md)) all depend on OCP + RHOAI being the target platform.
 
 ## Consequences
 
 ### Positive
 
-- All platform components (MLflow, TrustyAI, OGX, EvalHub) are managed by operators with a single DataScienceCluster entry point.
+- All platform components (MLflow, TrustyAI, EvalHub) are managed by operators with a single DataScienceCluster entry point.
 - Demo clusters are provisionable on demand from demo.redhat.com / RHPDS.
 - Consistent with the Red Hat AI Agentic Strategy 2026 and the BYOA message.
 - Enterprise security primitives (SCCs, OAuth, network policies, audit logging) are built in.
@@ -76,7 +76,6 @@ Cluster bootstrap validated on demo.redhat.com. Full deploy, validate, and teard
 
 - [ADR-0003: OpenShell on OpenShift](0003-openshell-deployment-on-openshift.md) — depends on OCP SCCs and Kubernetes driver
 - [ADR-0004: NeMo Guardrails via TrustyAI](0004-nemo-guardrails-via-trustyai.md) — depends on RHOAI TrustyAI operator
-- [ADR-0005: OGX as API abstraction](0005-ogx-api-abstraction.md) — depends on RHOAI OGX component
 - [ADR-0006: Explicit version pinning](0006-explicit-version-pinning.md) — RHOAI operator CSV is pinned
 
 ## References

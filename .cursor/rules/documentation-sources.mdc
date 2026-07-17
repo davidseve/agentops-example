@@ -38,10 +38,6 @@ All decisions about platform components MUST be validated against official docum
 
 - **GitHub:** https://github.com/nicholasgasior/openshell (TBD — update when public)
 
-### OGX (API Abstraction)
-
-- **RHOAI docs:** check latest RHOAI release notes for GA status and config
-
 ### MaaS (Model Serving)
 
 - **MaaS guide:** https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index

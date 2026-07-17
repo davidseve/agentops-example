@@ -69,6 +69,7 @@ Key findings during testing:
 
 ## Workflow
 
+0. **Secret scan** — run the `no-secrets` skill on all staged/unstaged/untracked changes. If anything matches the deny-list or secret patterns, **stop**; do not push or create the PR.
 1. Gather changes: `git status`, `git diff`, `git log` vs base branch.
 2. Draft title + body from template above.
 3. Push branch: `git push -u origin HEAD`
@@ -100,3 +101,4 @@ See [reference.md](reference.md) for the full PR #1 body.
 - Use only a bullet list of changed files as the whole PR body
 - Claim testing in Test plan without evidence from the session
 - Push or create PR unless the user asked
+- Include secrets, tokens, kubeconfigs, or real credentials in the PR (see `no-secrets`)

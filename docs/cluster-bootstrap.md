@@ -4,7 +4,7 @@ This guide documents how to deploy the RHOAI platform stack for the AgentOps dem
 
 | Scenario | Use case | Section |
 |---|---|---|
-| **Full platform deploy** | RHOAI operator, OGX, MLflow, TrustyAI, PostgreSQL, EvalHub | [Deploy](#deploy) |
+| **Full platform deploy** | RHOAI operator, MLflow, TrustyAI, PostgreSQL, EvalHub | [Deploy](#deploy) |
 | **Health validation** | Post-deploy checks before the demo | [Validate](#validate) |
 | **Teardown** | Reset cluster to a clean state | [Teardown](#teardown) |
 
@@ -25,7 +25,6 @@ A working AgentOps platform stack on OpenShift includes:
 |---|---|
 | RHOAI Operator 3.4.x | Installs and manages platform components via DataScienceCluster |
 | Dashboard | RHOAI UI for operators and data scientists |
-| LlamaStack / OGX | API abstraction between agents and model services |
 | MLflow Operator + instance | Tracing and prompt registry |
 | TrustyAI | NeMo Guardrails deployment path |
 | KServe | Model serving infrastructure (required by TrustyAI) |
@@ -131,7 +130,6 @@ The platform chart (`helm/platform`) manages these components as **Managed**:
 | Component | Purpose |
 |---|---|
 | `dashboard` | RHOAI dashboard |
-| `llamastackoperator` | OGX (API abstraction) |
 | `mlflowoperator` | MLflow operator |
 | `trustyai` | NeMo Guardrails path |
 | `kserve` | Model serving (TrustyAI dependency) |
@@ -139,7 +137,7 @@ The platform chart (`helm/platform`) manages these components as **Managed**:
 
 Components explicitly set to **Removed** to reduce cluster footprint: workbenches, model registry, Ray, trainer, feast, kueue, spark, AI pipelines.
 
-> **Note**: DataScienceCluster may show phase **Not Ready** because `modelsAsService` requires a Gateway we do not deploy. Individual components (TrustyAI, MLflow, OGX, Dashboard) are still functional. `make validate` treats this as a WARN, not a failure.
+> **Note**: DataScienceCluster may show phase **Not Ready** because `modelsAsService` requires a Gateway we do not deploy. Individual components (TrustyAI, MLflow, Dashboard) are still functional. `make validate` treats this as a WARN, not a failure.
 
 #### Optional: skip EvalHub
 
@@ -173,7 +171,7 @@ Or from the repo root:
 
 - 5 `rhoai-*` Helm releases deployed
 - RHOAI operator CSV Succeeded, pods Ready
-- DSC conditions: OGX, MLflow operator, TrustyAI, Dashboard ready
+- DSC conditions: MLflow operator, TrustyAI, Dashboard ready
 - PostgreSQL `maas-db` Available
 - MLflow CR Available with route URL
 - EvalHub Ready
@@ -200,7 +198,6 @@ These `oc get` commands are for human inspection only — they are not a substit
 |---|---|
 | RHOAI Operator 3.4.x | CSV Succeeded |
 | Dashboard | Ready |
-| LlamaStack/OGX Operator | Ready |
 | MLflow Operator | Ready |
 | TrustyAI | Ready |
 | KServe | Ready |

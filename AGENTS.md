@@ -39,7 +39,7 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 │  Agent Framework/Harness (TBD) + NeMo Guardrails            │
 ├─────────────────────────────────────────────────────────────┤
 │  PLATFORM LAYER (Red Hat owns)                              │
-│  OGX (API abstraction) │ MLflow (tracing + prompt registry) │
+│  MLflow (tracing + prompt registry)                         │
 │  OpenShell (sandbox)   │ MCP Gateway (nice-to-have)         │
 ├─────────────────────────────────────────────────────────────┤
 │  INFERENCE LAYER                                            │
@@ -62,7 +62,6 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 | LLM | TBD (best available with tool-calling) | Agent brain |
 | Guardrails | NeMo Guardrails via TrustyAI | Deployed through TrustyAI operator on OCP |
 | Sandbox | OpenShell | Agent execution isolation, zero-trust sandboxing |
-| API Abstraction | OGX (GA) | Unified API between agent and model services |
 | Observability | MLflow (tracing) | OpenTelemetry-based agent execution traces |
 | Prompt Management | MLflow (prompt registry) | Versioned prompts, A/B testing |
 | Agent | TBD framework or harness | See options below |
@@ -88,12 +87,6 @@ Agent Harnesses (pre-built agents):
 | Cost Tracking | MaaS Dashboard | Token consumption per department/tenant |
 | Secure MCP | MCP Gateway | Auth, rate limiting on tool calls |
 
-### EXPLICITLY EXCLUDED
-
-- **Kagenti**: Not using lifecycle management (manual deploy)
-- **llm-d**: Not needed (using external MaaS, not self-hosted vLLM)
-- **SPIFFE/SPIRE**: Identity management too complex without Kagenti
-
 ## Technology-to-Product Mapping
 
 This maps demo features to specific Red Hat products/components:
@@ -106,7 +99,6 @@ This maps demo features to specific Red Hat products/components:
 | Prompt Registry | RHOAI - MLflow | MLflow Prompt Registry |
 | Guardrails | NeMo Guardrails (NVIDIA partnership) | Deployed via TrustyAI operator on OCP |
 | Agent Sandboxing | OpenShell | Sandboxed execution environment |
-| API Gateway | OGX (GA) | API abstraction for model access |
 | Model Serving | MaaS (external) | External model endpoint |
 | Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
 | Cost Governance | MaaS Dashboard | Token billing/showback (nice-to-have) |
@@ -158,8 +150,7 @@ agentops-example/
 │   ├── Makefile               # make deploy-all, validate, openshell-install, …
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
-│   └── openshift/
-│       └── openshell/         # Namespace manifest for OpenShell
+│   └── openshift/             # OpenShift-specific manifests (non-Helm)
 ├── agent/
 │   ├── src/                   # Agent source code (Phase 3)
 │   ├── prompts/               # Versioned prompts (Phase 3)
@@ -170,8 +161,9 @@ agentops-example/
 └── scripts/
     ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
     ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
-    ├── openshift-openshell-prereqs.sh # Agent Sandbox + namespace (cluster)
-    ├── openshift-openshell-scc.sh    # Grant privileged SCC to sandbox SA
+    ├── openshift-openshell-prereqs.sh # Agent Sandbox controller (cluster, pinned v0.5.1)
+    ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
+    ├── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
     ├── warm-up.sh             # Pre-warm model
     └── demo-reset.sh          # Reset demo state
 ```
@@ -194,12 +186,12 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **ADR alignment**: Consult [stack-decisions.md](docs/stack-decisions.md) and relevant Accepted ADRs before architectural or deploy changes
 - **Target platform**: RHOAI 3.x on demo.redhat.com - everything must be deployable there
 - **Pinned versions**: All operators and components use explicit version pinning (see [ADR-0006](docs/adr/0006-explicit-version-pinning.md)). No automatic updates. Version bumps are deliberate and tested.
-- **No secrets in repo**: This is a public repo. Use environment variables, sealed secrets, or external secret management
+- **No secrets in repo**: This is a public repo. Use environment variables, sealed secrets, or external secret management. Enforced by `.cursor/rules/no-secrets.mdc` and the `no-secrets` skill (scan before commit/PR).
 - **English**: All code, comments, docs, and demo content in English
 - **GitOps**: All configuration as code, no manual cluster changes
 - **Idempotent**: Deploy/teardown must be repeatable with a single command
 - **BYOA principle**: The agent layer is intentionally decoupled from the platform. The platform works regardless of which framework/harness is chosen
-- **Document new functionality**: After implementing or validating a component, integration, script, or skill, run the `document-feature` skill — update `docs/`, `ROADMAP.md`, and cross-links in the same session
+- **Document new or modified functionality**: After adding or modifying a stack technology (version, deploy path, prereqs, verify steps), the `technology-usage-docs` rule requires running the `document-feature` skill in the same session — create or update guides in `docs/`, cross-link `ROADMAP.md`, `README.md`, and `AGENTS.md`
 - **Pull requests**: Use the `create-pr` skill — body must follow [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure (`Summary`, `Details`, `Test plan`); no default assignee unless the user requests one
 
 ## Open Questions

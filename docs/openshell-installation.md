@@ -476,10 +476,16 @@ openshell CLI  ──HTTPS──►  openshell-gateway (StatefulSet)
 | [Agent Sandbox controller + CRDs](https://docs.nvidia.com/openshell/kubernetes/setup#install-agent-sandbox) | **Required before** the OpenShell chart |
 | Pinned chart version | `0.0.80` (see [Version pinning](#version-pinning-cluster)) |
 
-Install Agent Sandbox (once per cluster):
+Install Agent Sandbox (once per cluster, pinned to `v0.5.1`):
 
 ```bash
-oc apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/latest/download/manifest.yaml
+make -C deploy openshell-prereqs
+```
+
+Or manually:
+
+```bash
+oc apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v0.5.1/manifest.yaml
 ```
 
 Verify:
@@ -489,30 +495,18 @@ oc get crd sandboxes.agents.x-k8s.io
 oc get pods -n agent-sandbox-system
 ```
 
-### Step 1 — Namespace and SCC
+### Step 1 — Install the Helm chart
 
-Pre-create the namespace so SCC bindings can be applied before Helm installs sandbox resources:
-
-```bash
-oc create ns openshell
-```
-
-Sandbox pods use the `openshell-sandbox` service account and require the `privileged` SCC:
-
-```bash
-oc adm policy add-scc-to-user privileged -z openshell-sandbox -n openshell
-```
-
-### Step 2 — Install the Helm chart
+The wrapper chart (`deploy/helm/openshell/`, version `0.2.0`) manages the full release lifecycle: namespace creation, upstream gateway subchart (`0.0.80`), and privileged SCC RoleBinding for the sandbox service account.
 
 **Recommended (project wrapper chart):**
 
 ```bash
-make -C deploy openshell-prereqs   # once per cluster
+make -C deploy openshell-prereqs   # once per cluster (Agent Sandbox)
 make -C deploy openshell-install
 ```
 
-Chart location: [`deploy/helm/openshell/`](../deploy/helm/openshell/). Pins upstream `0.0.80` and applies OpenShift values from `values-openshift.yaml`.
+Chart location: [`deploy/helm/openshell/`](../deploy/helm/openshell/). Pins upstream `0.0.80` and applies OpenShift values from `values-openshift.yaml` (namespace creation, SCC binding, SCC-compatible security context).
 
 **Manual install (upstream OCI chart directly):**
 
@@ -561,7 +555,7 @@ MountVolume.SetUp failed for volume "sandbox-jwt" : secret "openshell-jwt-keys" 
 
 Upstream reference: [Helm README — Secret bootstrap](https://github.com/NVIDIA/OpenShell/blob/main/deploy/helm/openshell/README.md#secret-bootstrap).
 
-### Step 3 — Verify deployment
+### Step 2 — Verify deployment
 
 Wait for the certgen hook and gateway:
 
@@ -579,7 +573,25 @@ TLS enabled — listening on encrypted HTTPS
 gateway-minted sandbox JWT enabled
 ```
 
-### Step 4 — Connect from your workstation
+Verify the SCC RoleBinding (created by Helm post-install hook):
+
+```bash
+oc -n openshell get rolebinding | grep privileged
+```
+
+### Step 3 — Connect from your workstation
+
+`make openshell-install` (and `openshell-upgrade`) automatically sync the cluster mTLS client bundle from secret `openshell-client-tls` into:
+
+```text
+~/.config/openshell/gateways/openshift/mtls/{ca.crt,tls.crt,tls.key}
+```
+
+This matches the upstream [Kubernetes setup — Install the TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup) flow. Re-run sync anytime with:
+
+```bash
+make -C deploy openshell-sync-mtls
+```
 
 Port-forward the gateway service:
 
@@ -591,16 +603,22 @@ Register with the local CLI (requires [local OpenShell install](#install)):
 
 ```bash
 openshell gateway add https://127.0.0.1:8080 --local --name openshift
+# `gateway add --local` may overwrite the mTLS dir with Podman/Docker package certs — re-sync:
+make -C deploy openshell-sync-mtls
 openshell status
 ```
+
+Expected: `Status: Connected`, `Version: 0.0.80`.
 
 ### Version pinning (cluster)
 
 | Artifact | Pinned value |
 |---|---|
-| Helm chart | `oci://ghcr.io/nvidia/openshell/helm-chart:0.0.80` |
+| Wrapper chart | `agentops-openshell:0.2.0` (`deploy/helm/openshell/`) |
+| Upstream Helm chart | `oci://ghcr.io/nvidia/openshell/helm-chart:0.0.80` |
 | Gateway image | `ghcr.io/nvidia/openshell/gateway:0.0.80` (from chart `appVersion`) |
 | Supervisor image | `ghcr.io/nvidia/openshell/supervisor:0.0.80` |
+| Agent Sandbox controller | `v0.5.1` (`scripts/openshift-openshell-prereqs.sh`) |
 
 Bump versions deliberately and re-test on the target cluster before updating manifests.
 
@@ -629,8 +647,9 @@ oc delete ns openshell
 | `secret "openshell-jwt-keys" not found` | `pkiInitJob.enabled=false` without manual JWT secret | Reinstall with default `pkiInitJob` or pre-create the secret via `openshell-gateway generate-certs --jwt-only` |
 | `docker-credential-desktop not found` (Helm OCI pull) | Stale Docker Desktop config on macOS/Podman host | Set `DOCKER_CONFIG` to an empty config or remove `credsStore: desktop` from `~/.docker/config.json` |
 | certgen Job `Failed` | RBAC or image pull issues | `oc -n openshell logs job/openshell-certgen`; verify gateway image is pullable |
-| Sandbox pods `Failed` | Missing `privileged` SCC on `openshell-sandbox` | `oc adm policy add-scc-to-user privileged -z openshell-sandbox -n openshell` |
+| Sandbox pods `Failed` | Missing `privileged` SCC on `openshell-sandbox` | Re-run `make -C deploy openshell-install` (Helm hook re-applies the RoleBinding), or manually: `oc adm policy add-scc-to-user privileged -z openshell-sandbox -n openshell` |
 | Gateway `Connection refused` over HTTP | TLS is enabled (`disableTls=false`) | Use `https://` when registering the gateway |
+| `invalid peer certificate: BadSignature` | Local CLI mTLS CA does not match cluster `openshell-client-tls` (stale after redeploy, or overwritten by `gateway add --local`) | `make -C deploy openshell-sync-mtls`, then `openshell status` |
 
 ### Observability
 
@@ -659,6 +678,7 @@ See [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging) f
 - [OpenShell Installation](https://docs.nvidia.com/openshell/latest/about/installation) (CLI)
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift)
 - [Kubernetes Setup (Agent Sandbox)](https://docs.nvidia.com/openshell/kubernetes/setup)
+- [Kubernetes Setup — TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup) (copy `openshell-client-tls` for CLI port-forward access)
 - [Helm chart — Secret bootstrap](https://github.com/NVIDIA/OpenShell/blob/main/deploy/helm/openshell/README.md#secret-bootstrap)
 - [OpenShell#2089](https://github.com/NVIDIA/OpenShell/issues/2089) — certgen hook on OpenShift without `pkiInitJob.enabled=false`
 - [Sandbox Compute Drivers](https://docs.nvidia.com/openshell/latest/reference/sandbox-compute-drivers)

@@ -1,6 +1,17 @@
 # Default values for agentops-openshell.
 # Upstream chart values are nested under the `openshell` alias (see Chart.yaml).
 
+# --- Wrapper-level settings ---
+
+openshift:
+  namespace:
+    create: false
+  scc:
+    privilegedSandbox: false
+    serviceAccount: ""
+
+# --- Upstream subchart overrides ---
+
 openshell:
   # Pin images to match chart appVersion (0.0.80).
   image:
