@@ -38,6 +38,11 @@ All decisions about platform components MUST be validated against official docum
 
 - **GitHub:** https://github.com/nicholasgasior/openshell (TBD — update when public)
 
+### Agent Sandbox
+
+- **Red Hat build of Agent Sandbox:** https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/
+- **Upstream:** https://github.com/kubernetes-sigs/agent-sandbox
+
 ### MaaS (Model Serving)
 
 - **MaaS guide:** https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index

@@ -26,7 +26,7 @@ A working OpenShell setup has two components:
 
 **Local:** the project installer (`scripts/install-openshell.sh`) installs both components, configures Podman as the compute driver, and starts a gateway on `https://127.0.0.1:17670`.
 
-**Cluster:** the Helm chart deploys the gateway into OpenShift; sandboxes are provisioned by the Kubernetes driver via the [Agent Sandbox](https://github.com/kubernetes-sigs/agent-sandbox) controller.
+**Cluster:** the Helm chart deploys the gateway into OpenShift; sandboxes are provisioned by the Kubernetes driver via the [Red Hat build of Agent Sandbox](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) Operator.
 
 In **Cursor**, use the OpenShell skills for each scenario — see [Install via Cursor skills](#install-via-cursor-skills).
 
@@ -473,25 +473,19 @@ openshell CLI  ──HTTPS──►  openshell-gateway (StatefulSet)
 |---|---|
 | OpenShift 4.x with `oc` configured | Cluster admin or sufficient RBAC in target namespace |
 | Helm 3.x | For OCI chart install from GHCR |
-| [Agent Sandbox controller + CRDs](https://docs.nvidia.com/openshell/kubernetes/setup#install-agent-sandbox) | **Required before** the OpenShell chart |
+| [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) | Installed via OLM with `make deploy-operators` or `make deploy-all` |
 | Pinned chart version | `0.0.80` (see [Version pinning](#version-pinning-cluster)) |
 
-Install Agent Sandbox (once per cluster, pinned to `v0.5.1`):
+The Agent Sandbox Operator is deployed as an OLM Subscription alongside RHOAI through the `deploy/helm/operators/` chart:
 
 ```bash
-make -C deploy openshell-prereqs
-```
-
-Or manually:
-
-```bash
-oc apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v0.5.1/manifest.yaml
+make -C deploy deploy-operators   # installs RHOAI + Agent Sandbox operators
 ```
 
 Verify:
 
 ```bash
-oc get crd sandboxes.agents.x-k8s.io
+oc get csv -n agent-sandbox-system
 oc get pods -n agent-sandbox-system
 ```
 
@@ -502,7 +496,7 @@ The wrapper chart (`deploy/helm/openshell/`, version `0.2.0`) manages the full r
 **Recommended (project wrapper chart):**
 
 ```bash
-make -C deploy openshell-prereqs   # once per cluster (Agent Sandbox)
+make -C deploy deploy-operators    # RHOAI + Agent Sandbox operators (once per cluster)
 make -C deploy openshell-install
 ```
 
@@ -618,7 +612,7 @@ Expected: `Status: Connected`, `Version: 0.0.80`.
 | Upstream Helm chart | `oci://ghcr.io/nvidia/openshell/helm-chart:0.0.80` |
 | Gateway image | `ghcr.io/nvidia/openshell/gateway:0.0.80` (from chart `appVersion`) |
 | Supervisor image | `ghcr.io/nvidia/openshell/supervisor:0.0.80` |
-| Agent Sandbox controller | `v0.5.1` (`scripts/openshift-openshell-prereqs.sh`) |
+| Agent Sandbox Operator | `stable` channel, OLM (`deploy/helm/operators/values.yaml`) |
 
 Bump versions deliberately and re-test on the target cluster before updating manifests.
 
@@ -677,6 +671,7 @@ See [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging) f
 
 - [OpenShell Installation](https://docs.nvidia.com/openshell/latest/about/installation) (CLI)
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift)
+- [Red Hat build of Agent Sandbox — Install](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/)
 - [Kubernetes Setup (Agent Sandbox)](https://docs.nvidia.com/openshell/kubernetes/setup)
 - [Kubernetes Setup — TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup) (copy `openshell-client-tls` for CLI port-forward access)
 - [Helm chart — Secret bootstrap](https://github.com/NVIDIA/OpenShell/blob/main/deploy/helm/openshell/README.md#secret-bootstrap)

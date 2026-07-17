@@ -2,7 +2,7 @@
 # Validated on OpenShift 4.x with SCC restricted (gateway) + privileged (sandboxes).
 #
 # Prerequisites (not installed by this chart):
-#   - Agent Sandbox controller: scripts/openshift-openshell-prereqs.sh
+#   - Red Hat build of Agent Sandbox Operator: deploy/helm/operators/ (make deploy-operators)
 
 openshift:
   namespace:

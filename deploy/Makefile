@@ -6,7 +6,6 @@
 #   make undeploy-all  (teardown)
 #
 # OpenShell (cluster):
-#   make openshell-prereqs    # Agent Sandbox controller (once per cluster)
 #   make openshell-install    # Helm install wrapper chart (namespace + SCC + gateway + mTLS sync)
 #   make openshell-sync-mtls  # Sync cluster client TLS bundle to local CLI config
 #   make openshell-status
@@ -125,6 +124,9 @@ cleanup-orphans:
 	-@oc delete namespace evaluation --wait=false 2>/dev/null || true
 	-@oc delete namespace models-as-a-service --wait=false 2>/dev/null || true
 	-@oc delete namespace rhoai-model-registries --wait=false 2>/dev/null || true
+	-@oc delete subscription agent-sandbox-operator -n agent-sandbox-system 2>/dev/null || true
+	-@CSV=$$(oc get csv -n agent-sandbox-system -o name 2>/dev/null | grep agent-sandbox); \
+		[ -n "$$CSV" ] && oc delete "$$CSV" -n agent-sandbox-system || true
 	-@oc delete namespace agent-sandbox-system --wait=false 2>/dev/null || true
 	@echo "Orphan cleanup complete."
 
@@ -228,7 +230,7 @@ NAMESPACE ?= openshell
 HELM_TIMEOUT ?= 10m
 DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 
-.PHONY: help openshell-deps openshell-prereqs openshell-install openshell-upgrade openshell-sync-mtls openshell-status openshell-uninstall helm-env
+.PHONY: help openshell-deps openshell-install openshell-upgrade openshell-sync-mtls openshell-status openshell-uninstall helm-env
 
 helm-env:
 	@mkdir -p $(DOCKER_CONFIG)
@@ -237,7 +239,6 @@ helm-env:
 help:
 	@echo "OpenShell cluster targets:"
 	@echo "  make openshell-deps       Update Helm chart dependencies (Chart.lock)"
-	@echo "  make openshell-prereqs    Install Agent Sandbox controller (once per cluster)"
 	@echo "  make openshell-install    Install OpenShell gateway (Helm — namespace + SCC + gateway + mTLS sync)"
 	@echo "  make openshell-upgrade    Upgrade release with current values (+ mTLS sync)"
 	@echo "  make openshell-sync-mtls  Sync openshell-client-tls to local CLI mTLS bundle"
@@ -246,9 +247,6 @@ help:
 
 openshell-deps: helm-env
 	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm dependency update
-
-openshell-prereqs:
-	$(ROOT_DIR)/scripts/openshift-openshell-prereqs.sh
 
 openshell-sync-mtls:
 	NAMESPACE=$(NAMESPACE) $(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh

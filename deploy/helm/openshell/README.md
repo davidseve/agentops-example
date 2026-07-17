@@ -8,7 +8,7 @@ Pins upstream chart `oci://ghcr.io/nvidia/openshell/helm-chart:0.0.80` and manag
 
 ```bash
 # From repo root
-make -C deploy openshell-prereqs   # once per cluster (Agent Sandbox v0.5.1)
+make -C deploy deploy-operators    # once per cluster (RHOAI + Agent Sandbox operators via OLM)
 make -C deploy openshell-install   # Helm + sync mTLS client bundle to local CLI
 ```
 
@@ -17,8 +17,8 @@ make -C deploy openshell-install   # Helm + sync mTLS client bundle to local CLI
 ## Manual install
 
 ```bash
-# 1. Prerequisites (Agent Sandbox controller — once per cluster)
-./scripts/openshift-openshell-prereqs.sh
+# 1. Prerequisites — Agent Sandbox Operator via OLM (once per cluster)
+make -C deploy deploy-operators
 
 # 2. Resolve dependencies
 cd deploy/helm/openshell
