@@ -51,6 +51,7 @@ OPENSHELL_NAMESPACE := openshell
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
 .PHONY: deploy-openshell-infra deploy-openshell-oci deploy-openshell validate-openshell
 .PHONY: validate-openclaw validate-traces validate-security
+.PHONY: test-e2e test-ui test-security test-mlflow
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: template lint validate validate-cleanup
 
@@ -272,6 +273,26 @@ validate-security:
 	else \
 		echo "FAIL: MaaS endpoint not reachable (HTTP $$RESULT)"; exit 1; \
 	fi
+
+# --- Playwright E2E Tests ---
+# These test the REAL user experience: browser → UI → gateway → model → MLflow traces.
+# Unlike Makefile validate-* targets (which test infra from inside the cluster),
+# these tests run from outside and verify what the user actually sees.
+#
+# Prereqs: cd tests && npm install && npx playwright install chromium
+# Env vars: OPENCLAW_BASE_URL, MLFLOW_BASE_URL, MLFLOW_AUTH_TOKEN, MLFLOW_WORKSPACE
+
+test-e2e:
+	cd $(ROOT_DIR)/tests && npx playwright test
+
+test-ui:
+	cd $(ROOT_DIR)/tests && npx playwright test openclaw-ui.spec.ts
+
+test-security:
+	cd $(ROOT_DIR)/tests && npx playwright test sandbox-security.spec.ts
+
+test-mlflow:
+	cd $(ROOT_DIR)/tests && npx playwright test mlflow-ui.spec.ts
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,
