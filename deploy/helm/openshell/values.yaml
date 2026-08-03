@@ -44,3 +44,21 @@ openshell:
 
   networkPolicy:
     enabled: true
+
+# --- OpenClaw Gateway Route (Service + Route for HTTP access to sandbox gateway) ---
+openclawGateway:
+  enabled: true
+  sandboxNameHash: "171028ef"
+
+# Namespace (used by templates)
+namespace: openshell
+
+# Route (existing gRPC route for openshell CLI)
+route:
+  enabled: true
+  name: openshell-gw
+  targetPort: grpc
+  tlsTermination: passthrough
+
+global:
+  appsDomain: ""

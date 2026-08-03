@@ -50,6 +50,7 @@ OPENSHELL_NAMESPACE := openshell
 .PHONY: wait-dashboard-crd adopt-dashboard-config wait-llamastack wait-llamastack-and-refresh-dashboard
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
 .PHONY: deploy-openshell-infra deploy-openshell-oci deploy-openshell validate-openshell
+.PHONY: validate-openclaw validate-traces validate-security
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: template lint validate validate-cleanup
 
@@ -218,22 +219,39 @@ validate-openshell:
 	@echo "OK: Route exists ($$(oc -n $(OPENSHELL_NAMESPACE) get route openshell-gw -o jsonpath='{.spec.host}'))"
 
 validate-openclaw:
-	@echo "=== OpenClaw Gateway ==="
-	@openshell sandbox exec -n openclaw-gw --no-tty -- \
+	@echo "=== OpenClaw Gateway Health ==="
+	@oc -n $(OPENSHELL_NAMESPACE) exec openclaw-gw -c agent -- \
 		bash -c 'curl -sf http://127.0.0.1:18789/health' >/dev/null
-	@echo "OK: Gateway health check passed"
-	@echo "=== MaaS Connectivity ==="
-	@RESP=$$(openshell sandbox exec -n openclaw-gw --no-tty -- \
-		bash -c 'curl -s -X POST "https://maas-rhdp.apps.maas.redhatworkshops.io/v1/chat/completions" \
-			-H "Content-Type: application/json" \
-			-H "Authorization: Bearer $(MAAS_API_KEY)" \
-			-d "{\"model\":\"claude-sonnet-4-6\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly: OK\"}],\"max_tokens\":5}" \
-			-w "\n%{http_code}"'); \
-	HTTP_CODE=$$(echo "$$RESP" | tail -1); \
-	if [ "$$HTTP_CODE" = "200" ]; then \
-		echo "OK: MaaS model responds (HTTP 200)"; \
+	@echo "OK: Gateway process alive"
+	@echo "=== End-to-End: Chat through Gateway → MaaS → Response ==="
+	@RESULT=$$(oc -n $(OPENSHELL_NAMESPACE) exec openclaw-gw -c agent -- \
+		bash -c 'export HOME=/sandbox/workspace OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp OPENCLAW_GATEWAY_TOKEN=sandbox-gw-token-2026; \
+		openclaw agent --agent main --message "Reply with exactly: TRACE_OK" --json --timeout 60 2>&1'); \
+	STATUS=$$(echo "$$RESULT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('status',''))" 2>/dev/null); \
+	REPLY=$$(echo "$$RESULT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('result',{}).get('payloads',[{}])[0].get('text',''))" 2>/dev/null); \
+	if [ "$$STATUS" = "ok" ] && [ -n "$$REPLY" ]; then \
+		echo "OK: Gateway → MaaS round-trip succeeded (reply: $$REPLY)"; \
 	else \
-		echo "FAIL: MaaS HTTP $$HTTP_CODE"; exit 1; \
+		echo "FAIL: Gateway agent request failed (status=$$STATUS)"; \
+		echo "$$RESULT" | tail -5; exit 1; \
+	fi
+
+validate-traces:
+	@echo "=== MLflow Trace Validation ==="
+	@MLFLOW_TOKEN=$$(oc -n $(OPENSHELL_NAMESPACE) get secret openshell-sandbox-mlflow-token -o jsonpath='{.data.token}' | base64 -d); \
+	TRACES=$$(oc -n $(OPENSHELL_NAMESPACE) exec openclaw-gw -c agent -- \
+		bash -c "curl -sk 'https://mlflow.redhat-ods-applications.svc:8443/api/2.0/mlflow/traces?experiment_ids=1&max_results=1' \
+		-H 'Authorization: Bearer $${MLFLOW_TOKEN}' \
+		-H 'X-MLFLOW-WORKSPACE: openshell'" 2>/dev/null); \
+	COUNT=$$(echo "$$TRACES" | python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d.get('traces',[])))" 2>/dev/null); \
+	if [ "$$COUNT" -gt 0 ] 2>/dev/null; then \
+		echo "OK: MLflow has traces in experiment openclaw-tracing (found $$COUNT)"; \
+	else \
+		echo "FAIL: No traces found in MLflow experiment openclaw-tracing"; \
+		echo "  Response: $$TRACES"; \
+		echo "  Ensure gateway is running with NODE_TLS_REJECT_UNAUTHORIZED=0"; \
+		echo "  and diagnostics.otel.headers.x-mlflow-experiment-id is set"; \
+		exit 1; \
 	fi
 
 validate-security:

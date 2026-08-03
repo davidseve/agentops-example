@@ -1,0 +1,36 @@
+{{- if .Values.openclawGateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw-gw
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/component: openclaw-gateway
+spec:
+  selector:
+    agents.x-k8s.io/sandbox-name-hash: {{ .Values.openclawGateway.sandboxNameHash }}
+  ports:
+    - name: http
+      port: 18789
+      targetPort: 18789
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openclaw-gw
+  namespace: {{ .Values.namespace }}
+spec:
+  host: openclaw-gw-{{ .Values.namespace }}.{{ .Values.global.appsDomain }}
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: openclaw-gw
+    weight: 100
+  wildcardPolicy: None
+{{- end }}

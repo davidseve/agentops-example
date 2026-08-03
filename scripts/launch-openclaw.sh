@@ -30,7 +30,7 @@ if [[ -z "$MLFLOW_TOKEN" ]]; then
     -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null || true)
 fi
 if [[ -z "$MLFLOW_TOKEN" ]]; then
-  info "WARNING: MLflow token not available (tracing will not work until Phase 5 RBAC is deployed)"
+  echo "[WARNING] MLflow token not available (tracing will not work until Phase 5 RBAC is deployed)"
   MLFLOW_TOKEN="placeholder-no-tracing"
 fi
 
@@ -44,6 +44,7 @@ mkdir -p "$(dirname "$CONFIG_RENDERED")"
 sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
     -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
     -e "s|__MLFLOW_TOKEN__|${MLFLOW_TOKEN}|g" \
+    -e "s|__MLFLOW_EXPERIMENT_ID__|${MLFLOW_EXPERIMENT_ID:-1}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
 
 # Identify the sandbox pod
@@ -95,10 +96,12 @@ oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c '
 # Step 4: Start the gateway in the sandbox network namespace (constraint #11)
 # OPENCLAW_TEMP override: OpenShell assigns arbitrary UIDs (1000820000) which fail
 # the "unsafe temp dir" ownership check. Redirect to a writable workspace path.
+# NODE_TLS_REJECT_UNAUTHORIZED=0: Required for OTEL export to MLflow (internal TLS cert).
+# OPENCLAW_GATEWAY_TOKEN: Required for CLI WebSocket auth to the gateway.
 info "Starting OpenClaw gateway via sandbox exec..."
 openshell sandbox exec -n "$SANDBOX_POD" --no-tty \
   --env HOME=/sandbox/workspace \
-  -- bash -c 'export OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp OTEL_TRACES_EXPORTER=none OTEL_METRICS_EXPORTER=none OTEL_LOGS_EXPORTER=none && mkdir -p /sandbox/workspace/.openclaw/tmp && cd /sandbox/workspace && nohup openclaw gateway run --force > openclaw.log 2>&1 & disown && echo "gateway-started:pid=$!"'
+  -- bash -c 'export OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp NODE_TLS_REJECT_UNAUTHORIZED=0 OPENCLAW_GATEWAY_TOKEN=sandbox-gw-token-2026 && mkdir -p /sandbox/workspace/.openclaw/tmp && cd /sandbox/workspace && nohup openclaw gateway run --force > openclaw.log 2>&1 & disown && echo "gateway-started:pid=$!"'
 
 # Step 5: Verify gateway is running
 sleep 5
@@ -109,4 +112,4 @@ openshell sandbox exec -n "$SANDBOX_POD" --no-tty \
   { error "Gateway health check failed. Check: openshell sandbox exec -n $SANDBOX_POD -- cat /sandbox/workspace/openclaw.log"; exit 1; }
 
 info "OpenClaw launched successfully in sandbox '$SANDBOX_NAME'"
-info "Access UI: https://${SANDBOX_NAME}--openclaw-ui.${APPS_DOMAIN}"
+info "Access UI: https://openclaw-gw-${NAMESPACE}.${APPS_DOMAIN}"

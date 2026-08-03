@@ -12,7 +12,8 @@
             "reasoning": true,
             "input": ["text", "image"],
             "contextWindow": 200000,
-            "maxTokens": 64000
+            "maxTokens": 64000,
+            "compat": { "supportsStore": false }
           }
         ]
       }
@@ -47,12 +48,14 @@
       "endpoint": "https://mlflow.redhat-ods-applications.svc:8443",
       "headers": {
         "Authorization": "Bearer __MLFLOW_TOKEN__",
-        "X-MLFLOW-WORKSPACE": "openshell"
+        "X-MLFLOW-WORKSPACE": "openshell",
+        "x-mlflow-experiment-id": "__MLFLOW_EXPERIMENT_ID__"
       }
     }
   },
   "gateway": {
     "mode": "local",
+    "bind": "auto",
     "port": 18789,
     "auth": {
       "mode": "trusted-proxy",
@@ -62,6 +65,26 @@
         "allowLoopback": true
       }
     },
-    "trustedProxies": ["127.0.0.1", "::1", "10.217.0.0/22", "10.217.4.0/23", "192.168.0.0/16"]
+    "trustedProxies": ["127.0.0.1", "::1", "10.217.0.0/22", "10.217.4.0/23", "192.168.0.0/16"],
+    "controlUi": {
+      "allowedOrigins": [
+        "https://openclaw-gw-openshell.__APPS_DOMAIN__"
+      ],
+      "dangerouslyDisableDeviceAuth": true
+    },
+    "terminal": {
+      "enabled": false
+    },
+    "reload": {
+      "mode": "off"
+    },
+    "nodes": {
+      "denyCommands": ["system.run", "canvas.navigate"]
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": { "enabled": false }
+      }
+    }
   }
 }
