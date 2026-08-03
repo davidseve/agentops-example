@@ -205,6 +205,44 @@ validate-openshell:
 	@oc -n $(OPENSHELL_NAMESPACE) get route openshell-gw -o jsonpath='{.spec.host}{"\n"}' >/dev/null
 	@echo "OK: Route exists ($$(oc -n $(OPENSHELL_NAMESPACE) get route openshell-gw -o jsonpath='{.spec.host}'))"
 
+validate-openclaw:
+	@echo "=== OpenClaw Gateway ==="
+	@openshell sandbox exec -n openclaw-gw --no-tty -- \
+		bash -c 'curl -sf http://127.0.0.1:18789/health' >/dev/null
+	@echo "OK: Gateway health check passed"
+	@echo "=== MaaS Connectivity ==="
+	@RESP=$$(openshell sandbox exec -n openclaw-gw --no-tty -- \
+		bash -c 'curl -s -X POST "https://maas-rhdp.apps.maas.redhatworkshops.io/v1/chat/completions" \
+			-H "Content-Type: application/json" \
+			-H "Authorization: Bearer $(MAAS_API_KEY)" \
+			-d "{\"model\":\"claude-sonnet-4-6\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly: OK\"}],\"max_tokens\":5}" \
+			-w "\n%{http_code}"'); \
+	HTTP_CODE=$$(echo "$$RESP" | tail -1); \
+	if [ "$$HTTP_CODE" = "200" ]; then \
+		echo "OK: MaaS model responds (HTTP 200)"; \
+	else \
+		echo "FAIL: MaaS HTTP $$HTTP_CODE"; exit 1; \
+	fi
+
+validate-security:
+	@echo "=== Sandbox Policy Enforcement ==="
+	@RESULT=$$(openshell sandbox exec -n openclaw-gw --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "000" ] || [ "$$RESULT" = "403" ] || [ -z "$$RESULT" ]; then \
+		echo "OK: github.com blocked by sandbox policy (code: $${RESULT:-timeout})"; \
+	else \
+		echo "FAIL: github.com reachable (HTTP $$RESULT) — policy not enforcing"; exit 1; \
+	fi
+	@RESULT=$$(openshell sandbox exec -n openclaw-gw --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://maas-rhdp.apps.maas.redhatworkshops.io/v1/models 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "200" ] || [ "$$RESULT" = "401" ]; then \
+		echo "OK: MaaS endpoint reachable (HTTP $$RESULT)"; \
+	else \
+		echo "FAIL: MaaS endpoint not reachable (HTTP $$RESULT)"; exit 1; \
+	fi
+
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,
 # otherwise the finalizer cannot be processed and DSCI gets stuck in Terminating.
