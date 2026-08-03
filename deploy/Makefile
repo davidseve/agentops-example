@@ -1,7 +1,13 @@
 # deploy/Makefile - RHOAI installation for agentops-example
 # Usage: make deploy-all    (full stack)
-#        make validate     (post-deploy health checks)
-#        make undeploy-all (teardown)
+#        make validate      (post-deploy health checks)
+#        make undeploy-all  (teardown)
+#
+# Race condition fixes from open-claw-in-openshell (constraints #21, #23):
+# - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
+# - adopt-dashboard-config: operator auto-creates singleton without Helm ownership
+# - wait-llamastack: Gen AI Studio nav requires LlamaStackOperatorReady=True
+# See docs/adr/0001-rhoai-dsc-component-selection.md
 
 HELM := helm
 HELM_OPTS ?=
@@ -22,6 +28,7 @@ MLFLOW_RELEASE    := rhoai-mlflow
 EVALHUB_RELEASE   := rhoai-evalhub
 
 .PHONY: deploy-operators wait-operators deploy-platform deploy-database
+.PHONY: wait-dashboard-crd adopt-dashboard-config wait-llamastack wait-llamastack-and-refresh-dashboard
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: template lint validate validate-cleanup
@@ -34,6 +41,14 @@ deploy-operators:
 wait-operators: deploy-operators
 	@echo "Waiting for RHOAI operator CSV..."
 	@until oc get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}' 2>/dev/null | grep -q Succeeded; do \
+		PLAN=$$(oc get subscription rhods-operator -n redhat-ods-operator -o jsonpath='{.status.installplan.name}' 2>/dev/null || true); \
+		if [ -n "$$PLAN" ]; then \
+			APPROVED=$$(oc get installplan "$$PLAN" -n redhat-ods-operator -o jsonpath='{.spec.approved}' 2>/dev/null || true); \
+			if [ "$$APPROVED" != "true" ]; then \
+				echo "  Auto-approving InstallPlan $$PLAN (pinned channel in git = already reviewed)"; \
+				oc -n redhat-ods-operator patch installplan "$$PLAN" --type merge -p '{"spec":{"approved":true}}' >/dev/null; \
+			fi; \
+		fi; \
 		echo "  CSV not ready yet..."; sleep 15; \
 	done
 	@echo "Waiting for operator pods..."
@@ -47,12 +62,61 @@ wait-operators: deploy-operators
 		echo "  redhat-ods-applications not created yet..."; sleep 10; \
 	done
 	@echo "Waiting for platform CRDs..."
-	@until oc get crd datascienceclusters.datasciencecluster.opendatahub.io odhdashboardconfigs.opendatahub.io >/dev/null 2>&1; do \
+	@until oc get crd datascienceclusters.datasciencecluster.opendatahub.io >/dev/null 2>&1; do \
 		echo "  platform CRDs not ready yet..."; sleep 10; \
 	done
 
 deploy-platform: wait-operators
+	@CURRENT_DASHBOARD=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.dashboard.managementState}' 2>/dev/null || true); \
+	if [ "$$CURRENT_DASHBOARD" != "Managed" ]; then \
+		echo "Fresh Dashboard enable: sequencing llamastackoperator BEFORE dashboard"; \
+		echo "(see docs/adr/0001-rhoai-dsc-component-selection.md, constraint #23)"; \
+		$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) \
+			--set-string datasciencecluster.components.dashboard.managementState=Removed; \
+		$(MAKE) wait-llamastack; \
+	fi
+	@$(MAKE) adopt-dashboard-config
 	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS)
+	@$(MAKE) wait-dashboard-crd
+	@$(MAKE) adopt-dashboard-config
+	@echo "Re-applying platform chart (genAiStudio patch now renders after CRD exists)..."
+	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS)
+	@$(MAKE) wait-llamastack-and-refresh-dashboard
+
+wait-dashboard-crd:
+	@echo "Waiting for OdhDashboardConfig CRD..."
+	@i=0; until oc get crd odhdashboardconfigs.opendatahub.io >/dev/null 2>&1; do \
+		i=$$((i+1)); if [ $$i -ge 30 ]; then echo "  WARNING: CRD not registered after 150s"; break; fi; \
+		echo "  OdhDashboardConfig CRD not registered yet..."; sleep 5; \
+	done
+	@echo "Waiting for odh-dashboard-config singleton..."
+	@i=0; until oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications >/dev/null 2>&1; do \
+		i=$$((i+1)); if [ $$i -ge 18 ]; then echo "  WARNING: odh-dashboard-config not created after 90s"; break; fi; \
+		echo "  odh-dashboard-config not created yet..."; sleep 5; \
+	done
+
+adopt-dashboard-config:
+	@if oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications >/dev/null 2>&1; then \
+		echo "Adopting odh-dashboard-config into $(PLATFORM_RELEASE) Helm release..."; \
+		oc annotate odhdashboardconfig odh-dashboard-config -n redhat-ods-applications --overwrite \
+			meta.helm.sh/release-name=$(PLATFORM_RELEASE) meta.helm.sh/release-namespace=default; \
+		oc label odhdashboardconfig odh-dashboard-config -n redhat-ods-applications --overwrite \
+			app.kubernetes.io/managed-by=Helm; \
+	fi
+
+wait-llamastack:
+	@echo "Waiting for LlamaStackOperatorReady (required for Gen AI Studio nav)..."
+	@i=0; until oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="LlamaStackOperatorReady")].status}{"\n"}' 2>/dev/null | grep -q True; do \
+		i=$$((i+1)); if [ $$i -ge 24 ]; then echo "  WARNING: LlamaStackOperatorReady not True after 120s"; break; fi; \
+		echo "  LlamaStackOperatorReady not True yet..."; sleep 5; \
+	done
+
+wait-llamastack-and-refresh-dashboard: wait-llamastack
+	@if oc get deployment rhods-dashboard -n redhat-ods-applications >/dev/null 2>&1; then \
+		echo "Restarting rhods-dashboard (re-evaluate LlamaStackOperator capability)..."; \
+		oc rollout restart deployment/rhods-dashboard -n redhat-ods-applications; \
+		oc rollout status deployment/rhods-dashboard -n redhat-ods-applications --timeout=120s; \
+	fi
 
 deploy-database:
 	$(HELM) upgrade --install $(DATABASE_RELEASE) $(DATABASE_CHART) $(HELM_OPTS)
@@ -77,12 +141,11 @@ deploy-evalhub: deploy-database wait-evalhub-crd
 
 deploy-all: deploy-platform deploy-database deploy-mlflow deploy-evalhub
 	@echo "All components deployed."
-	@echo "Note: DataScienceCluster may show Not Ready if modelsAsService gateway is missing (expected for this demo)."
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,
 # otherwise the finalizer cannot be processed and DSCI gets stuck in Terminating.
-# Order: apps (evalhub/mlflow/db/platform) → DSCI → operator → orphan cleanup.
+# Order: apps (evalhub/mlflow/db/platform) -> DSCI -> operator -> orphan cleanup.
 
 undeploy-apps:
 	-$(HELM) uninstall $(EVALHUB_RELEASE)
@@ -146,6 +209,13 @@ validate:
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="TrustyAIReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="DashboardReady")].status}{"\n"}' | grep -q True
 	@echo "OK: OGX, MLflow operator, TrustyAI, Dashboard ready"
+	@echo "=== Dashboard genAiStudio ==="
+	@GENAI=$$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.genAiStudio}' 2>/dev/null); \
+	if [ "$$GENAI" = "true" ]; then \
+		echo "OK: genAiStudio enabled"; \
+	else \
+		echo "FAIL: genAiStudio not true (got: '$$GENAI')"; exit 1; \
+	fi
 	@DSC_PHASE=$$(oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'); \
 	DSC_MSG=$$(oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}'); \
 	if [ "$$DSC_PHASE" = "Ready" ]; then \

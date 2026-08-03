@@ -42,8 +42,8 @@ datasciencecluster:
 
 dashboard:
   crEnabled: true
-  genAiStudio: false
-  modelAsService: false
+  genAiStudio: true
+  modelAsService: true
   disablePerformanceMetrics: true
   disableModelCatalog: true
   disableModelRegistry: true

@@ -27,7 +27,8 @@ for the happy path — the Makefile handles synchronization.
 
 | Step | Make target | Waits before proceeding |
 |------|-------------|-------------------------|
-| 1 | `wait-operators` → `deploy-platform` | CSV Succeeded, operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, platform CRDs |
+| 1 | `wait-operators` → `deploy-platform` | CSV Succeeded (auto-approves Manual InstallPlan), operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, platform CRDs |
+| 1b | (inside deploy-platform) | LlamaStackOperatorReady, Dashboard CRD, adopt-dashboard-config, genAiStudio patch |
 | 2 | `deploy-database` | — |
 | 3 | `wait-mlflow-crd` → `deploy-mlflow` | `mlflows.mlflow.opendatahub.io` CRD |
 | 4 | `wait-evalhub-crd` → `deploy-evalhub` | `evalhubs.trustyai.opendatahub.io` CRD |
@@ -35,6 +36,15 @@ for the happy path — the Makefile handles synchronization.
 These waits are **required** for a reliable install. Without them, Helm fails with
 missing CRDs or unprocessed finalizers. The skill does not duplicate this logic —
 it relies on the Makefile.
+
+### Race condition handling (ADR-0001)
+
+The `deploy-platform` target handles three documented races:
+1. **LlamaStack before Dashboard**: On fresh clusters, applies DSC with dashboard=Removed first,
+   waits for LlamaStackOperatorReady, then re-applies with dashboard=Managed.
+2. **Dashboard CRD race**: Waits for `OdhDashboardConfig` CRD registration after enabling dashboard.
+3. **Helm ownership adoption**: The operator auto-creates `odh-dashboard-config` without Helm metadata.
+   The Makefile adopts it before the second `helm upgrade` attempt.
 
 ## Validate
 
@@ -88,12 +98,13 @@ MLflow, OGX, Dashboard) are all functional.
 ## Troubleshooting
 
 Only use these steps when `make deploy-all` or `make validate` fails. Do not run them
-as part of the normal flow — the Makefile waits already cover CSV, DSCI, and CRD
-synchronization.
+as part of the normal flow — the Makefile waits already cover CSV, DSCI, CRD
+synchronization, and Dashboard race conditions automatically.
 
 ### Platform: OdhDashboardConfig conflict
 
-If the operator auto-created `odh-dashboard-config` before Helm could manage it:
+Handled automatically by `make deploy-platform` (adopt-dashboard-config target).
+If it still fails after a partial/interrupted deploy:
 
 ```bash
 oc annotate odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \

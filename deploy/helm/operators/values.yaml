@@ -4,4 +4,7 @@ rhoai:
   channel: stable-3.4
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  installPlanApproval: Automatic
+  # Manual approval ensures no unreviewed upgrades land on the cluster.
+  # The Makefile auto-approves the InstallPlan for the pinned channel/version
+  # (the human review already happened when the channel was set in git).
+  installPlanApproval: Manual

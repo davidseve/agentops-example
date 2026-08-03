@@ -1,0 +1,33 @@
+{{- if .Values.openclawIntegration.enabled }}
+{{- if not .Values.openclawIntegration.clusterRoleName }}
+{{- fail "openclawIntegration.enabled=true requires openclawIntegration.clusterRoleName (detect: oc get clusterroles -o name | grep mlflow-integration)" }}
+{{- end }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.openclawIntegration.serviceAccountName }}-rhoai-mlflow-integration
+  namespace: {{ .Values.openclawIntegration.namespace }}
+  labels:
+    {{- include "mlflow.labels" . | nindent 4 }}
+    app.kubernetes.io/part-of: agentops-example
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.openclawIntegration.clusterRoleName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.openclawIntegration.serviceAccountName }}
+    namespace: {{ .Values.openclawIntegration.namespace }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.openclawIntegration.serviceAccountName }}-mlflow-token
+  namespace: {{ .Values.openclawIntegration.namespace }}
+  labels:
+    {{- include "mlflow.labels" . | nindent 4 }}
+    app.kubernetes.io/part-of: agentops-example
+  annotations:
+    kubernetes.io/service-account.name: {{ .Values.openclawIntegration.serviceAccountName }}
+type: kubernetes.io/service-account-token
+{{- end }}

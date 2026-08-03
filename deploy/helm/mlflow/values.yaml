@@ -2,7 +2,8 @@ postgresql:
   host: maas-db.redhat-ods-applications.svc
   port: 5432
   user: maas
-  password: maas-eval-password
+  # Never commit secrets to git (AGENTS.md). Pass via HELM_OPTS at deploy time.
+  password: ""
   database: mlflow
 
 mlflow:
@@ -15,3 +16,18 @@ mlflow:
     size: 10Gi
   route:
     enabled: true
+
+# OpenClaw/OpenShell integration: declarative RBAC + SA token + experiment
+# provisioning for wiring the mlflow-openclaw plugin's tracing transport.
+# Defaults to false — flip to true once OpenShell is deployed and the
+# openshell-sandbox SA exists (Phase 2+).
+openclawIntegration:
+  enabled: false
+  namespace: openshell
+  serviceAccountName: openshell-sandbox
+  # The mlflow-integration ClusterRole name is operator-generated (varies by
+  # build). Detect live: oc get clusterroles -o name | grep mlflow-integration
+  clusterRoleName: ""
+  experimentName: openclaw-tracing
+  mlflowNamespace: redhat-ods-applications
+  jobImage: "docker.io/curlimages/curl:8.10.1"
