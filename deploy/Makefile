@@ -1,13 +1,25 @@
-# deploy/Makefile - RHOAI installation for agentops-example
-# Usage: make deploy-all    (full stack)
-#        make validate      (post-deploy health checks)
-#        make undeploy-all  (teardown)
+# deploy/Makefile - AgentOps demo deploy targets
+#
+# RHOAI (full platform):
+#   make deploy-all    (full stack)
+#   make validate      (post-deploy health checks)
+#   make undeploy-all  (teardown)
+#
+# OpenShell (cluster):
+#   make openshell-install    # Helm install wrapper chart (namespace + SCC + gateway + mTLS sync)
+#   make openshell-sync-mtls  # Sync cluster client TLS bundle to local CLI config
+#   make openshell-status
+#   make openshell-uninstall
 #
 # Race condition fixes from open-claw-in-openshell (constraints #21, #23):
 # - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
 # - adopt-dashboard-config: operator auto-creates singleton without Helm ownership
 # - wait-llamastack: Gen AI Studio nav requires LlamaStackOperatorReady=True
 # See docs/adr/0001-rhoai-dsc-component-selection.md
+
+SHELL := /bin/bash
+ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))/..))
+
 
 HELM := helm
 HELM_OPTS ?=
@@ -275,6 +287,12 @@ cleanup-orphans:
 	-@oc delete namespace redhat-ods-applications --wait=false 2>/dev/null || true
 	-@oc delete namespace redhat-ods-monitoring --wait=false 2>/dev/null || true
 	-@oc delete namespace evaluation --wait=false 2>/dev/null || true
+	-@oc delete namespace models-as-a-service --wait=false 2>/dev/null || true
+	-@oc delete namespace rhoai-model-registries --wait=false 2>/dev/null || true
+	-@oc delete subscription agent-sandbox-operator -n agent-sandbox-system 2>/dev/null || true
+	-@CSV=$$(oc get csv -n agent-sandbox-system -o name 2>/dev/null | grep agent-sandbox); \
+		[ -n "$$CSV" ] && oc delete "$$CSV" -n agent-sandbox-system || true
+	-@oc delete namespace agent-sandbox-system --wait=false 2>/dev/null || true
 	@echo "Orphan cleanup complete."
 
 undeploy-all: undeploy-apps purge-dsci undeploy-operators cleanup-orphans
@@ -305,7 +323,6 @@ validate:
 	@oc wait --for=condition=Ready pod -l name=rhods-operator -n redhat-ods-operator --timeout=60s >/dev/null
 	@echo "OK: operator CSV Succeeded, pods Ready"
 	@echo "=== Platform components ==="
-	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="LlamaStackOperatorReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="MLflowOperatorReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="TrustyAIReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="DashboardReady")].status}{"\n"}' | grep -q True
@@ -362,7 +379,7 @@ validate-cleanup:
 	fi
 	@echo "=== Namespaces ==="
 	@ALL_CLEAN=true; \
-	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation; do \
+	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system; do \
 		PHASE=$$(oc get namespace "$$ns" -o jsonpath='{.status.phase}' 2>/dev/null); \
 		if [ -n "$$PHASE" ]; then \
 			echo "WARN: namespace $$ns still $$PHASE"; ALL_CLEAN=false; \
@@ -375,3 +392,68 @@ validate-cleanup:
 	fi
 	@echo ""
 	@echo "Cleanup validation complete."
+
+# --- OpenShell (cluster) ---
+
+HELM_CHART_DIR := $(ROOT_DIR)/deploy/helm/openshell
+
+RELEASE_NAME ?= openshell
+NAMESPACE ?= openshell
+HELM_TIMEOUT ?= 10m
+DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
+
+.PHONY: help openshell-deps openshell-install openshell-upgrade openshell-sync-mtls openshell-status openshell-uninstall helm-env
+
+helm-env:
+	@mkdir -p $(DOCKER_CONFIG)
+	@test -f $(DOCKER_CONFIG)/config.json || printf '{}' > $(DOCKER_CONFIG)/config.json
+
+help:
+	@echo "OpenShell cluster targets:"
+	@echo "  make openshell-deps       Update Helm chart dependencies (Chart.lock)"
+	@echo "  make openshell-install    Install OpenShell gateway (Helm — namespace + SCC + gateway + mTLS sync)"
+	@echo "  make openshell-upgrade    Upgrade release with current values (+ mTLS sync)"
+	@echo "  make openshell-sync-mtls  Sync openshell-client-tls to local CLI mTLS bundle"
+	@echo "  make openshell-status     Show release and pod status"
+	@echo "  make openshell-uninstall  Remove Helm release"
+
+openshell-deps: helm-env
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm dependency update
+
+openshell-sync-mtls:
+	NAMESPACE=$(NAMESPACE) $(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh
+
+openshell-install: helm-env openshell-deps
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade --install $(RELEASE_NAME) . \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		-f values.yaml \
+		-f values-openshift.yaml \
+		--wait \
+		--timeout $(HELM_TIMEOUT)
+	@$(MAKE) openshell-sync-mtls
+	@$(MAKE) openshell-status
+
+openshell-upgrade: helm-env openshell-deps
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade $(RELEASE_NAME) . \
+		--namespace $(NAMESPACE) \
+		-f values.yaml \
+		-f values-openshift.yaml \
+		--wait \
+		--timeout $(HELM_TIMEOUT)
+	@$(MAKE) openshell-sync-mtls
+	@$(MAKE) openshell-status
+
+openshell-status:
+	@echo "--- Helm ---"
+	@DOCKER_CONFIG=$(DOCKER_CONFIG) helm list -n $(NAMESPACE) 2>/dev/null || true
+	@echo "--- Workloads ---"
+	@oc -n $(NAMESPACE) get statefulset,pods,svc,secret 2>/dev/null | grep -E 'NAME|openshell' || true
+	@echo "--- SCC ---"
+	@oc -n $(NAMESPACE) get rolebinding 2>/dev/null | grep -E 'NAME|privileged' || true
+
+openshell-uninstall: helm-env
+	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) || true
+	@echo "Deleting namespace $(NAMESPACE)..."
+	-@oc delete ns $(NAMESPACE) --wait=false 2>/dev/null || true
+	@echo "OpenShell cluster cleanup complete."

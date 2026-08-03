@@ -1,6 +1,9 @@
+{{- if .Values.openshift.namespace.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.namespace }}
+  name: {{ .Release.Namespace }}
   labels:
+    {{- include "agentops-openshell.labels" . | nindent 4 }}
     opendatahub.io/dashboard: "true"
+{{- end }}

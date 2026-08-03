@@ -1,7 +1,12 @@
-# Environment
+# Environment / local secrets
 .env
 .env.*
 !.env.example
+!**/.env.example
+*.env
+!*.env.example
+token.env
+*-token.env
 
 # Python
 __pycache__/
@@ -21,11 +26,19 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Secrets
+# Secrets / credentials
 *.key
 *.pem
+*.p12
+*.pfx
 credentials.json
+**/credentials.json
+service-account*.json
+*-sa.json
 kubeconfig
+kubeconfig*
+**/kubeconfig*
+.docker/config.json
 secrets/secrets.env
 secrets/.*
 !secrets/.gitkeep
@@ -37,3 +50,4 @@ secrets/.*
 # Build artifacts
 dist/
 build/
+deploy/helm/**/charts/

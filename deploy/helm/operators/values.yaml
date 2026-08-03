@@ -8,3 +8,11 @@ rhoai:
   # The Makefile auto-approves the InstallPlan for the pinned channel/version
   # (the human review already happened when the channel was set in git).
   installPlanApproval: Manual
+
+agentSandbox:
+  enabled: true
+  namespace: agent-sandbox-system
+  channel: preview-0.9
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Manual

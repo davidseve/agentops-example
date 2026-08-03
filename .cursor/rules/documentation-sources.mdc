@@ -38,9 +38,10 @@ All decisions about platform components MUST be validated against official docum
 
 - **GitHub:** https://github.com/nicholasgasior/openshell (TBD — update when public)
 
-### OGX (API Abstraction)
+### Agent Sandbox
 
-- **RHOAI docs:** check latest RHOAI release notes for GA status and config
+- **Red Hat build of Agent Sandbox:** https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/
+- **Upstream:** https://github.com/kubernetes-sigs/agent-sandbox
 
 ### MaaS (Model Serving)
 

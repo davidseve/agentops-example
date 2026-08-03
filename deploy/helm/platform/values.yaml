@@ -4,7 +4,7 @@ datasciencecluster:
     dashboard:
       managementState: Managed
     llamastackoperator:
-      managementState: Managed
+      managementState: Removed
     mlflowoperator:
       managementState: Managed
     trustyai:

@@ -1,6 +1,13 @@
+# Wrapper chart for the AgentOps demo. Pins the upstream NVIDIA OpenShell OCI chart
+# and applies OpenShift-validated defaults. Manages namespace and SCC declaratively.
 apiVersion: v2
-name: openshell
-description: OpenShell sandbox platform deployment for agentops-example
+name: agentops-openshell
+description: OpenShell gateway for the AgentOps demo on OpenShift / RHOAI
 type: application
-version: 0.1.0
-appVersion: "0.0.83"
+version: 0.2.0
+appVersion: "0.0.80"
+dependencies:
+  - name: helm-chart
+    alias: openshell
+    version: 0.0.80
+    repository: oci://ghcr.io/nvidia/openshell

@@ -1,0 +1,39 @@
+---
+description: Enforce usage-documentation updates whenever a stack technology is added or modified
+alwaysApply: true
+---
+
+# Technology Usage Documentation
+
+When a session **adds or modifies** a technology in the stack, the agent MUST create or update its usage documentation in `docs/` **in the same session** by following the `document-feature` skill.
+
+## Triggers
+
+| Change type | Examples |
+|---|---|
+| New component added | Helm chart, operator subscription, script, integration |
+| Version or image changed | Chart version bump, operator CSV update, image tag/digest change |
+| Deploy path or prereqs changed | New Makefile target, values file restructure, new dependency |
+| Verify / troubleshoot updated | New health check, validated error workaround |
+| First cluster validation | Component deployed and confirmed working for the first time |
+
+## Required action
+
+1. Read the `document-feature` skill and follow its full checklist.
+2. Create or update the primary guide (`docs/<component>-installation.md` or `docs/<component>/`).
+3. Complete cross-links (README, AGENTS.md, ROADMAP).
+4. Record validated versions and cite official sources per `documentation-sources` rule.
+
+## Scope boundaries
+
+| Concern | Handled by |
+|---|---|
+| Architecture decisions (add/swap/remove component) | `adr` skill + `adr-alignment` rule |
+| CRD fields, operator channels, API endpoints | `documentation-sources` rule |
+| Install/verify/troubleshoot procedures | **This rule** + `document-feature` skill |
+
+## Exceptions
+
+- Typo-only or formatting-only fixes to existing docs
+- Refactors that do not change external behavior, versions, or deploy steps
+- Changes scoped entirely to ADR or doc files that are already aligned

@@ -1,0 +1,22 @@
+# OpenShift / RHOAI overlay.
+# Validated on OpenShift 4.x with SCC restricted (gateway) + privileged (sandboxes).
+#
+# Prerequisites (not installed by this chart):
+#   - Red Hat build of Agent Sandbox Operator: deploy/helm/operators/ (make deploy-operators)
+
+openshift:
+  namespace:
+    create: true
+  scc:
+    privilegedSandbox: true
+
+openshell:
+  server:
+    disableTls: false
+
+  # Let OpenShift SCC admission assign UID and fsGroup.
+  podSecurityContext:
+    fsGroup: null
+
+  securityContext:
+    runAsUser: null
