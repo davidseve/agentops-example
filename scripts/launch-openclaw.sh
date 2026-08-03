@@ -175,12 +175,16 @@ oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c "
 "
 pass "Workspace directories ready"
 
-# ─── Step 8: Start gateway ────────────────────────────────────────────────────
+# ─── Step 8: Expose service via relay ────────────────────────────────────────
+step "Registering service route in OpenShell relay"
+openshell service expose "$SANDBOX_NAME" 18789 openclaw-ui 2>&1 || true
+pass "Service openclaw-ui exposed → https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/"
+
+# ─── Step 9: Start gateway ────────────────────────────────────────────────────
 step "Starting OpenClaw gateway"
 openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 \
   --env "HOME=/sandbox/workspace" \
   --env "OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp" \
-  --env "OPENCLAW_GATEWAY_TOKEN=sandbox-gw-token-2026" \
   --env "OTEL_TRACES_EXPORTER=none" \
   --env "OTEL_METRICS_EXPORTER=none" \
   --env "MLFLOW_TRACKING_TOKEN=${MLFLOW_TOKEN}" \
@@ -200,19 +204,17 @@ openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 \
     fi
   '
 
-# ─── Step 9: Verify health + plugin loaded ────────────────────────────────────
+# ─── Step 10: Verify health + plugin loaded ───────────────────────────────────
 step "Verifying gateway health"
 sleep 3
 openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 10 \
   --env "HOME=/sandbox/workspace" \
-  --env "OPENCLAW_GATEWAY_TOKEN=sandbox-gw-token-2026" \
   -- bash -c 'curl -sf http://127.0.0.1:18789/health || exit 1' && \
   pass "Gateway healthy on :18789" || \
   { error "Health check failed — check: openshell sandbox exec -n $SANDBOX_POD -- tail -50 /sandbox/workspace/openclaw.log"; exit 1; }
 
 PLUGIN_CHECK=$(openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 5 \
   --env "HOME=/sandbox/workspace" \
-  --env "OPENCLAW_GATEWAY_TOKEN=sandbox-gw-token-2026" \
   -- bash -c 'grep "http server listening" /sandbox/workspace/openclaw.log | tail -1' 2>/dev/null || true)
 if echo "$PLUGIN_CHECK" | grep -q "mlflow-openclaw"; then
   pass "mlflow-openclaw plugin loaded"

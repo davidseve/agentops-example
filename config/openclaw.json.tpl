@@ -67,14 +67,8 @@
     "bind": "loopback",
     "port": 18789,
     "auth": {
-      "mode": "trusted-proxy",
-      "trustedProxy": {
-        "userHeader": "x-forwarded-email",
-        "requiredHeaders": ["x-forwarded-proto", "x-forwarded-host"],
-        "allowLoopback": true
-      }
+      "mode": "none"
     },
-    "trustedProxies": ["127.0.0.1", "::1", "10.217.0.0/22", "10.217.4.0/23", "192.168.0.0/16"],
     "controlUi": {
       "allowedOrigins": [
         "https://openclaw-gw--openclaw-ui.__APPS_DOMAIN__"

@@ -1,9 +1,16 @@
 # oauth-proxy Deployment for OpenClaw Control UI browser auth.
 # Uses OpenShift's oauth-proxy fork with --provider=openshift (SA-based OAuth).
 #
-# hostAlias resolves the upstream hostname to the openshell Service ClusterIP
-# so oauth-proxy can reach the gateway directly without routing through
-# the external Route (which would loop back to this proxy).
+# Architecture:
+#   Browser → oauth-proxy (TLS, OCP OAuth) → nginx sidecar (mTLS to relay)
+#   → OpenShell relay (port 8080, service-routing) → sandbox port 18789
+#
+# The nginx sidecar is needed because:
+# - The OpenClaw gateway runs in an isolated sandbox network namespace
+# - The only way to reach it from outside is via OpenShell's relay (port 8080)
+# - The relay requires mTLS (client certificate)
+# - ose-oauth-proxy doesn't support --upstream-client-cert-file
+# - nginx handles the mTLS and exposes a local HTTP port for oauth-proxy
 {{- $openshellSvc := lookup "v1" "Service" .Values.namespace "openshell" }}
 {{- if not $openshellSvc }}
 {{- fail (printf "Service 'openshell' not found in namespace '%s' — deploy OpenShell first" .Values.namespace) }}
@@ -26,19 +33,13 @@ spec:
         app: oauth-proxy
     spec:
       serviceAccountName: openclaw-ui-oauth-proxy
-      hostAliases:
-        - ip: {{ $openshellSvc.spec.clusterIP }}
-          hostnames:
-            - openclaw-gw--openclaw-ui.{{ .Values.appsDomain }}
       containers:
         - name: oauth-proxy
           image: {{ .Values.image }}
           args:
             - --provider=openshift
             - --openshift-service-account=openclaw-ui-oauth-proxy
-            - --upstream=https://openclaw-gw--openclaw-ui.{{ .Values.appsDomain }}:8080
-            - --ssl-insecure-skip-verify=true
-            - --upstream-ca=/etc/openshell/ca.crt
+            - --upstream=http://127.0.0.1:8090
             - --https-address=:8443
             - --http-address=
             - --tls-cert=/etc/tls/private/tls.crt
@@ -47,7 +48,8 @@ spec:
             - --cookie-expire=168h
             - --cookie-refresh=1h
             - --email-domain=*
-            - --pass-host-header=true
+            - --pass-host-header=false
+            - --set-xauthrequest=true
             - --pass-user-headers=true
             - --pass-access-token=true
             - --skip-provider-button=true
@@ -83,9 +85,30 @@ spec:
             - name: session-secret
               mountPath: /etc/proxy/secrets
               readOnly: true
-            - name: openshell-ca
-              mountPath: /etc/openshell
+        - name: mtls-bridge
+          image: registry.access.redhat.com/ubi9/nginx-124:latest
+          command: ["/usr/sbin/nginx", "-c", "/etc/nginx-custom/nginx.conf", "-g", "daemon off;"]
+          ports:
+            - containerPort: 8090
+              name: http-bridge
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx-custom
               readOnly: true
+            - name: openshell-client
+              mountPath: /etc/openshell-client
+              readOnly: true
+            - name: openshell-ca
+              mountPath: /etc/openshell-ca
+              readOnly: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       volumes:
         - name: tls
           secret:
@@ -93,9 +116,15 @@ spec:
         - name: session-secret
           secret:
             secretName: oauth-proxy-session-secret
+        - name: openshell-client
+          secret:
+            secretName: openshell-client-tls
         - name: openshell-ca
           secret:
             secretName: openshell-server-tls
             items:
               - key: ca.crt
                 path: ca.crt
+        - name: nginx-config
+          configMap:
+            name: oauth-proxy-nginx-config

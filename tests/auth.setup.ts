@@ -7,7 +7,7 @@ const STORAGE_STATE = path.join(__dirname, 'test-results', '.auth', 'state.json'
 // oauth-proxy (OpenShift fork, --provider=openshift) redirects to OCP's
 // OAuth login page. Credentials are from the cluster's identity provider.
 const OCP_USERNAME = process.env.OCP_TEST_USERNAME || 'redhat';
-const OCP_PASSWORD = process.env.OCP_TEST_PASSWORD || '';
+const OCP_PASSWORD = process.env.OCP_TEST_PASSWORD || 'redhat!1';
 
 setup('authenticate via OpenShift-native OAuth', async ({ page }) => {
   fs.mkdirSync(path.dirname(STORAGE_STATE), { recursive: true });
