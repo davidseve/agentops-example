@@ -1,0 +1,44 @@
+# OpenShell deployment values for agentops-example
+# The actual OpenShell chart is pulled from OCI (ghcr.io/nvidia/openshell/helm-chart).
+# This chart manages the surrounding infrastructure: namespace, SCC, route, and
+# generates the values file for the OCI chart install.
+
+global:
+  # REQUIRED: set this to your cluster's apps domain
+  # e.g., apps.ocp.sandbox701.opentlc.com
+  appsDomain: ""
+
+namespace: openshell
+
+openshell:
+  chartVersion: "0.0.83"
+  replicaCount: 1
+  workloadKind: statefulset
+
+  # PKI init job creates server-tls, client-tls, and jwt-keys secrets on first install.
+  # mTLS is required for SSH relay, sandbox exec, and credential injection.
+  pki:
+    enabled: true
+
+  server:
+    auth:
+      # Start without OIDC; configure-oidc runs after OpenShell is up (constraint #10)
+      allowUnauthenticatedUsers: true
+
+# Agent Sandbox configuration
+agentSandbox:
+  # Apply Agent Sandbox CRDs + controller manifest directly
+  manifestVersion: "v0.5.1"
+  manifestUrl: "https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/v0.5.1/deploy/agent-sandbox.yaml"
+
+# SCC binding for sandbox ServiceAccount
+scc:
+  serviceAccount: openshell-sandbox
+  sccName: privileged
+
+# Route for gateway access (passthrough TLS for mTLS)
+route:
+  enabled: true
+  name: openshell-gw
+  targetPort: grpc
+  tlsTermination: passthrough

@@ -19,6 +19,7 @@ PLATFORM_CHART  := helm/platform
 DATABASE_CHART  := helm/database
 MLFLOW_CHART    := helm/mlflow
 EVALHUB_CHART   := helm/evalhub
+OPENSHELL_CHART := helm/openshell
 
 # Release names
 OPERATORS_RELEASE := rhoai-operators
@@ -26,10 +27,17 @@ PLATFORM_RELEASE  := rhoai-platform
 DATABASE_RELEASE  := rhoai-database
 MLFLOW_RELEASE    := rhoai-mlflow
 EVALHUB_RELEASE   := rhoai-evalhub
+OPENSHELL_RELEASE := openshell-infra
+
+# OpenShell OCI chart
+OPENSHELL_OCI_CHART := oci://ghcr.io/nvidia/openshell/helm-chart
+OPENSHELL_OCI_VERSION := 0.0.83
+OPENSHELL_NAMESPACE := openshell
 
 .PHONY: deploy-operators wait-operators deploy-platform deploy-database
 .PHONY: wait-dashboard-crd adopt-dashboard-config wait-llamastack wait-llamastack-and-refresh-dashboard
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
+.PHONY: deploy-openshell-infra deploy-openshell-oci deploy-openshell validate-openshell
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: template lint validate validate-cleanup
 
@@ -140,7 +148,58 @@ deploy-evalhub: deploy-database wait-evalhub-crd
 	$(HELM) upgrade --install $(EVALHUB_RELEASE) $(EVALHUB_CHART) $(HELM_OPTS)
 
 deploy-all: deploy-platform deploy-database deploy-mlflow deploy-evalhub
-	@echo "All components deployed."
+	@echo "All RHOAI components deployed."
+	@echo "Next: make deploy-openshell HELM_OPTS='--set global.appsDomain=<your-apps-domain>'"
+
+# --- OpenShell targets (Phase 2) ---
+# OpenShell MUST be deployed AFTER RHOAI (constraint #10: MLflow RBAC depends on
+# the redhat-ods-applications namespace and mlflow-integration ClusterRole).
+
+deploy-openshell-infra:
+	@if [ -z "$(findstring global.appsDomain,$(HELM_OPTS))" ] && [ -z "$(APPS_DOMAIN)" ]; then \
+		echo "ERROR: global.appsDomain required. Usage:"; \
+		echo "  make deploy-openshell HELM_OPTS='--set global.appsDomain=apps.ocp.example.com'"; \
+		echo "  or: APPS_DOMAIN=apps.ocp.example.com make deploy-openshell"; \
+		exit 1; \
+	fi
+	$(HELM) upgrade --install $(OPENSHELL_RELEASE) $(OPENSHELL_CHART) \
+		$(if $(APPS_DOMAIN),--set global.appsDomain=$(APPS_DOMAIN)) $(HELM_OPTS)
+
+deploy-openshell-oci: deploy-openshell-infra
+	@echo "Extracting rendered values from ConfigMap..."
+	@oc -n $(OPENSHELL_NAMESPACE) get configmap openshell-helm-values \
+		-o jsonpath='{.data.values\.yaml}' > /tmp/openshell-values.yaml
+	@echo "Installing OpenShell OCI chart v$(OPENSHELL_OCI_VERSION)..."
+	$(HELM) upgrade --install openshell $(OPENSHELL_OCI_CHART) \
+		--version $(OPENSHELL_OCI_VERSION) \
+		--namespace $(OPENSHELL_NAMESPACE) \
+		-f /tmp/openshell-values.yaml $(HELM_OPTS)
+
+deploy-openshell: deploy-openshell-oci
+	@echo "Waiting for OpenShell gateway rollout..."
+	oc -n $(OPENSHELL_NAMESPACE) rollout status statefulset/openshell --timeout=600s
+	@echo "Waiting for PKI secrets..."
+	@for secret in openshell-server-tls openshell-client-tls openshell-jwt-keys; do \
+		i=0; while ! oc -n $(OPENSHELL_NAMESPACE) get secret "$$secret" &>/dev/null; do \
+			i=$$((i+1)); if [ $$i -ge 60 ]; then echo "FAIL: $$secret not created"; exit 1; fi; \
+			sleep 2; \
+		done; \
+		echo "  $$secret exists"; \
+	done
+	@echo "OpenShell deployed successfully."
+	@echo "Next: register gateway with CLI (see docs/adr/0002-openshell-deployment-method.md)"
+
+validate-openshell:
+	@echo "=== OpenShell ==="
+	@oc -n $(OPENSHELL_NAMESPACE) get statefulset openshell -o jsonpath='{.status.readyReplicas}{"\n"}' | grep -q 1
+	@echo "OK: OpenShell StatefulSet ready"
+	@for secret in openshell-server-tls openshell-client-tls openshell-jwt-keys; do \
+		oc -n $(OPENSHELL_NAMESPACE) get secret "$$secret" >/dev/null 2>&1 || \
+			{ echo "FAIL: $$secret missing"; exit 1; }; \
+	done
+	@echo "OK: PKI secrets present"
+	@oc -n $(OPENSHELL_NAMESPACE) get route openshell-gw -o jsonpath='{.spec.host}{"\n"}' >/dev/null
+	@echo "OK: Route exists ($$(oc -n $(OPENSHELL_NAMESPACE) get route openshell-gw -o jsonpath='{.spec.host}'))"
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,

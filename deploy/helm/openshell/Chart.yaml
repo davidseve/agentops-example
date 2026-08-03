@@ -1,0 +1,6 @@
+apiVersion: v2
+name: openshell
+description: OpenShell sandbox platform deployment for agentops-example
+type: application
+version: 0.1.0
+appVersion: "0.0.83"
