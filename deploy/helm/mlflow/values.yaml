@@ -2,8 +2,9 @@ postgresql:
   host: maas-db.redhat-ods-applications.svc
   port: 5432
   user: maas
-  # Never commit secrets to git (AGENTS.md). Pass via HELM_OPTS at deploy time.
-  password: ""
+  # Must match database chart's database.password. For production, pass via
+  # HELM_OPTS='--set-string postgresql.password=<value>' instead.
+  password: maas-eval-password
   database: mlflow
 
 mlflow:

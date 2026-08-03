@@ -76,11 +76,11 @@ deploy-platform: wait-operators
 		$(MAKE) wait-llamastack; \
 	fi
 	@$(MAKE) adopt-dashboard-config
-	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS)
+	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) --reset-values
 	@$(MAKE) wait-dashboard-crd
 	@$(MAKE) adopt-dashboard-config
 	@echo "Re-applying platform chart (genAiStudio patch now renders after CRD exists)..."
-	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS)
+	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) --reset-values
 	@$(MAKE) wait-llamastack-and-refresh-dashboard
 
 wait-dashboard-crd:
