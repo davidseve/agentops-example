@@ -31,10 +31,20 @@
   },
   "plugins": {
     "deny": ["workboard", "admin-http-rpc"],
-    "allow": ["diagnostics-otel"],
+    "allow": ["mlflow-openclaw", "memory-core"],
     "entries": {
       "diagnostics-otel": {
-        "enabled": true
+        "enabled": false
+      },
+      "mlflow-openclaw": {
+        "enabled": true,
+        "config": {
+          "trackingUri": "https://mlflow.redhat-ods-applications.svc:8443",
+          "experimentId": "__MLFLOW_EXPERIMENT_ID__"
+        },
+        "hooks": {
+          "allowConversationAccess": true
+        }
       }
     }
   },
@@ -42,20 +52,19 @@
     "enabled": true,
     "otel": {
       "enabled": true,
-      "traces": true,
-      "metrics": false,
+      "traces": false,
+      "metrics": true,
       "logs": false,
-      "endpoint": "https://mlflow.redhat-ods-applications.svc:8443",
-      "headers": {
-        "Authorization": "Bearer __MLFLOW_TOKEN__",
-        "X-MLFLOW-WORKSPACE": "openshell",
-        "x-mlflow-experiment-id": "__MLFLOW_EXPERIMENT_ID__"
-      }
+      "endpoint": "http://otel-collector.observability.svc:4318",
+      "protocol": "http/protobuf",
+      "serviceName": "openclaw-agent",
+      "sampleRate": 1.0,
+      "captureContent": true
     }
   },
   "gateway": {
     "mode": "local",
-    "bind": "auto",
+    "bind": "loopback",
     "port": 18789,
     "auth": {
       "mode": "trusted-proxy",
@@ -68,7 +77,7 @@
     "trustedProxies": ["127.0.0.1", "::1", "10.217.0.0/22", "10.217.4.0/23", "192.168.0.0/16"],
     "controlUi": {
       "allowedOrigins": [
-        "https://openclaw-gw-openshell.__APPS_DOMAIN__"
+        "https://openclaw-gw--openclaw-ui.__APPS_DOMAIN__"
       ],
       "dangerouslyDisableDeviceAuth": true
     },
