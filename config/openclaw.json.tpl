@@ -29,7 +29,27 @@
     "fs": { "workspaceOnly": true }
   },
   "plugins": {
-    "deny": ["workboard", "admin-http-rpc"]
+    "deny": ["workboard", "admin-http-rpc"],
+    "allow": ["diagnostics-otel"],
+    "entries": {
+      "diagnostics-otel": {
+        "enabled": true
+      }
+    }
+  },
+  "diagnostics": {
+    "enabled": true,
+    "otel": {
+      "enabled": true,
+      "traces": true,
+      "metrics": false,
+      "logs": false,
+      "endpoint": "https://mlflow.redhat-ods-applications.svc:8443",
+      "headers": {
+        "Authorization": "Bearer __MLFLOW_TOKEN__",
+        "X-MLFLOW-WORKSPACE": "openshell"
+      }
+    }
   },
   "gateway": {
     "mode": "local",

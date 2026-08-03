@@ -23,15 +23,27 @@ if [[ -z "$APPS_DOMAIN" ]]; then
   APPS_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')
 fi
 
+# Get MLflow SA token for OTEL tracing (Phase 5)
+MLFLOW_TOKEN="${MLFLOW_TOKEN:-}"
+if [[ -z "$MLFLOW_TOKEN" ]]; then
+  MLFLOW_TOKEN=$(oc -n "$NAMESPACE" get secret openshell-sandbox-mlflow-token \
+    -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null || true)
+fi
+if [[ -z "$MLFLOW_TOKEN" ]]; then
+  info "WARNING: MLflow token not available (tracing will not work until Phase 5 RBAC is deployed)"
+  MLFLOW_TOKEN="placeholder-no-tracing"
+fi
+
 info() { echo "[INFO] $*"; }
 error() { echo "[ERROR] $*" >&2; }
 
 # Render openclaw.json from template
-info "Rendering openclaw.json (injecting MAAS_API_KEY + APPS_DOMAIN)"
+info "Rendering openclaw.json (injecting MAAS_API_KEY + APPS_DOMAIN + MLFLOW_TOKEN)"
 CONFIG_RENDERED="${PROJECT_DIR}/.rendered/openclaw.json"
 mkdir -p "$(dirname "$CONFIG_RENDERED")"
 sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
     -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
+    -e "s|__MLFLOW_TOKEN__|${MLFLOW_TOKEN}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
 
 # Identify the sandbox pod
@@ -57,6 +69,14 @@ fi
 OPENCLAW_VERSION=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- openclaw --version 2>&1)
 info "OpenClaw version: $OPENCLAW_VERSION"
 
+# Step 1c: Install diagnostics-otel plugin (needs unrestricted network)
+# Plugin ownership must be root (OpenClaw security check blocks non-root plugins)
+info "Ensuring diagnostics-otel plugin is installed..."
+oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c \
+  "HOME=/sandbox/workspace openclaw plugins install @openclaw/diagnostics-otel 2>&1 || true" | grep -v "already installed" || true
+oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- \
+  chown -R root:root /sandbox/workspace/.openclaw/npm 2>/dev/null || true
+
 # Step 2: Upload config to the correct path (constraint #1: workspace is writable)
 # OpenClaw reads config from $HOME/.openclaw/openclaw.json
 info "Uploading openclaw.json to sandbox..."
@@ -73,13 +93,12 @@ oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c '
 '
 
 # Step 4: Start the gateway in the sandbox network namespace (constraint #11)
+# OPENCLAW_TEMP override: OpenShell assigns arbitrary UIDs (1000820000) which fail
+# the "unsafe temp dir" ownership check. Redirect to a writable workspace path.
 info "Starting OpenClaw gateway via sandbox exec..."
 openshell sandbox exec -n "$SANDBOX_POD" --no-tty \
   --env HOME=/sandbox/workspace \
-  --env OTEL_TRACES_EXPORTER=none \
-  --env OTEL_METRICS_EXPORTER=none \
-  --env OTEL_LOGS_EXPORTER=none \
-  -- bash -c 'cd /sandbox/workspace && nohup openclaw gateway run --force > openclaw.log 2>&1 & disown && echo "gateway-started:pid=$!"'
+  -- bash -c 'export OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp OTEL_TRACES_EXPORTER=none OTEL_METRICS_EXPORTER=none OTEL_LOGS_EXPORTER=none && mkdir -p /sandbox/workspace/.openclaw/tmp && cd /sandbox/workspace && nohup openclaw gateway run --force > openclaw.log 2>&1 & disown && echo "gateway-started:pid=$!"'
 
 # Step 5: Verify gateway is running
 sleep 5
