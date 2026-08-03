@@ -32,6 +32,7 @@ DATABASE_CHART  := helm/database
 MLFLOW_CHART    := helm/mlflow
 EVALHUB_CHART   := helm/evalhub
 OPENSHELL_CHART := helm/openshell
+OAUTH2_PROXY_CHART := helm/oauth2-proxy
 
 # Release names
 OPERATORS_RELEASE := rhoai-operators
@@ -40,6 +41,7 @@ DATABASE_RELEASE  := rhoai-database
 MLFLOW_RELEASE    := rhoai-mlflow
 EVALHUB_RELEASE   := rhoai-evalhub
 OPENSHELL_RELEASE := openshell-infra
+OAUTH2_PROXY_RELEASE := oauth2-proxy
 
 # OpenShell OCI chart
 OPENSHELL_OCI_CHART := oci://ghcr.io/nvidia/openshell/helm-chart
@@ -206,6 +208,35 @@ deploy-openshell: deploy-openshell-oci
 	done
 	@echo "OpenShell deployed successfully."
 	@echo "Next: register gateway with CLI (see docs/adr/0002-openshell-deployment-method.md)"
+
+# --- oauth2-proxy (browser auth for OpenClaw Control UI) ---
+# Deploys OpenShift-native oauth-proxy so OCP users can log in to the UI.
+# Prereq: OpenShell deployed (needs the openshell Service for hostAlias lookup).
+deploy-oauth2-proxy:
+	@if [ -z "$(APPS_DOMAIN)" ]; then \
+		echo "ERROR: APPS_DOMAIN required. Usage: APPS_DOMAIN=apps.ocp.example.com make deploy-oauth2-proxy"; \
+		exit 1; \
+	fi
+	@echo "Ensuring oauth-proxy session secret exists..."
+	@oc -n $(OPENSHELL_NAMESPACE) get secret oauth-proxy-session-secret &>/dev/null || \
+		oc -n $(OPENSHELL_NAMESPACE) create secret generic oauth-proxy-session-secret \
+			--from-literal=session_secret=$$(openssl rand -base64 32 | head -c 32)
+	@echo "Deploying oauth2-proxy..."
+	$(HELM) upgrade --install $(OAUTH2_PROXY_RELEASE) $(OAUTH2_PROXY_CHART) \
+		--namespace $(OPENSHELL_NAMESPACE) \
+		--set appsDomain=$(APPS_DOMAIN) \
+		--set namespace=$(OPENSHELL_NAMESPACE) \
+		--wait --timeout 120s
+	@echo "Verifying OAuth redirect..."
+	@sleep 3
+	@HTTP_CODE=$$(curl -sk -o /dev/null -w '%{http_code}' \
+		"https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)/" 2>/dev/null || echo "000"); \
+	if [ "$$HTTP_CODE" = "302" ] || [ "$$HTTP_CODE" = "303" ]; then \
+		echo "OK: oauth-proxy redirects to OCP OAuth (HTTP $$HTTP_CODE)"; \
+	else \
+		echo "WARN: Expected 302/303, got HTTP $$HTTP_CODE (may need a few seconds)"; \
+	fi
+	@echo "UI URL: https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)"
 
 validate-openshell:
 	@echo "=== OpenShell ==="

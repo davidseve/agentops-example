@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-// OpenClaw gateway URL (Route with edge TLS)
-const baseURL = process.env.OPENCLAW_BASE_URL || 'https://openclaw-gw-openshell.apps.ocp.sandbox701.opentlc.com';
+// OpenClaw gateway URL (via oauth-proxy — requires OCP login in browser)
+const baseURL = process.env.OPENCLAW_BASE_URL || 'https://openclaw-gw--openclaw-ui.apps.ocp.sandbox701.opentlc.com';
 
 // MLflow UI URL (RHOAI-managed, behind oauth-proxy)
 const mlflowBaseURL = (process.env.MLFLOW_BASE_URL || 'https://rh-ai.apps.ocp.sandbox701.opentlc.com/mlflow').replace(/\/?$/, '/');
