@@ -162,6 +162,10 @@ deploy-openshell-infra:
 		echo "  or: APPS_DOMAIN=apps.ocp.example.com make deploy-openshell"; \
 		exit 1; \
 	fi
+	@echo "Applying Agent Sandbox CRDs + controller..."
+	oc apply -f manifests/agent-sandbox-v0.5.1.yaml
+	@echo "Waiting for Agent Sandbox CRD..."
+	@until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do sleep 3; done
 	$(HELM) upgrade --install $(OPENSHELL_RELEASE) $(OPENSHELL_CHART) \
 		$(if $(APPS_DOMAIN),--set global.appsDomain=$(APPS_DOMAIN)) $(HELM_OPTS)
 

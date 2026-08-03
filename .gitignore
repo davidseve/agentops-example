@@ -26,6 +26,13 @@ Thumbs.db
 *.pem
 credentials.json
 kubeconfig
+secrets/secrets.env
+secrets/.*
+!secrets/.gitkeep
+!secrets/secrets.template.env
+
+# Rendered output (contains live credentials)
+.rendered/
 
 # Build artifacts
 dist/
