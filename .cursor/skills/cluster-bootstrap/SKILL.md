@@ -29,7 +29,7 @@ for the happy path — the Makefile handles synchronization.
 
 | Step | Make target | Waits before proceeding |
 |------|-------------|-------------------------|
-| 1 | `wait-operators` → `deploy-platform` | CSV Succeeded, operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, platform CRDs |
+| 1 | `wait-operators` → `deploy-platform` | CSV Succeeded, operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, `datascienceclusters` CRD |
 | 2 | `deploy-database` | — |
 | 3 | `wait-mlflow-crd` → `deploy-mlflow` | `mlflows.mlflow.opendatahub.io` CRD |
 | 4 | `wait-evalhub-crd` → `deploy-evalhub` | `evalhubs.trustyai.opendatahub.io` CRD |

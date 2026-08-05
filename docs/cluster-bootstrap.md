@@ -116,7 +116,7 @@ cd deploy && make deploy-all
 
 | Step | Make target | Helm release | Waits before proceeding |
 |---|---|---|---|
-| 1 | `wait-operators` → `deploy-platform` | `rhoai-operators`, `rhoai-platform` | CSV Succeeded, operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, platform CRDs |
+| 1 | `wait-operators` → `deploy-platform` | `rhoai-operators`, `rhoai-platform` | CSV Succeeded, operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, `datascienceclusters` CRD (`OdhDashboardConfig` CRD appears only after DSC enables Dashboard — do not wait for it here) |
 | 2 | `deploy-database` | `rhoai-database` | — |
 | 3 | `wait-mlflow-crd` → `deploy-mlflow` | `rhoai-mlflow` | `mlflows.mlflow.opendatahub.io` CRD |
 | 4 | `wait-evalhub-crd` → `deploy-evalhub` | `rhoai-evalhub` | `evalhubs.trustyai.opendatahub.io` CRD |

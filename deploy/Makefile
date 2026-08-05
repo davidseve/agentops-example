@@ -58,10 +58,11 @@ wait-operators: deploy-operators
 		echo "  redhat-ods-applications not created yet..."; sleep 10; \
 	done
 	@echo "Waiting for platform CRDs..."
-	@until oc get crd datascienceclusters.datasciencecluster.opendatahub.io odhdashboardconfigs.opendatahub.io >/dev/null 2>&1; do \
+	@until oc get crd datascienceclusters.datasciencecluster.opendatahub.io >/dev/null 2>&1; do \
 		echo "  platform CRDs not ready yet..."; sleep 10; \
 	done
 
+# OdhDashboardConfig CRD appears only after DSC enables Dashboard — wait only for DSC CRD.
 deploy-platform: wait-operators
 	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS)
 
