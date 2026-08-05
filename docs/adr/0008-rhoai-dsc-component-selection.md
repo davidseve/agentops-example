@@ -1,7 +1,8 @@
-# ADR-0001: RHOAI DataScienceCluster Component Selection
+# ADR-0008: RHOAI DataScienceCluster Component Selection
 
 **Status**: Accepted  
 **Date**: 2026-08-03  
+**Layer**: Infrastructure  
 **Source**: Migrated learnings from open-claw-in-openshell (ADR-0017, ADR-0018, constraints #20-#23)
 
 ## Context

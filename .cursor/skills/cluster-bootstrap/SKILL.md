@@ -39,7 +39,7 @@ These waits are **required** for a reliable install. Without them, Helm fails wi
 missing CRDs or unprocessed finalizers. The skill does not duplicate this logic —
 it relies on the Makefile.
 
-### Race condition handling (ADR-0001)
+### Race condition handling (ADR-0008)
 
 The `deploy-platform` target handles three documented races:
 1. **LlamaStack before Dashboard**: On fresh clusters, applies DSC with dashboard=Removed first,

@@ -40,7 +40,7 @@ Red Hat OpenShift AI (RHOAI) is an add-on to OpenShift Container Platform (OCP) 
 
 Use OpenShift Container Platform as the base infrastructure with Red Hat OpenShift AI (RHOAI) 3.x as the AI platform add-on. OCP provides the enterprise Kubernetes foundation (security, networking, storage, operator lifecycle), and RHOAI adds the AI-specific layer (MLflow, TrustyAI, model serving) managed through the DataScienceCluster CRD.
 
-This is the foundation that every other ADR builds upon: OpenShell ([ADR-0003](0003-openshell-deployment-on-openshift.md)), guardrails ([ADR-0004](0004-nemo-guardrails-via-trustyai.md)), and version pinning ([ADR-0006](0006-explicit-version-pinning.md)) all depend on OCP + RHOAI being the target platform.
+This is the foundation that every other ADR builds upon: OpenShell ([ADR-0003](0003-openshell-deployment-on-openshift.md), [ADR-0009](0009-openshell-deployment-method.md)), guardrails ([ADR-0004](0004-nemo-guardrails-via-trustyai.md)), version pinning ([ADR-0006](0006-explicit-version-pinning.md)), RHOAI component selection ([ADR-0008](0008-rhoai-dsc-component-selection.md)), MLflow tracing ([ADR-0010](0010-mlflow-tracing-otel.md)), and OpenClaw UI auth ([ADR-0011](0011-ui-auth-openshift-oauth-proxy.md)) all depend on OCP + RHOAI being the target platform.
 
 ## Consequences
 
@@ -77,6 +77,10 @@ Cluster bootstrap validated on demo.redhat.com. Full deploy, validate, and teard
 - [ADR-0003: OpenShell on OpenShift](0003-openshell-deployment-on-openshift.md) — depends on OCP SCCs and Kubernetes driver
 - [ADR-0004: NeMo Guardrails via TrustyAI](0004-nemo-guardrails-via-trustyai.md) — depends on RHOAI TrustyAI operator
 - [ADR-0006: Explicit version pinning](0006-explicit-version-pinning.md) — RHOAI operator CSV is pinned
+- [ADR-0008: RHOAI DSC component selection](0008-rhoai-dsc-component-selection.md) — depends on RHOAI's DataScienceCluster CRD
+- [ADR-0009: OpenShell deployment method](0009-openshell-deployment-method.md) — depends on OCP + RHOAI namespace conventions
+- [ADR-0010: MLflow tracing via mlflow-openclaw](0010-mlflow-tracing-otel.md) — depends on RHOAI's MLflow operator
+- [ADR-0011: OpenClaw UI auth](0011-ui-auth-openshift-oauth-proxy.md) — depends on OCP's native OAuth server
 
 ## References
 

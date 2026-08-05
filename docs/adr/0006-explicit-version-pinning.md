@@ -56,7 +56,7 @@ Pin every operator, Helm chart, and container image to an explicit version. Upgr
 | Dependent operators | <!-- TODO: pin CSVs --> | `deploy/helm/` Subscriptions |
 | Container images | digest where possible, tag as fallback | `deploy/` values files |
 
-**Found unpinned during ADR-0007 investigation (2026-08-05)**: `launch-openclaw.sh`
+**Found unpinned during ADR-0011 investigation (2026-08-05)**: `launch-openclaw.sh`
 ran unpinned `npm install -g openclaw` (whatever "latest" resolved to at exec
 time), which had drifted to `2026.6.33` — a release whose gateway config
 validation rejects `gateway.terminal` as an unrecognized key
@@ -69,7 +69,7 @@ this sandbox's Node (`engines: >=22.19.0`) whose `openclaw doctor` accepts
 `gateway.terminal` without complaint. This is exactly the failure mode this
 ADR exists to prevent — a lesson learned the hard way, not just a
 hypothetical, and a reminder that reference-project pins can't be copied
-blindly when the runtime environment differs (see also ADR-0007's `auth.mode`
+blindly when the runtime environment differs (see also ADR-0011's `auth.mode`
 investigation for the same lesson applied to config, not just versions).
 
 **Follow-on config gap**: `2026.6.34`'s `gateway` schema has no `terminal`

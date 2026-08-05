@@ -24,7 +24,7 @@ data:
     http {
       # Default combined log format — deliberately does not log
       # X-Forwarded-Email/User (PII) to container stdout. Verified manually
-      # during ADR-0007 investigation that these headers do reach the
+      # during ADR-0011 investigation that these headers do reach the
       # upstream correctly, including on WebSocket upgrades.
       access_log /dev/stdout;
       client_max_body_size 10m;

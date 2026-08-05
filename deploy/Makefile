@@ -15,7 +15,7 @@
 # - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
 # - adopt-dashboard-config: operator auto-creates singleton without Helm ownership
 # - wait-llamastack: Gen AI Studio nav requires LlamaStackOperatorReady=True
-# See docs/adr/0001-rhoai-dsc-component-selection.md
+# See docs/adr/0008-rhoai-dsc-component-selection.md
 
 SHELL := /bin/bash
 ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))/..))
@@ -94,7 +94,7 @@ deploy-platform: wait-operators
 	@CURRENT_DASHBOARD=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.dashboard.managementState}' 2>/dev/null || true); \
 	if [ "$$CURRENT_DASHBOARD" != "Managed" ]; then \
 		echo "Fresh Dashboard enable: sequencing llamastackoperator BEFORE dashboard"; \
-		echo "(see docs/adr/0001-rhoai-dsc-component-selection.md, constraint #23)"; \
+		echo "(see docs/adr/0008-rhoai-dsc-component-selection.md, constraint #23)"; \
 		$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) \
 			--set-string datasciencecluster.components.dashboard.managementState=Removed; \
 		$(MAKE) wait-llamastack; \
@@ -207,7 +207,7 @@ deploy-openshell: deploy-openshell-oci
 		echo "  $$secret exists"; \
 	done
 	@echo "OpenShell deployed successfully."
-	@echo "Next: register gateway with CLI (see docs/adr/0002-openshell-deployment-method.md)"
+	@echo "Next: register gateway with CLI (see docs/adr/0009-openshell-deployment-method.md)"
 
 # --- oauth2-proxy (browser auth for OpenClaw Control UI) ---
 # Deploys OpenShift-native oauth-proxy so OCP users can log in to the UI.

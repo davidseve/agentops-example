@@ -1,7 +1,8 @@
-# ADR-0007: OpenClaw UI Authentication via OpenShift-native OAuth Proxy
+# ADR-0011: OpenClaw UI Authentication via OpenShift-native OAuth Proxy
 
-**Status**: Accepted  
+**Status**: Accepted (updated 2026-08-05)  
 **Date**: 2026-08-04  
+**Layer**: Agent  
 **Source**: open-claw-in-openshell (ADR-0016)
 
 ## Context

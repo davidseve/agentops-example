@@ -1,7 +1,8 @@
-# ADR-0002: OpenShell Deployment Method
+# ADR-0009: OpenShell Deployment Method
 
 **Status**: Accepted  
 **Date**: 2026-08-03  
+**Layer**: Platform  
 **Source**: Migrated from open-claw-in-openshell (deploy-openshell.sh, constraints #10, #12, #19)
 
 ## Context
@@ -38,14 +39,26 @@ Key deployment requirements learned from open-claw-in-openshell:
 
 ### Version pinning
 
-- OpenShell chart: `0.0.83` (image + supervisor tags locked together)
+- OpenShell chart: `0.0.80` (image + supervisor tags locked together) — see
+  [ADR-0003](0003-openshell-deployment-on-openshift.md) and
+  [ADR-0006](0006-explicit-version-pinning.md), the pre-existing project ADRs
+  that already pin this chart. (**Correction, 2026-08-05**: this section
+  originally stated `0.0.83`, copied from open-claw-in-openshell's own pin
+  without checking against this project's actual `deploy/helm/openshell/Chart.yaml` —
+  exactly the "don't blindly trust the reference project's values" mistake
+  this migration was supposed to guard against. Fixed to match the real
+  deployed version.)
 - Agent Sandbox CRDs: `v0.5.1`
 
-### Auth strategy (initial)
+### Auth strategy — resolved
 
 Start with `allowUnauthenticatedUsers: true` for CLI access (mTLS only).
-OIDC (Keycloak) and browser auth (oauth2-proxy) configured in Phase 3/4
-after the base deployment is validated.
+Browser auth for the OpenClaw Control UI was resolved via OpenShift-native
+`oauth-proxy` with `gateway.auth.mode: trusted-proxy` — **not** Keycloak/OIDC,
+which was explicitly evaluated and rejected. See
+[ADR-0011](0011-ui-auth-openshift-oauth-proxy.md) for the full decision and
+the mTLS-bridge implementation required to make it work with OpenShell's
+relay.
 
 ## Consequences
 

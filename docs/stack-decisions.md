@@ -14,8 +14,18 @@ For the full decision log with options considered, trade-offs, and references, s
 
 - **OCP with RHOAI as base platform** — [ADR-0002](adr/0002-ocp-with-rhoai-as-platform.md): The demo runs on OpenShift Container Platform with Red Hat OpenShift AI (RHOAI) 3.x as the AI add-on, providing operator-managed MLflow, TrustyAI, and model serving through the DataScienceCluster CRD.
 
+- **RHOAI DataScienceCluster component selection** — [ADR-0008](adr/0008-rhoai-dsc-component-selection.md): Only the components the demo actually uses (dashboard, llamastackoperator, mlflowoperator, trustyai, kserve, modelsAsService) are enabled, with explicit deployment-ordering fixes (CRD waits, Helm-ownership adoption) for known RHOAI Dashboard/Gen AI Studio races.
+
 ## Platform Layer
 
 - **OpenShell on OpenShift** — [ADR-0003](adr/0003-openshell-deployment-on-openshift.md): Agent sandboxing runs on the cluster via Helm wrapper chart (`0.2.0`, upstream `0.0.80`) with TLS, certgen hook, and [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) (OLM). Namespace and privileged SCC RoleBinding are managed declaratively by the chart.
 
+- **OpenShell deployment method** — [ADR-0009](adr/0009-openshell-deployment-method.md): A local Helm chart wraps the upstream OCI chart (pinned `0.0.80`, matching ADR-0003/ADR-0006 — not the reference project's `0.0.83`) with `global.appsDomain` replacing all bash-templated placeholders, keeping the install fully declarative.
+
 - **NeMo Guardrails via TrustyAI** — [ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md): Guardrails are deployed through the TrustyAI operator on OCP rather than a standalone sidecar, keeping lifecycle management within the RHOAI operator stack.
+
+## Agent Layer
+
+- **MLflow tracing via mlflow-openclaw plugin** — [ADR-0010](adr/0010-mlflow-tracing-otel.md): OpenClaw traces reach RHOAI's MLflow through the `mlflow-openclaw` plugin (patched for SDK compatibility), not the generic `diagnostics-otel` exporter — the latter produced traces with `null` Request/Response content, while the plugin hooks OpenClaw's own lifecycle events for full content.
+
+- **OpenClaw UI authentication via OpenShift-native OAuth proxy** — [ADR-0011](adr/0011-ui-auth-openshift-oauth-proxy.md): The Control UI is authenticated with `oauth-proxy` (`--provider=openshift`) instead of Keycloak, using an nginx sidecar to bridge to OpenShell's mTLS-only relay. The gateway trusts proxied identity (`gateway.auth.mode: trusted-proxy`) restricted to the cluster's pod/service network CIDRs.

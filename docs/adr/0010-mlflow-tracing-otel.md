@@ -1,7 +1,8 @@
-# ADR-0003: MLflow Tracing from OpenClaw via mlflow-openclaw Plugin
+# ADR-0010: MLflow Tracing from OpenClaw via mlflow-openclaw Plugin
 
 **Status**: Accepted (supersedes initial OTEL-only approach)  
 **Date**: 2026-08-04  
+**Layer**: Agent  
 **Source**: open-claw-in-openshell (ADR-0017, ADR-0018, constraints #15, #22)
 
 ## Context

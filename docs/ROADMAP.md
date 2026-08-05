@@ -21,9 +21,9 @@
 - [x] NeMo Guardrails integration: via TrustyAI operator — see [ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md)
 - [x] Establish ADR process and retroactive records — see [docs/adr/](adr/README.md)
 - [x] OGX: confirmed GA
-- [x] InstallPlan approval: Manual policy with auto-approve in Makefile (ADR-0001)
-- [x] Dashboard race fixes: wait-dashboard-crd, adopt-dashboard-config (ADR-0001)
-- [x] Gen AI Studio: llamastackoperator sequencing before dashboard (ADR-0001)
+- [x] InstallPlan approval: Manual policy with auto-approve in Makefile (ADR-0008)
+- [x] Dashboard race fixes: wait-dashboard-crd, adopt-dashboard-config (ADR-0008)
+- [x] Gen AI Studio: llamastackoperator sequencing before dashboard (ADR-0008)
 - [x] MLflow chart: OpenClaw integration RBAC + experiment Job (gated, Phase 5 activates)
 - [ ] Validate MLflow tracing + prompt registry capabilities
 - [ ] Document MaaS options available in demo.redhat.com
@@ -32,16 +32,16 @@
 
 ## Phase 1.5 - OpenShell + OpenClaw Integration (from open-claw-in-openshell)
 
-- [x] Deploy OpenShell from OCI Helm chart (ADR-0002)
-- [ ] Define OpenShell auth strategy: Keycloak vs OpenShift OAuth
+- [x] Deploy OpenShell from OCI Helm chart (ADR-0009)
+- [x] Define OpenShell auth strategy: OpenShift-native OAuth via oauth-proxy, `trusted-proxy` gateway auth (ADR-0011)
 - [x] Configure Agent Sandbox SCC requirements
 - [x] Deploy OpenClaw as agent harness inside sandbox
 - [x] Configure sandbox network policy
 - [x] Configure MaaS provider and credential injection
 - [x] Validate access, MaaS connectivity, and sandbox enforcement
-- [x] Wire MLflow tracing from OpenClaw plugin (ADR-0003)
+- [x] Wire MLflow tracing from OpenClaw plugin (ADR-0010)
 - [ ] Secrets management strategy
-- [ ] Validate traces visible in RHOAI Dashboard Gen AI Studio
+- [x] Validate traces visible in RHOAI Dashboard Gen AI Studio — confirmed via Playwright (`tests/mlflow-ui.spec.ts`), including full Request/Response content from a live E2E chat
 
 ## Phase 2 - Architecture and Agent Design
 
