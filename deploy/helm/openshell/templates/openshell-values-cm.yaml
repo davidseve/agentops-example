@@ -15,14 +15,14 @@ data:
     replicaCount: {{ .Values.openshell.replicaCount }}
 
     workload:
-      kind: {{ .Values.openshell.workloadKind }}
+      kind: {{ .Values.openshell.workload.kind }}
 
     image:
-      tag: {{ .Values.openshell.chartVersion | quote }}
+      tag: {{ .Values.openshell.image.tag | quote }}
 
     supervisor:
       image:
-        tag: {{ .Values.openshell.chartVersion | quote }}
+        tag: {{ .Values.openshell.supervisor.image.tag | quote }}
 
     podSecurityContext:
       fsGroup: null

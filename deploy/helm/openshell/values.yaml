@@ -8,21 +8,34 @@ openshift:
     create: false
   scc:
     privilegedSandbox: false
-    serviceAccount: ""
+    # Must match the sandbox ServiceAccount actually created by the *separate*
+    # `deploy-openshell-oci` Helm release (hardcoded release name "openshell"
+    # in deploy/Makefile, which the upstream OCI chart's helpers turn into
+    # "<release>-sandbox"). This release is "openshell-infra", so the
+    # `agentops-openshell.sandboxSA` helper's own default
+    # ("<this-release>-sandbox" = "openshell-infra-sandbox") would bind the
+    # privileged SCC to a ServiceAccount that doesn't exist — must be set
+    # explicitly here instead. Found 2026-08-05 during a from-scratch
+    # redeploy test.
+    serviceAccount: "openshell-sandbox"
 
 # --- Upstream subchart overrides ---
 
 openshell:
-  # Pin images to match chart appVersion (0.0.80).
+  # Must match OPENSHELL_OCI_VERSION in deploy/Makefile (the chart version actually
+  # installed by `deploy-openshell-oci`) — that Makefile variable is the single
+  # source of truth for this pin, per docs/adr/0006-explicit-version-pinning.md.
+  # These tags flow into the rendered openshell-helm-values ConfigMap consumed by
+  # that install, so a mismatch here silently pins the wrong image tag.
   image:
     repository: ghcr.io/nvidia/openshell/gateway
-    tag: "0.0.80"
+    tag: "0.0.83"
     pullPolicy: IfNotPresent
 
   supervisor:
     image:
       repository: ghcr.io/nvidia/openshell/supervisor
-      tag: "0.0.80"
+      tag: "0.0.83"
 
   # TLS + certgen hook (default). Do not disable pkiInitJob on OpenShift.
   # See: https://github.com/NVIDIA/OpenShell/issues/2089
@@ -30,6 +43,14 @@ openshell:
     disableTls: false
     sandboxImage: ghcr.io/nvidia/openshell-community/sandboxes/base:latest
     logLevel: info
+    auth:
+      # Gateway's own CLI/gRPC endpoint is mTLS-only (client cert required, see
+      # openshell-client-tls secret) — "unauthenticated" means no *additional*
+      # bearer token on top of the client cert, not open access. Was previously
+      # unset here (no default at all), which made `helm template` fail outright
+      # with a nil-pointer error — found and fixed 2026-08-05 while redeploying
+      # from scratch. See docs/adr/0003-openshell-deployment-on-openshift.md.
+      allowUnauthenticatedUsers: true
 
   pkiInitJob:
     enabled: true

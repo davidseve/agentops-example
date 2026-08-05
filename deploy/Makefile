@@ -3,13 +3,21 @@
 # RHOAI (full platform):
 #   make deploy-all    (full stack)
 #   make validate      (post-deploy health checks)
-#   make undeploy-all  (teardown)
+#   make undeploy-all  (teardown: RHOAI stack only)
 #
-# OpenShell (cluster):
-#   make openshell-install    # Helm install wrapper chart (namespace + SCC + gateway + mTLS sync)
-#   make openshell-sync-mtls  # Sync cluster client TLS bundle to local CLI config
-#   make openshell-status
-#   make openshell-uninstall
+# OpenShell + OpenClaw:
+#   make deploy-openshell HELM_OPTS='--set global.appsDomain=<domain>'
+#   make deploy-oauth2-proxy APPS_DOMAIN=<domain>
+#   make undeploy-openshell   (teardown: OpenShell + oauth2-proxy + Agent Sandbox)
+#
+# Full reset (everything this Makefile can deploy, in one shot):
+#   make undeploy-everything  (OpenShell/oauth2-proxy -> RHOAI apps -> DSCI -> operators -> orphans)
+#   make validate-cleanup     (confirm the cluster is actually clean before redeploying)
+#
+# NOTE: the `openshell-install`/`openshell-upgrade`/`openshell-uninstall` targets further
+# below are a legacy single-chart flow kept for reference; they are NOT what's currently
+# deployed (see docs/adr/0003-openshell-deployment-on-openshift.md). The live flow is
+# deploy-openshell (deploy-openshell-infra + deploy-openshell-oci) / undeploy-openshell.
 #
 # Race condition fixes from open-claw-in-openshell (constraints #21, #23):
 # - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
@@ -18,7 +26,13 @@
 # See docs/adr/0008-rhoai-dsc-component-selection.md
 
 SHELL := /bin/bash
-ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))/..))
+# NOTE: dir() must wrap ONLY the Makefile path; appending "/.." *inside* dir()
+# (as this used to read) makes `dir` treat the literal string "Makefile/.." as
+# the path and return "Makefile/", so abspath resolved to ".../deploy/Makefile"
+# instead of the repo root — silently breaking openshell-sync-mtls and every
+# test-* target that references $(ROOT_DIR). Found + fixed 2026-08-05 during a
+# from-scratch redeploy test.
+ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 
 
 HELM := helm
@@ -55,6 +69,7 @@ OPENSHELL_NAMESPACE := openshell
 .PHONY: validate-openclaw validate-traces validate-security
 .PHONY: test-e2e test-ui test-security test-mlflow
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
+.PHONY: deploy-oauth2-proxy undeploy-openshell undeploy-everything
 .PHONY: template lint validate validate-cleanup
 
 # --- Deploy targets (ordered) ---
@@ -183,6 +198,7 @@ deploy-openshell-infra:
 	@echo "Waiting for Agent Sandbox CRD..."
 	@until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do sleep 3; done
 	$(HELM) upgrade --install $(OPENSHELL_RELEASE) $(OPENSHELL_CHART) \
+		-f $(OPENSHELL_CHART)/values-openshift.yaml \
 		$(if $(APPS_DOMAIN),--set global.appsDomain=$(APPS_DOMAIN)) $(HELM_OPTS)
 
 deploy-openshell-oci: deploy-openshell-infra
@@ -206,8 +222,26 @@ deploy-openshell: deploy-openshell-oci
 		done; \
 		echo "  $$secret exists"; \
 	done
+	@$(MAKE) deploy-mlflow-openclaw-integration
 	@echo "OpenShell deployed successfully."
-	@echo "Next: register gateway with CLI (see docs/adr/0009-openshell-deployment-method.md)"
+	@echo "Next: register gateway with CLI (see docs/adr/0003-openshell-deployment-on-openshift.md)"
+
+# MLflow's openclawIntegration RBAC (see deploy/helm/mlflow/values.yaml) needs the
+# openshell-sandbox ServiceAccount, which is created by deploy-openshell-oci above,
+# so it can't run as part of deploy-mlflow/deploy-all (constraint #10, ADR-0003).
+# Run automatically as the last step of deploy-openshell.
+deploy-mlflow-openclaw-integration:
+	@echo "Waiting for openshell-sandbox ServiceAccount..."
+	@i=0; while ! oc -n $(OPENSHELL_NAMESPACE) get sa openshell-sandbox &>/dev/null; do \
+		i=$$((i+1)); if [ $$i -ge 60 ]; then echo "FAIL: openshell-sandbox SA not found in time"; exit 1; fi; \
+		sleep 2; \
+	done
+	@echo "Enabling MLflow RBAC integration for OpenClaw tracing..."
+	$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) \
+		--set openclawIntegration.enabled=true $(HELM_OPTS)
+	@oc -n $(OPENSHELL_NAMESPACE) get secret openshell-sandbox-mlflow-token >/dev/null \
+		&& echo "OK: openshell-sandbox-mlflow-token created" \
+		|| echo "WARN: openshell-sandbox-mlflow-token not found yet (token controller may still be catching up)"
 
 # --- oauth2-proxy (browser auth for OpenClaw Control UI) ---
 # Deploys OpenShift-native oauth-proxy so OCP users can log in to the UI.
@@ -238,6 +272,20 @@ deploy-oauth2-proxy:
 	fi
 	@echo "UI URL: https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)"
 
+# --- OpenShell + oauth2-proxy + Agent Sandbox teardown ---
+# Reverse of deploy-openshell/deploy-oauth2-proxy. Order: oauth2-proxy (depends on
+# openshell Service) -> openshell OCI gateway -> openshell-infra (namespace/SCC/CRDs,
+# release lives in the `default` namespace, not `openshell` -- see NOTE at top of file)
+# -> namespace -> Agent Sandbox raw manifest (CRD + cluster-scoped RBAC).
+undeploy-openshell:
+	-$(HELM) uninstall $(OAUTH2_PROXY_RELEASE) -n $(OPENSHELL_NAMESPACE)
+	-$(HELM) uninstall openshell -n $(OPENSHELL_NAMESPACE)
+	-$(HELM) uninstall $(OPENSHELL_RELEASE) -n default
+	-@oc delete namespace $(OPENSHELL_NAMESPACE) --wait=false 2>/dev/null || true
+	@echo "Removing Agent Sandbox raw manifest (CRD + cluster-scoped RBAC)..."
+	-@oc delete -f manifests/agent-sandbox-v0.5.1.yaml --ignore-not-found --wait=false 2>/dev/null || true
+	@echo "OpenShell + oauth2-proxy + Agent Sandbox (raw manifest) teardown complete."
+
 validate-openshell:
 	@echo "=== OpenShell ==="
 	@oc -n $(OPENSHELL_NAMESPACE) get statefulset openshell -o jsonpath='{.status.readyReplicas}{"\n"}' | grep -q 1
@@ -252,19 +300,39 @@ validate-openshell:
 
 validate-openclaw:
 	@echo "=== OpenClaw Gateway Health ==="
-	@oc -n $(OPENSHELL_NAMESPACE) exec openclaw-gw -c agent -- \
-		bash -c 'curl -sf http://127.0.0.1:18789/health' >/dev/null
+	@# The gateway listens on a loopback bound *inside* the sandbox's own network
+	@# namespace (isolated from the "agent" container's netns) — must reach it via
+	@# `openshell sandbox exec`, not a plain `oc exec -c agent`, which gets
+	@# "curl: (7) Failed to connect" even though the process is alive. Same
+	@# mechanism launch-openclaw.sh already uses for its own health check.
+	@# Found + fixed 2026-08-05 during a from-scratch redeploy test.
+	@openshell sandbox exec -n openclaw-gw --no-tty --timeout 10 \
+		--env "HOME=/sandbox/workspace" \
+		-- bash -c 'curl -sf http://127.0.0.1:18789/health' >/dev/null
 	@echo "OK: Gateway process alive"
-	@echo "=== End-to-End: Chat through Gateway → MaaS → Response ==="
-	@RESULT=$$(oc -n $(OPENSHELL_NAMESPACE) exec openclaw-gw -c agent -- \
-		bash -c 'export HOME=/sandbox/workspace OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp OPENCLAW_GATEWAY_TOKEN=sandbox-gw-token-2026; \
-		openclaw agent --agent main --message "Reply with exactly: TRACE_OK" --json --timeout 60 2>&1'); \
-	STATUS=$$(echo "$$RESULT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('status',''))" 2>/dev/null); \
-	REPLY=$$(echo "$$RESULT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('result',{}).get('payloads',[{}])[0].get('text',''))" 2>/dev/null); \
-	if [ "$$STATUS" = "ok" ] && [ -n "$$REPLY" ]; then \
-		echo "OK: Gateway → MaaS round-trip succeeded (reply: $$REPLY)"; \
+	@echo "=== CLI: openclaw agent → MaaS → Response ==="
+	@# NOTE: this bare `openclaw agent` CLI invocation cannot present the device
+	@# identity the running gateway process expects over its WebSocket, so it
+	@# silently falls back to an "embedded" in-process agent run (not routed
+	@# through the gateway) — confirmed by `executionTrace.runner: "embedded"` /
+	@# `fallbackFrom: "gateway"` in its own JSON output, and by MLflow export
+	@# failures since the embedded run doesn't inherit the gateway's
+	@# MLFLOW_TRACKING_TOKEN/NODE_EXTRA_CA_CERTS env. So this only proves
+	@# MaaS/model connectivity, NOT the gateway-mediated path the UI actually
+	@# uses. Real gateway+trace validation is `test-ui` (Playwright, browser
+	@# WebSocket session) + validate-traces. Previously this target also parsed
+	@# JSON fields ("status", "result.payloads") that don't exist in the CLI's
+	@# actual output shape (payloads is top-level, there is no "status") and so
+	@# always reported FAIL even on a successful reply — fixed 2026-08-05.
+	@RESULT=$$(openshell sandbox exec -n openclaw-gw --no-tty --timeout 65 \
+		--env "HOME=/sandbox/workspace" \
+		--env "OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp" \
+		-- bash -c 'openclaw agent --agent main --message "Reply with exactly: TRACE_OK" --json --timeout 60 2>/dev/null'); \
+	REPLY=$$(echo "$$RESULT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('payloads',[{}])[0].get('text',''))" 2>/dev/null); \
+	if [ -n "$$REPLY" ]; then \
+		echo "OK: MaaS round-trip succeeded (reply: $$REPLY)"; \
 	else \
-		echo "FAIL: Gateway agent request failed (status=$$STATUS)"; \
+		echo "FAIL: Gateway agent request failed"; \
 		echo "$$RESULT" | tail -5; exit 1; \
 	fi
 
@@ -357,6 +425,10 @@ cleanup-orphans:
 	-@oc delete namespace redhat-ods-applications --wait=false 2>/dev/null || true
 	-@oc delete namespace redhat-ods-monitoring --wait=false 2>/dev/null || true
 	-@oc delete namespace evaluation --wait=false 2>/dev/null || true
+	@echo "Clearing orphaned MaaS tenant finalizers (maas-controller is already gone by this point)..."
+	-@for t in $$(oc get tenants.maas.opendatahub.io -n models-as-a-service -o name 2>/dev/null); do \
+		oc patch "$$t" -n models-as-a-service --type=merge -p '{"metadata":{"finalizers":[]}}' 2>/dev/null || true; \
+	done
 	-@oc delete namespace models-as-a-service --wait=false 2>/dev/null || true
 	-@oc delete namespace rhoai-model-registries --wait=false 2>/dev/null || true
 	-@oc delete subscription agent-sandbox-operator -n agent-sandbox-system 2>/dev/null || true
@@ -367,6 +439,14 @@ cleanup-orphans:
 
 undeploy-all: undeploy-apps purge-dsci undeploy-operators cleanup-orphans
 	@echo "All components undeployed."
+
+# Full-stack reset: everything this Makefile knows how to deploy, torn down in
+# reverse dependency order (see docs/adr/0003-openshell-deployment-on-openshift.md
+# for why OpenShell depends on RHOAI -- so it must come down first).
+# Run `make validate-cleanup` afterwards to confirm before redeploying from scratch.
+undeploy-everything: undeploy-openshell undeploy-all
+	@echo "Full reset complete: OpenShell, oauth2-proxy, Agent Sandbox, RHOAI stack, and operators removed."
+	@echo "Run 'make validate-cleanup' to confirm, then 'make deploy-all' to redeploy from scratch."
 
 # --- Validation ---
 
@@ -428,13 +508,22 @@ validate:
 	@echo "All validation checks passed."
 
 validate-cleanup:
-	@echo "=== Helm releases ==="
+	@echo "=== Helm releases (RHOAI) ==="
 	@RHOAI_COUNT=$$(helm list -f '^rhoai-' -q 2>/dev/null | wc -l | tr -d ' '); \
 	if [ "$$RHOAI_COUNT" -eq 0 ]; then \
 		echo "OK: no rhoai-* releases"; \
 	else \
 		echo "FAIL: $$RHOAI_COUNT rhoai-* releases still present"; exit 1; \
 	fi
+	@echo "=== Helm releases (OpenShell / oauth2-proxy) ==="
+	@LEFTOVER=false; \
+	for rel_ns in "openshell:$(OPENSHELL_NAMESPACE)" "$(OPENSHELL_RELEASE):default" "$(OAUTH2_PROXY_RELEASE):$(OPENSHELL_NAMESPACE)"; do \
+		REL=$${rel_ns%%:*}; NS=$${rel_ns##*:}; \
+		if helm status "$$REL" -n "$$NS" >/dev/null 2>&1; then \
+			echo "FAIL: release $$REL still deployed in ns $$NS"; LEFTOVER=true; \
+		fi; \
+	done; \
+	if [ "$$LEFTOVER" = "true" ]; then exit 1; else echo "OK: no openshell/oauth2-proxy releases"; fi
 	@echo "=== DSCInitialization ==="
 	@if oc get dscinitialization --no-headers 2>/dev/null | grep -q .; then \
 		echo "FAIL: DSCInitialization still exists"; exit 1; \
@@ -447,9 +536,15 @@ validate-cleanup:
 	else \
 		echo "OK: no DataScienceCluster"; \
 	fi
+	@echo "=== Agent Sandbox (raw manifest cluster-scoped resources) ==="
+	@AS_LEFTOVER=false; \
+	oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1 && { echo "WARN: CRD sandboxes.agents.x-k8s.io still present"; AS_LEFTOVER=true; }; \
+	oc get clusterrole agent-sandbox-controller >/dev/null 2>&1 && { echo "WARN: ClusterRole agent-sandbox-controller still present"; AS_LEFTOVER=true; }; \
+	oc get clusterrolebinding agent-sandbox-controller >/dev/null 2>&1 && { echo "WARN: ClusterRoleBinding agent-sandbox-controller still present"; AS_LEFTOVER=true; }; \
+	if [ "$$AS_LEFTOVER" = "false" ]; then echo "OK: no Agent Sandbox cluster-scoped leftovers"; fi
 	@echo "=== Namespaces ==="
 	@ALL_CLEAN=true; \
-	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system; do \
+	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system $(OPENSHELL_NAMESPACE); do \
 		PHASE=$$(oc get namespace "$$ns" -o jsonpath='{.status.phase}' 2>/dev/null); \
 		if [ -n "$$PHASE" ]; then \
 			echo "WARN: namespace $$ns still $$PHASE"; ALL_CLEAN=false; \

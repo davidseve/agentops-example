@@ -50,7 +50,7 @@ Pin every operator, Helm chart, and container image to an explicit version. Upgr
 | Component | Pinned version | Where enforced |
 |---|---|---|
 | RHOAI operator | <!-- TODO: pin CSV --> | `deploy/helm/` Subscription |
-| OpenShell Helm chart | `0.0.80` | `deploy/helm/openshell/Chart.yaml` |
+| OpenShell OCI chart (gateway) | `0.0.83` | `deploy/Makefile` (`OPENSHELL_OCI_VERSION`) — the actual, enforced pin |
 | OpenClaw (npm, in-sandbox) | `2026.6.34` | `scripts/launch-openclaw.sh` (`OPENCLAW_PIN`) |
 | `@mlflow/mlflow-openclaw` (npm, in-sandbox) | `0.2.0-rc.0` | `scripts/launch-openclaw.sh` |
 | Dependent operators | <!-- TODO: pin CSVs --> | `deploy/helm/` Subscriptions |
@@ -82,6 +82,20 @@ gateway startup — `openclaw doctor` does not catch it), so it was removed
 from `config/openclaw.json.tpl`. **TODO**: re-add `gateway.terminal.enabled:
 false` once the sandbox base image ships Node `>=22.22.3` and `OPENCLAW_PIN`
 can move to `2026.7.1`+.
+
+**Found a self-contradicting pin during a from-scratch redeploy test (2026-08-05)**:
+this ADR, `docs/stack-decisions.md`, and `docs/openshell-installation.md` all
+claimed the OpenShell chart was pinned to `0.0.80` — even asserting this was
+*deliberately different* from the reference project's `0.0.83`. In reality,
+`deploy/Makefile`'s `OPENSHELL_OCI_VERSION` (the variable that actually drives
+the live `helm upgrade --install openshell oci://.../helm-chart --version
+...` command) has always been `0.0.83`; `0.0.80` only ever existed as a dead
+`dependencies:` entry in `deploy/helm/openshell/Chart.yaml` that no template
+in that chart actually rendered (removed — see ADR-0003). Nobody had verified
+the "0.0.80, not 0.0.83" claim against what actually gets installed — a
+textbook case of exactly what this ADR exists to prevent, and a repeat of the
+OpenClaw npm-pin lesson above: written-down pins drift from reality unless a
+from-scratch deploy periodically proves them.
 
 ## Related Decisions
 

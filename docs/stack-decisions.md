@@ -18,9 +18,7 @@ For the full decision log with options considered, trade-offs, and references, s
 
 ## Platform Layer
 
-- **OpenShell on OpenShift** — [ADR-0003](adr/0003-openshell-deployment-on-openshift.md): Agent sandboxing runs on the cluster via Helm wrapper chart (`0.2.0`, upstream `0.0.80`) with TLS, certgen hook, and [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) (OLM). Namespace and privileged SCC RoleBinding are managed declaratively by the chart.
-
-- **OpenShell deployment method** — [ADR-0009](adr/0009-openshell-deployment-method.md): A local Helm chart wraps the upstream OCI chart (pinned `0.0.80`, matching ADR-0003/ADR-0006 — not the reference project's `0.0.83`) with `global.appsDomain` replacing all bash-templated placeholders, keeping the install fully declarative.
+- **OpenShell on OpenShift** — [ADR-0003](adr/0003-openshell-deployment-on-openshift.md): Agent sandboxing runs on the cluster via two Helm releases: a local wrapper chart (`0.2.0`, namespace + privileged SCC RoleBinding + a ConfigMap of rendered values) and a separate install of the upstream OCI chart pinned `0.0.83` (matching ADR-0006 — corrected 2026-08-05; an earlier version of this doc wrongly claimed `0.0.80` was deliberately pinned instead), with TLS, certgen hook, and `global.appsDomain` replacing all bash-templated placeholders. Uses the [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) (OLM). (Merges what was briefly a separate ADR-0009, since retired as a duplicate.)
 
 - **NeMo Guardrails via TrustyAI** — [ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md): Guardrails are deployed through the TrustyAI operator on OCP rather than a standalone sidecar, keeping lifecycle management within the RHOAI operator stack.
 

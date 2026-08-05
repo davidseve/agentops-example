@@ -20,14 +20,21 @@ mlflow:
 
 # OpenClaw/OpenShell integration: declarative RBAC + SA token + experiment
 # provisioning for wiring the mlflow-openclaw plugin's tracing transport.
-# Defaults to false — flip to true once OpenShell is deployed and the
-# openshell-sandbox SA exists (Phase 2+).
+# Defaults to false because the openshell-sandbox SA (namespace `openshell`)
+# doesn't exist until OpenShell is deployed (Phase 2+) — the RoleBinding/Secret
+# would fail to apply otherwise. `make deploy-openshell` automatically re-runs
+# this chart with enabled=true as its last step (target
+# deploy-mlflow-openclaw-integration in deploy/Makefile) once the SA exists;
+# no manual re-run should normally be needed.
 openclawIntegration:
   enabled: false
   namespace: openshell
   serviceAccountName: openshell-sandbox
   # The mlflow-integration ClusterRole name is operator-generated (varies by
-  # build). Detect live: oc get clusterroles -o name | grep mlflow-integration
+  # build) and is auto-detected via Helm `lookup` in
+  # templates/openclaw-integration-rbac.yaml. Only set this to override
+  # detection (e.g. `helm template`/dry-run can't use `lookup`, or multiple
+  # ClusterRoles match): oc get clusterroles -o name | grep mlflow-integration
   clusterRoleName: ""
   experimentName: openclaw-tracing
   mlflowNamespace: redhat-ods-applications

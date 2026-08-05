@@ -2,7 +2,17 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Release.Namespace }}
+  # Deliberately .Values.namespace, NOT .Release.Namespace: this release
+  # (openshell-infra) is installed without --namespace (defaults to whatever
+  # the caller's kube context uses), but the resources it manages — this
+  # Namespace, the ConfigMap, the Route — must all land in the fixed
+  # "openshell" namespace where the *separate* deploy-openshell-oci release
+  # actually installs the gateway. Using .Release.Namespace here silently
+  # created the wrong (usually "default") namespace and left "openshell"
+  # never created by this chart at all — found 2026-08-05 during a
+  # from-scratch redeploy test (previously masked because a stale
+  # "openshell" namespace already existed from an earlier manual/legacy run).
+  name: {{ .Values.namespace }}
   labels:
     {{- include "agentops-openshell.labels" . | nindent 4 }}
     opendatahub.io/dashboard: "true"

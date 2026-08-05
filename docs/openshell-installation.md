@@ -451,6 +451,16 @@ Provider setup: [Manage Providers](https://docs.nvidia.com/openshell/latest/how-
 
 ## OpenShift / RHOAI cluster deployment
 
+> **This section describes an older single-chart flow kept for reference.** The
+> actually-deployed flow (validated via a from-scratch redeploy 2026-08-05) is
+> `make -C deploy deploy-openshell` (which runs `deploy-openshell-infra` +
+> `deploy-openshell-oci` as two separate Helm releases) — see
+> [ADR-0003](adr/0003-openshell-deployment-on-openshift.md) for the accurate,
+> up-to-date architecture and a list of real bugs found in this flow. The
+> pinned chart version below (`0.0.80`) is also stale; the real, enforced pin
+> is `0.0.83` (`deploy/Makefile`'s `OPENSHELL_OCI_VERSION` — see
+> [ADR-0006](adr/0006-explicit-version-pinning.md)).
+
 Deploy the OpenShell gateway on OpenShift with the official Helm chart (OCI). This path is **validated** on RHOAI demo clusters (OpenShift 4.x, chart `0.0.80`).
 
 > **Experimental**: the Kubernetes/OpenShift deployment path is under active development upstream. Pin chart and image versions deliberately.

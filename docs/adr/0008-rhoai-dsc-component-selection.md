@@ -61,6 +61,21 @@ interactive approval clicks in automation.
 - Helm upgrades are idempotent: adopt + re-apply handles all race states
 - The operator version is explicitly controlled via git (no surprise upgrades)
 
+## Bug found and fixed: `llamastackoperator` defaulted to `Removed` (2026-08-05)
+
+A from-scratch redeploy test found `deploy/helm/platform/values.yaml` actually
+shipped `datasciencecluster.components.llamastackoperator.managementState:
+Removed` — directly contradicting this ADR's own decision table above (row 2:
+`llamastackoperator (OGX) | Required by Gen AI Studio nav`). Since
+`dashboard.genAiStudio: true` is also set by default, this meant a plain `make
+deploy-platform` (no extra `HELM_OPTS`) would run the entire `wait-llamastack`
+loop every time, always time out with `WARNING: LlamaStackOperatorReady not
+True after 120s`, and leave Gen AI Studio non-functional — while still
+reporting `deploy-platform`/`validate` as passing, since neither hard-fails on
+that particular condition. Fixed by changing the default to `Managed`. Not
+caught earlier because every prior deploy happened against a DataScienceCluster
+that was already `Managed` from an earlier, differently-valued run.
+
 ## References
 
 - Red Hat RHOAI 3.4 documentation: DataScienceCluster API

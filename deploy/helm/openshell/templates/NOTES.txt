@@ -1,21 +1,23 @@
-OpenShell gateway installed for the AgentOps demo.
+OpenShell namespace, SCC, and rendered gateway values prepared for the AgentOps demo.
 
-Release:   {{ .Release.Name }}
-Namespace: {{ .Release.Namespace }}
-Chart:     {{ .Chart.Name }}-{{ .Chart.Version }} (upstream {{ .Values.openshell.image.tag }})
+This release ({{ .Release.Name }}, namespace {{ .Release.Namespace }}) does NOT install
+the gateway itself — it only creates namespace "{{ .Values.namespace }}", the privileged
+SCC RoleBinding, and a ConfigMap of rendered values. The gateway is installed separately
+via `make -C deploy deploy-openshell-oci` (upstream OCI chart, release "openshell",
+image tag {{ .Values.openshell.image.tag }}) in namespace "{{ .Values.namespace }}".
 {{- if .Values.openshift.scc.privilegedSandbox }}
-SCC:       privileged → {{ include "agentops-openshell.sandboxSA" . }} (post-install hook)
+SCC:       privileged → {{ include "agentops-openshell.sandboxSA" . }} (post-install hook, namespace {{ .Values.namespace }})
 {{- end }}
 
 Verify:
-  oc -n {{ .Release.Namespace }} rollout status statefulset/{{ .Release.Name }}
-  oc -n {{ .Release.Namespace }} get pods,secret | grep -E 'NAME|openshell'
+  oc -n {{ .Values.namespace }} rollout status statefulset/openshell
+  oc -n {{ .Values.namespace }} get pods,secret | grep -E 'NAME|openshell'
 {{- if .Values.openshift.scc.privilegedSandbox }}
-  oc -n {{ .Release.Namespace }} get rolebinding | grep privileged
+  oc -n {{ .Values.namespace }} get rolebinding | grep privileged
 {{- end }}
 
 Connect (from your workstation):
-  oc -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }} 8080:8080
+  oc -n {{ .Values.namespace }} port-forward svc/openshell 8080:8080
   openshell gateway add https://127.0.0.1:8080 --local --name openshift
   make -C deploy openshell-sync-mtls   # required after gateway add --local
   openshell status

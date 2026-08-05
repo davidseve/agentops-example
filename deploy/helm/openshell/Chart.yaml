@@ -1,13 +1,18 @@
-# Wrapper chart for the AgentOps demo. Pins the upstream NVIDIA OpenShell OCI chart
-# and applies OpenShift-validated defaults. Manages namespace and SCC declaratively.
+# Wrapper chart for the AgentOps demo. Creates the namespace, SCC RoleBinding, Route,
+# and a ConfigMap of rendered values consumed by a *separate* Helm install of the
+# upstream OCI chart (see deploy/Makefile `deploy-openshell-oci` — the pinned version
+# there, not here, is the single source of truth; see docs/adr/0003 "Known gap").
+#
+# NOTE: previously declared the upstream OCI chart as a Helm `dependencies:` entry,
+# but no template in this chart ever rendered it (all upstream values only get
+# generated as ConfigMap *text*, consumed by the separate deploy-openshell-oci
+# install) — so the dependency was dead weight that unconditionally broke every
+# `helm template`/`install` with "found in Chart.yaml, but missing in charts/
+# directory" unless someone had manually run `helm dependency update` out-of-band.
+# Removed 2026-08-05 after it blocked a from-scratch redeploy test.
 apiVersion: v2
 name: agentops-openshell
 description: OpenShell gateway for the AgentOps demo on OpenShift / RHOAI
 type: application
 version: 0.2.0
-appVersion: "0.0.80"
-dependencies:
-  - name: helm-chart
-    alias: openshell
-    version: 0.0.80
-    repository: oci://ghcr.io/nvidia/openshell
+appVersion: "0.0.83"

@@ -17,7 +17,7 @@
 - [x] Document OpenShell local install (macOS and Linux) — see [openshell-installation.md](openshell-installation.md)
 - [x] Add `scripts/install-openshell.sh` — one-command local stack installer (macOS and Linux)
 - [x] Add `scripts/uninstall-openshell.sh` — remove local OpenShell stack (macOS and Linux)
-- [x] Validate OpenShell deployment method and constraints on target cluster — see [openshell-installation.md § OpenShift](openshell-installation.md#openshift--rhoai-cluster-deployment) (chart `0.0.80`, TLS + certgen hook on OCP; post-install mTLS sync via `make openshell-sync-mtls`)
+- [x] Validate OpenShell deployment method and constraints on target cluster — see [openshell-installation.md § OpenShift](openshell-installation.md#openshift--rhoai-cluster-deployment) (chart `0.0.83`, TLS + certgen hook on OCP; post-install mTLS sync via `make openshell-sync-mtls`)
 - [x] NeMo Guardrails integration: via TrustyAI operator — see [ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md)
 - [x] Establish ADR process and retroactive records — see [docs/adr/](adr/README.md)
 - [x] OGX: confirmed GA
@@ -32,7 +32,7 @@
 
 ## Phase 1.5 - OpenShell + OpenClaw Integration (from open-claw-in-openshell)
 
-- [x] Deploy OpenShell from OCI Helm chart (ADR-0009)
+- [x] Deploy OpenShell from OCI Helm chart (ADR-0003)
 - [x] Define OpenShell auth strategy: OpenShift-native OAuth via oauth-proxy, `trusted-proxy` gateway auth (ADR-0011)
 - [x] Configure Agent Sandbox SCC requirements
 - [x] Deploy OpenClaw as agent harness inside sandbox

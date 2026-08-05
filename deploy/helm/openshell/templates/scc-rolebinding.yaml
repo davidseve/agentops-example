@@ -3,7 +3,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ include "agentops-openshell.fullname" . }}-sandbox-privileged-scc
-  namespace: {{ .Release.Namespace }}
+  # .Values.namespace (fixed "openshell"), not .Release.Namespace: this release
+  # (openshell-infra) isn't installed with --namespace, but the sandbox SA this
+  # binds actually lives in "openshell" — see namespace.yaml for the full
+  # explanation of this pattern.
+  namespace: {{ .Values.namespace }}
   labels:
     {{- include "agentops-openshell.labels" . | nindent 4 }}
   annotations:
@@ -16,5 +20,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ include "agentops-openshell.sandboxSA" . }}
-    namespace: {{ .Release.Namespace }}
+    namespace: {{ .Values.namespace }}
 {{- end }}

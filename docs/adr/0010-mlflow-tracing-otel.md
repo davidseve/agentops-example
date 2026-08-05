@@ -81,6 +81,39 @@ OTEL_METRICS_EXPORTER=none
 A Helm post-install/post-upgrade Job creates the MLflow experiment via REST API.
 Idempotent get-by-name-or-create logic.
 
+## Declarative bootstrap of the RBAC integration (fixed 2026-08-05)
+
+The `openshell-sandbox-mlflow-token` Secret and its `RoleBinding` (in
+`deploy/helm/mlflow/templates/openclaw-integration-rbac.yaml`) are gated by
+`openclawIntegration.enabled` (default `false`), because the `openshell-sandbox`
+SA doesn't exist until OpenShell is deployed — and OpenShell must be deployed
+*after* RHOAI/MLflow (constraint #10, ADR-0003). This is a real chicken-and-egg
+ordering constraint, not a bug by itself.
+
+However, during a from-scratch redeploy on 2026-08-05, two related gaps were
+found that made this step silently manual rather than declarative, contradicting
+the project's "no scripts, no manual steps" goal:
+
+1. **No automated re-run.** Nothing in `deploy/Makefile` ever set
+   `openclawIntegration.enabled=true` — a manual
+   `helm upgrade ... --set openclawIntegration.enabled=true` was required after
+   `deploy-openshell`, and was undocumented anywhere. **Fix**: added
+   `deploy-mlflow-openclaw-integration` to `deploy/Makefile`, which waits for the
+   `openshell-sandbox` SA and re-runs the MLflow chart with the flag enabled. It
+   now runs automatically as the last step of `deploy-openshell`.
+2. **Manual ClusterRole name lookup.** `openclawIntegration.clusterRoleName` had
+   no default because the RHOAI MLflow operator generates the
+   `mlflow-integration` `ClusterRole` name at install time (no stable name across
+   builds), requiring `oc get clusterroles | grep mlflow-integration` and a
+   manual `--set`. **Fix**: `openclaw-integration-rbac.yaml` now auto-detects it
+   via Helm's `lookup` function (matches any `ClusterRole` whose name contains
+   `mlflow-integration`), falling back to the explicit value only as an override
+   (also required for `helm template`/dry-run, where `lookup` always returns
+   empty).
+
+With both fixes, `make deploy-openshell` alone is now sufficient to wire up
+OpenClaw's MLflow tracing end-to-end — no manual `--set` flags needed.
+
 ## Consequences
 
 - Traces appear in Gen AI Studio with **full Request/Response content**

@@ -9,7 +9,14 @@ description: >-
 
 # OpenShell Cluster Install
 
-Deploy the OpenShell **gateway** on OpenShift using `deploy/Makefile` and `deploy/helm/openshell/`. The wrapper chart (`0.2.0`) manages namespace, upstream gateway subchart (`0.0.80`), and privileged SCC RoleBinding in a single Helm release. After install/upgrade, the Makefile syncs the cluster mTLS client bundle to the local CLI. Requires `oc` and `helm` on the workstation.
+Deploy the OpenShell **gateway** on OpenShift using `deploy/Makefile` and `deploy/helm/openshell/`. This is **two separate Helm releases**, not one: `openshell-infra` (namespace, privileged SCC RoleBinding, Route, and a ConfigMap of rendered values — no gateway resources of its own) and `openshell` (the upstream OCI chart, pinned `0.0.83`, installed directly using that ConfigMap's values). After install, the Makefile syncs the cluster mTLS client bundle to the local CLI. Requires `oc` and `helm` on the workstation.
+
+> **Do not use `make -C deploy openshell-install`.** That target (and
+> `openshell-upgrade`/`openshell-uninstall`) is an older single-chart flow
+> kept in the Makefile for reference only — it is not what's actually
+> deployed, and as of 2026-08-05 has an unrelated broken-path bug
+> (`ROOT_DIR`) in its dependency chain. Use `deploy-openshell` /
+> `undeploy-openshell` below instead.
 
 For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make` when MCP is unavailable.
 
@@ -17,87 +24,103 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 
 | User intent | Action |
 |---|---|
-| Deploy OpenShell on OpenShift | `make -C deploy openshell-install` |
-| First-time cluster setup | `make -C deploy deploy-operators` then install |
-| Refresh local mTLS certs only | `make -C deploy openshell-sync-mtls` |
-| Check deployment | `make -C deploy openshell-status` |
-| Upgrade release | `make -C deploy openshell-upgrade` |
+| Deploy OpenShell on OpenShift | `APPS_DOMAIN=<domain> make -C deploy deploy-openshell` |
+| First-time cluster setup | `make -C deploy deploy-operators` then deploy (must come after RHOAI — ADR-0003) |
+| Refresh local mTLS certs only | `GATEWAY_NAME=<name> make -C deploy openshell-sync-mtls` (gateway name must match `openshell gateway list`, commonly `ocp`) |
+| Check deployment | `make -C deploy validate-openshell` |
+| Remove everything | `make -C deploy undeploy-openshell` |
 
 ## Workflow
 
 1. **Verify cluster context** — correct OpenShift cluster/project (`configuration_contexts_list` or `oc config current-context`).
-2. **Prerequisites (once per cluster)** — Agent Sandbox Operator is installed via OLM as part of the operators chart:
+2. **Prerequisites (once per cluster, and must come first)** — RHOAI + Agent Sandbox Operator are installed via OLM as part of the operators chart, and OpenShell's MLflow RBAC integration depends on RHOAI namespaces/ClusterRoles existing first:
 
 ```bash
-make -C deploy deploy-operators
+make -C deploy deploy-all   # or at minimum: deploy-operators, deploy-platform
 ```
 
-Installs RHOAI + Red Hat build of Agent Sandbox Operator. Idempotent.
+Idempotent.
 
-3. **Install gateway**:
+3. **Install OpenShell** (both releases, plus the Agent Sandbox raw manifest):
 
 ```bash
-make -C deploy openshell-install
+APPS_DOMAIN=<apps-domain, e.g. apps.ocp.example.com> make -C deploy deploy-openshell
 ```
 
-Runs: Helm wrapper chart (creates namespace, upstream subchart with certgen hook for JWT + TLS, post-install SCC RoleBinding for `openshell-sandbox`), then `openshell-sync-mtls` (copies `openshell-client-tls` → `~/.config/openshell/gateways/openshift/mtls/`).
+Runs: `oc apply -f manifests/agent-sandbox-v0.5.1.yaml` (Agent Sandbox controller
+raw path — coexists with the OLM path from step 2, a known unreconciled gap, see
+ADR-0003) → `deploy-openshell-infra` (Helm release `openshell-infra`: namespace,
+privileged SCC RoleBinding, Route, rendered-values ConfigMap; always applies
+`values-openshift.yaml`) → `deploy-openshell-oci` (Helm release `openshell`: the
+actual gateway StatefulSet, from the ConfigMap's values, `--version 0.0.83`).
 
-4. **Verify**:
+4. **Deploy the browser-auth proxy** (required for the Control UI, see ADR-0011):
 
 ```bash
-make -C deploy openshell-status
-oc -n openshell rollout status statefulset/openshell
+APPS_DOMAIN=<apps-domain> make -C deploy deploy-oauth2-proxy
+```
+
+5. **Verify**:
+
+```bash
+make -C deploy validate-openshell
 oc -n openshell get rolebinding | grep privileged
+oc -n openshell get sa openshell-sandbox
 ```
 
 Expect secrets: `openshell-jwt-keys`, `openshell-server-tls`, `openshell-client-tls`.
-Expect RoleBinding: `openshell-sandbox-privileged-scc`.
+Expect RoleBinding: `openshell-infra-sandbox-privileged-scc`, targeting SA `openshell-sandbox`.
 Expect logs: `TLS enabled — listening on encrypted HTTPS`.
 
-5. **Optional — connect local CLI** (requires `openshell-local-install` on workstation):
+6. **Optional — connect local CLI**:
 
 ```bash
-oc -n openshell port-forward svc/openshell 8080:8080
-openshell gateway add https://127.0.0.1:8080 --local --name openshift
-# gateway add --local may overwrite the synced bundle — re-sync:
-make -C deploy openshell-sync-mtls
-openshell status
+openshell gateway add https://openshell-gw-openshell.<apps-domain> --name ocp
+GATEWAY_NAME=ocp make -C deploy openshell-sync-mtls
+openshell status   # Status: Connected
 ```
+
+(Or port-forward instead of using the Route — either way, `GATEWAY_NAME` passed to
+`openshell-sync-mtls` must match the name shown by `openshell gateway list`.)
 
 ## Chart values (pinned)
 
 | Setting | Value |
 |---|---|
-| Wrapper chart | `deploy/helm/openshell/` (`0.2.0`) |
-| Upstream | `oci://ghcr.io/nvidia/openshell/helm-chart:0.0.80` |
+| Wrapper chart (`openshell-infra` release) | `deploy/helm/openshell/` (`0.2.0`) |
+| Upstream OCI chart (`openshell` release) | `oci://ghcr.io/nvidia/openshell/helm-chart:0.0.83` — enforced by `deploy/Makefile`'s `OPENSHELL_OCI_VERSION`, **not** anything in the wrapper chart |
 | `server.disableTls` | `false` |
 | `pkiInitJob.enabled` | `true` (default — do not disable) |
-| `openshift.namespace.create` | `true` (in `values-openshift.yaml`) |
+| `server.auth.allowUnauthenticatedUsers` | `true` (mTLS-only endpoint; means no *additional* bearer token) |
+| `openshift.namespace.create` | `true` (in `values-openshift.yaml`, always applied by `deploy-openshell-infra`) |
 | `openshift.scc.privilegedSandbox` | `true` (in `values-openshift.yaml`) |
+| `openshift.scc.serviceAccount` | `openshell-sandbox` (explicit — the sandbox SA belongs to the *other* release) |
 
 ## Safety rules
 
 - **Do not** set `pkiInitJob.enabled=false` without external JWT secret bootstrap.
-- **Confirm namespace** — default `openshell`.
-- **Agent Sandbox** is cluster-wide; installed via OLM with the operators chart, not per OpenShell release.
+- **Confirm namespace** — always `openshell` (fixed, not derived from either release's own name).
+- **Agent Sandbox** currently has two coexisting install paths (OLM + raw manifest) — a known, still-open gap (ADR-0003). Both are cleaned up by `undeploy-openshell` + `cleanup-orphans`.
 - **Helm OCI on Podman hosts** — Makefile sets `DOCKER_CONFIG` automatically.
-- **mTLS sync** writes only under `~/.config/openshell/` (never into the git repo). Re-run after every redeploy or after `gateway add --local`.
+- **mTLS sync** writes only under `~/.config/openshell/` (never into the git repo). Re-run after every redeploy or after `gateway add`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
+| `helm template`/`install` fails: "found in Chart.yaml, but missing in charts/ directory" | Stale local state from an old manual `helm dependency update` — the wrapper chart has no dependency anymore (fixed 2026-08-05); `rm -rf deploy/helm/openshell/charts` if it exists |
 | `openshell-jwt-keys not found` | Reinstall without disabling `pkiInitJob`; see [issue #2089](https://github.com/NVIDIA/OpenShell/issues/2089) |
-| Sandbox pods fail | Re-run `make -C deploy openshell-install` (Helm hook re-applies SCC) |
-| Helm OCI pull fails | `make -C deploy helm-env` or fix `~/.docker/config.json` |
+| Sandbox pods fail | Re-run `make -C deploy deploy-openshell-infra` (Helm hook re-applies SCC) |
+| Helm OCI pull fails | Fix `~/.docker/config.json` (unset `credsStore: desktop` or point `DOCKER_CONFIG` elsewhere) |
 | certgen Job failed | `oc -n openshell logs job/openshell-certgen` |
-| `invalid peer certificate: BadSignature` | `make -C deploy openshell-sync-mtls` then `openshell status` |
+| `invalid peer certificate: BadSignature` | `GATEWAY_NAME=<name> make -C deploy openshell-sync-mtls` then `openshell status` — must match the registered gateway name |
+| `openshell-sync-mtls` fails with a path containing `deploy/Makefile/scripts/...` | Old `ROOT_DIR` bug in `deploy/Makefile`, fixed 2026-08-05; pull latest |
 
 ## Related
 
-- Cluster cleanup: `openshell-cluster-cleanup` skill
+- Cluster cleanup: `openshell-cluster-cleanup` skill, or `make -C deploy undeploy-openshell`
 - Local CLI install: `openshell-local-install` skill
-- Guide: [docs/openshell-installation.md § OpenShift](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment)
+- Guide: [docs/openshell-installation.md § OpenShift](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment) (partially stale — see the banner at the top of that section)
 - Chart: [deploy/helm/openshell/README.md](../../../deploy/helm/openshell/README.md)
 - Sync script: [scripts/openshift-openshell-sync-mtls.sh](../../../scripts/openshift-openshell-sync-mtls.sh)
-- ADR: [ADR-0003](../../../docs/adr/0003-openshell-deployment-on-openshift.md)
+- ADR: [ADR-0003](../../../docs/adr/0003-openshell-deployment-on-openshift.md) — includes a full list of chart/Makefile bugs found and fixed on 2026-08-05
