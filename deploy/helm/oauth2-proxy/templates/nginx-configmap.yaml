@@ -1,5 +1,10 @@
 # nginx config for mTLS bridge to OpenShell relay.
-# Listens on HTTP :8090 and proxies to the relay with client certificates.
+# Listens on HTTP :8090 (loopback only) and proxies to the relay with client
+# certificates. Binding to 127.0.0.1 restricts this bridge to the oauth-proxy
+# container in the same Pod (shared network namespace) — without this, any
+# other pod in the cluster could reach the mTLS bridge directly via the Pod
+# IP and skip oauth-proxy's OAuth check entirely (no Service/Route exposes
+# :8090, but that alone does not block Pod-IP-level traffic).
 {{- $openshellSvc := lookup "v1" "Service" .Values.namespace "openshell" }}
 apiVersion: v1
 kind: ConfigMap
@@ -29,7 +34,7 @@ data:
       }
 
       server {
-        listen 8090;
+        listen 127.0.0.1:8090;
 
         location / {
           proxy_pass https://{{ $openshellSvc.spec.clusterIP }}:8080;
