@@ -147,6 +147,15 @@ make validate
 Do **not** call bare `helm upgrade --install` without the corresponding `make` target —
 you will skip the required waits.
 
+## Token-efficient execution
+
+Follow global skill **`long-running-scripts`**.
+
+- Deploy: `make deploy-all-quiet` (writes `.agent-status/deploy-all.json`) or `make deploy-all` with one long Shell call
+- **No polling** during `oc wait` / operator reconciliation
+- Quick check after partial deploy: `make validate-smoke`
+- Full check: `make validate` once at the end
+
 ## Notes
 
 - The RHOAI operator auto-creates DSCInitialization on startup (no COO needed)

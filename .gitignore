@@ -56,3 +56,7 @@ deploy/helm/**/charts/
 tests/node_modules/
 tests/test-results/
 tests/playwright-report/
+
+# Agent long-running script output (token-efficient mode)
+.logs/
+.agent-status/
