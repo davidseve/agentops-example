@@ -65,7 +65,7 @@ Key findings during testing:
 **Test plan**:
 - Checklist with `- [ ]` (open) or `- [x]` (done before PR)
 - Include cluster name/context when tested on OCP (e.g. `rhoai-maas.sandbox3494.opentlc.com`)
-- Reference `make` targets or scripts (`make deploy-all`, `make -C deploy openshell-install`, `./tests/health-check.sh`)
+- Reference `make` targets or scripts (`make deploy-all`, `make -C deploy deploy-openshell`, `./tests/health-check.sh`)
 
 ## Workflow
 

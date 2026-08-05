@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (updated 2026-08-05 — merged in duplicate content from a since-retired ADR, previously numbered 0009, that documented the same deployment decision independently, see "Note on merged ADR" at the end of this file; updated again the same day after a from-scratch redeploy test found and fixed several real chart/Makefile bugs, see "Chart bugs found and fixed")
+Accepted (updated 2026-08-05 — merged in duplicate content from a since-retired ADR, previously numbered 0009, that documented the same deployment decision independently, see "Note on merged ADR" at the end of this file; updated again the same day after a from-scratch redeploy test found and fixed several real chart/Makefile bugs, see "Chart bugs found and fixed"; updated a third time the same day to replace the two-release/ConfigMap design from that fix with a real, working Helm dependency — see "Chart architecture: from two releases back to one" below)
 
 ## Date
 
@@ -47,17 +47,36 @@ The original deployment used a hybrid approach: a thin Helm wrapper chart for th
 
 ## Decision
 
-Deploy OpenShell on OpenShift using the wrapper Helm chart (`deploy/helm/openshell/`). The chart:
+Deploy OpenShell on OpenShift using the wrapper Helm chart (`deploy/helm/openshell/`) as a
+**single Helm release**. The chart:
 
-1. Creates the `openshell` namespace (gated by `openshift.namespace.create`), labeled `opendatahub.io/dashboard: "true"` so it surfaces in the RHOAI Dashboard.
-2. Renders OpenShell's own values (auth, TLS, `global.appsDomain` substitution) into a `ConfigMap` (`openshell-helm-values`); the Makefile's `deploy-openshell-oci` target extracts `.data.values.yaml` from it and passes it with `-f` to a *separate* `helm upgrade --install` of the upstream OCI chart (pinned `0.0.83` — see ADR-0006 — with TLS and certgen hook) — this is how `global.appsDomain` (a single Helm value, set once via `HELM_OPTS` or `APPS_DOMAIN`) replaces every `__APPS_DOMAIN__` placeholder the reference project rendered with bash instead. The wrapper chart never declares the OCI chart as a Helm dependency of its own release (it doesn't need to — see "Chart bugs found and fixed" below for why an earlier version briefly did, and why that was wrong).
-3. Grants privileged SCC to the sandbox service account via a post-install/post-upgrade RoleBinding to `system:openshift:scc:privileged` (gated by `openshift.scc.privilegedSandbox`), targeting the sandbox ServiceAccount created by the *separate* OCI install above (`openshell-sandbox`), explicitly set via `openshift.scc.serviceAccount` rather than derived from this chart's own release name.
-4. Templates a `server.auth.allowUnauthenticatedUsers: true` field into the rendered `ConfigMap` (`openshell-values-cm.yaml`), allowing CLI/gRPC access without a bearer token since that endpoint is mTLS-only (client cert required — "unauthenticated" here means no *additional* token, not no auth). This is orthogonal to the OpenClaw Control UI's browser auth, which goes through a separate OAuth proxy (see [ADR-0011](0011-ui-auth-openshift-oauth-proxy.md)).
+1. Declares the upstream OCI chart (`oci://ghcr.io/nvidia/openshell`, chart `helm-chart`) as
+   a real Helm subchart dependency, aliased `openshell` in `Chart.yaml`. `global.appsDomain`
+   (a single Helm value, set once via `HELM_OPTS` or `APPS_DOMAIN`) and every other upstream
+   value live directly under the `openshell:` key in this chart's own
+   `values.yaml`/`values-openshift.yaml` and flow straight into the subchart via the alias —
+   this is how a single value replaces every `__APPS_DOMAIN__` placeholder the reference
+   project rendered with bash instead. No `ConfigMap` round-trip, no second `helm install`.
+2. Installs with `--create-namespace` (see "Chart architecture" below for why the chart does
+   *not* also template its own `Namespace` object), and applies the
+   `opendatahub.io/dashboard: "true"` label (so the namespace surfaces in the RHOAI
+   Dashboard) via one idempotent `oc label` line in `deploy/Makefile`'s `deploy-openshell`
+   target, right after the Helm install.
+3. Grants privileged SCC to the sandbox service account via a `RoleBinding` to
+   `system:openshift:scc:privileged` (gated by `openshift.scc.privilegedSandbox`), targeting
+   the sandbox ServiceAccount the subchart itself creates (`openshell-sandbox` — resolved
+   automatically from the release name, since this chart is always installed as release
+   `openshell`; no manual override needed since both are now the same release).
+4. Sets `server.auth.allowUnauthenticatedUsers: true` under `openshell:` in `values.yaml`,
+   allowing CLI/gRPC access without a bearer token since that endpoint is mTLS-only (client
+   cert required — "unauthenticated" here means no *additional* token, not no auth). This is
+   orthogonal to the OpenClaw Control UI's browser auth, which goes through a separate OAuth
+   proxy (see [ADR-0011](0011-ui-auth-openshift-oauth-proxy.md)).
 
 Agent Sandbox controller — **two install paths currently coexist, not fully reconciled**:
 
 - The Red Hat build of Agent Sandbox Operator is installed via OLM Subscription (channel `preview-0.9`) through the `deploy/helm/operators/` chart alongside the RHOAI operator (`make deploy-operators`, Phase 1).
-- Separately, `make deploy-openshell-infra` (Phase 2, invoked by `deploy-openshell`) also runs `oc apply -f manifests/agent-sandbox-v0.5.1.yaml` — the raw upstream `kubernetes-sigs/agent-sandbox` manifest, installing its own controller Deployment and CRDs directly, then waits on `crd sandboxes.agents.x-k8s.io` before proceeding.
+- Separately, `make deploy-openshell` (Phase 2) also runs `oc apply -f manifests/agent-sandbox-v0.5.1.yaml` as its first step — the raw upstream `kubernetes-sigs/agent-sandbox` manifest, installing its own controller Deployment and CRDs directly, then waits on `crd sandboxes.agents.x-k8s.io` before proceeding to the Helm install.
 
 Both paths were carried forward from earlier iterations without verifying whether the raw manifest apply is still necessary once the OLM operator is present, or whether running both risks two competing controllers reconciling the same CRD. **This needs dedicated follow-up investigation** (out of scope for this ADR merge) before being treated as an intentional, validated design.
 
@@ -68,22 +87,25 @@ Both paths were carried forward from earlier iterations without verifying whethe
 - Agent sandboxing runs on the same platform as the rest of the demo stack.
 - Demonstrates a real enterprise deployment topology.
 - SCC binding is declarative and lifecycle-managed by Helm (cleaned up on uninstall).
-- Single install command: `make deploy-openshell` (see `deploy-openshell-infra` + `deploy-openshell-oci` in `deploy/Makefile`) runs only `helm upgrade --install` twice, no imperative scripts. (`openshell-install`/`openshell-upgrade`/`openshell-uninstall` further down the Makefile are an older single-chart flow kept for reference — not what's actually deployed; see "Chart bugs found and fixed" below.)
+- Single install command: `make deploy-openshell` (`deploy/Makefile`) runs exactly one
+  `helm upgrade --install`, rendering namespace extras and the gateway itself together, plus
+  the Agent Sandbox raw-manifest apply, PKI-secret wait, and the MLflow RBAC wiring step
+  (`deploy-mlflow-openclaw-integration`) — no `ConfigMap` round-trip, no second release.
 
 ### Negative
 
 - Privileged SCC is required, which may not be acceptable in all production environments.
 - Chart `0.0.83` is pre-1.0 and may introduce breaking changes.
-- **Known gap (still open)**: the Agent Sandbox controller currently gets installed twice — once via the OLM Subscription (Phase 1) and once via the raw `v0.5.1` manifest (`deploy-openshell-infra`, Phase 2). Not yet resolved; tracked as follow-up work rather than silently documented as correct. (Teardown now correctly reverses both paths — see `deploy/Makefile`'s `undeploy-openshell` + `cleanup-orphans`.)
+- **Known gap (still open)**: the Agent Sandbox controller currently gets installed twice — once via the OLM Subscription (Phase 1) and once via the raw `v0.5.1` manifest (`deploy-openshell`'s first step, Phase 2). Not yet resolved; tracked as follow-up work rather than silently documented as correct. (Teardown now correctly reverses both paths — see `deploy/Makefile`'s `undeploy-openshell` + `cleanup-orphans`.)
 
 ## Version Pinning
 
 | Component | Pinned version | Where enforced |
 |---|---|---|
-| OpenShell OCI chart (gateway) | `0.0.83` | `deploy/Makefile` (`OPENSHELL_OCI_VERSION`) — see ADR-0006 for how this was confused with a dead `0.0.80` reference for months |
-| Wrapper chart | `0.2.0` | `deploy/helm/openshell/Chart.yaml` |
+| OpenShell OCI chart (gateway) | `0.0.83` | `deploy/helm/openshell/Chart.yaml` (`dependencies[].version`) + committed `Chart.lock` (digest-pinned) — see ADR-0006 for the history of this pin living in the wrong place (a Makefile variable, then briefly a dead dependency) before landing here |
+| Wrapper chart | `0.3.0` | `deploy/helm/openshell/Chart.yaml` |
 | Agent Sandbox Operator (OLM) | `preview-0.9` channel | `deploy/helm/operators/values.yaml` |
-| Agent Sandbox controller (raw manifest) | `v0.5.1` | `deploy/manifests/agent-sandbox-v0.5.1.yaml`, applied by `make deploy-openshell-infra` — see "Known gap" above |
+| Agent Sandbox controller (raw manifest) | `v0.5.1` | `deploy/manifests/agent-sandbox-v0.5.1.yaml`, applied by `make deploy-openshell` — see "Known gap" above |
 
 ## Chart bugs found and fixed during a from-scratch redeploy (2026-08-05)
 
@@ -101,7 +123,9 @@ each masked by the others or by that leftover state:
    never vendored by any Makefile target for this flow, `helm template`/
    `install` failed outright with "found in Chart.yaml, but missing in
    charts/ directory" unless someone had manually run `helm dependency
-   update` out-of-band. Removed the dependency entirely.
+   update` out-of-band. Removed the dependency entirely (later the same day,
+   restored as a *working* dependency instead of leaving it removed — see
+   "Chart architecture: from two releases back to one" below).
 2. **`.Values.openshell.chartVersion` and `.Values.openshell.workloadKind`
    don't exist** — the ConfigMap template referenced these instead of the
    real paths (`.Values.openshell.image.tag`, `.Values.openshell.workload.kind`),
@@ -155,11 +179,88 @@ each masked by the others or by that leftover state:
 None of these were caught earlier because a namespace, SCC RoleBinding, or
 `charts/` vendor directory from an earlier manual/legacy run was always
 already present, masking the fact that a truly fresh `helm install` of this
-chart, with only the documented `make` targets, had never actually worked.
+chart, with only the documented `make` targets, had only ever worked.
+
+## Chart architecture: from two releases back to one (2026-08-05, later the same day)
+
+Bug #1 above removed the dead `dependencies:` declaration rather than fixing it, and the
+Decision section (at the time) described the resulting two-release/`ConfigMap` split as the
+intended design, not a stopgap. On review, that split traded one problem for a worse one:
+
+- Install values for the actual gateway lived only in a live `ConfigMap` in the cluster,
+  extracted at deploy time (`oc get configmap ... -o jsonpath ... > /tmp/openshell-values.yaml`)
+  rather than in a file in git — the opposite of this project's "declarative, no scripts"
+  goal, and impossible to diff/review in a PR.
+- The version pin moved to a Makefile variable (`OPENSHELL_OCI_VERSION`) invisible from the
+  chart itself — exactly the kind of split-source-of-truth pin ADR-0006 exists to prevent.
+- Two releases in two different namespaces (`openshell-infra` in `default`, `openshell` in
+  `openshell`) for what is conceptually one deployable unit, needing two `helm uninstall`
+  calls to tear down and a workaround (`.Values.namespace` instead of `.Release.Namespace`
+  everywhere) to keep resource namespacing correct.
+
+The original `dependencies:` declaration was dead not because a real Helm dependency can't
+work here, but because of one specific mistake: `repository: oci://ghcr.io/nvidia/openshell/helm-chart`
+pointed at the chart itself instead of its *parent* path — Helm's OCI dependency resolver
+appends `name` (`helm-chart`) to `repository` itself, so that URL 404s
+(`.../helm-chart/helm-chart`). The fix is `repository: oci://ghcr.io/nvidia/openshell` with
+`name: helm-chart`. With that corrected, plus `alias: openshell` (so the existing
+`openshell:`-nested values in `values.yaml` pass straight through, no restructuring needed),
+`helm dependency build` resolves correctly and `helm template`/`install` render the whole
+release — namespace extras and the gateway — as one unit. Verified: the subchart's own
+sandbox ServiceAccount name already resolves to `openshell-sandbox` automatically (the
+upstream chart bakes in `nameOverride: "openshell"`, combined with this chart's release
+always being named `openshell`), so the manual `openshift.scc.serviceAccount` override from
+bug #7 is no longer needed.
+
+One genuine wrinkle from merging into a single release: Helm refuses to adopt a
+pre-existing `Namespace` object into a release unless it already carries Helm's own
+ownership annotations, so a chart-owned `Namespace` template combined with
+`--create-namespace` (needed so the release can install into `openshell` before that
+namespace exists) fails on a truly fresh install ("exists and cannot be imported... invalid
+ownership metadata"). Resolved by dropping the chart's `namespace.yaml` template entirely,
+installing with `--create-namespace`, and applying the one extra label this project needs
+(`opendatahub.io/dashboard: "true"`) via a single idempotent `oc label` line in
+`deploy/Makefile`'s `deploy-openshell` target instead of a chart-managed resource.
+
+Net effect: `deploy-openshell-infra` and `deploy-openshell-oci` no longer exist as separate
+Makefile targets — `deploy-openshell` is now the one target, installing the one release
+(`openshell`, in namespace `openshell`), with the version pin living solely in
+`Chart.yaml`'s `dependencies[].version` + the committed `Chart.lock`.
+
+### One real bug surfaced by this merge: missing server certificate SANs
+
+The old two-release ConfigMap design (bug list above) templated
+`pkiInitJob.serverDnsNames` with the Route hostname
+(`openshell-gw-openshell.<appsDomain>`) and a `*.<appsDomain>` wildcard — logic that
+disappeared along with the ConfigMap when it was deleted, and was not initially replicated
+in the merged single-release design. Without it, the subchart's certgen Job only signs the
+server certificate for its own default SANs (in-cluster service names, `localhost`,
+Podman/Docker-Desktop hostnames) — any client connecting through the external Route (the
+`openshell` CLI over mTLS, `oc exec`-less CLI validation) fails with `invalid peer
+certificate: certificate not valid for name "openshell-gw-openshell.<domain>"`. Fixed by
+passing `openshell.pkiInitJob.serverDnsNames[0]`/`[1]` as two separate `--set` flags in
+`deploy-openshell` (Route host + wildcard) — found and fixed 2026-08-05 during this same
+merge's live validation pass.
+
+One Make-specific pitfall hit while fixing this: `$(if $(APPS_DOMAIN),--set
+"...{a,b}")` — a single `--set` with a brace-list value — silently truncates, because
+Make's own `if` function treats a literal comma inside its argument as the
+condition/true-text/false-text separator, not something `--set`'s syntax controls. Using
+one `--set "...[N]=..."` per list element side-steps this entirely.
+
+Also found in the same pass: the certgen Job's underlying `generate-certs` step is
+idempotent and does **not** rotate an already-existing `openshell-server-tls` secret, even
+across a `helm upgrade` that changes `serverDnsNames` — consistent with the mTLS
+client-bundle fragility this ADR already documents (Context, constraint #19), just applying
+to the server cert too. A `helm upgrade` alone will not pick up a SAN change on a
+pre-existing release; a full `undeploy-openshell` + `deploy-openshell` (or manually deleting
+the `openshell-server-tls` secret first) is required. Not a new gap this ADR needs to solve
+— just a reminder that certificate changes to this chart need a clean namespace to actually
+take effect, same as any other mTLS-affecting change.
 
 ## Validation
 
-Validated on OpenShift with chart `0.0.83`, TLS + certgen hook, SCC via Helm RoleBinding, and post-install mTLS client bundle sync to the local CLI (`scripts/openshift-openshell-sync-mtls.sh`). Full procedure documented in [openshell-installation.md](../openshell-installation.md#openshift--rhoai-cluster-deployment) (that doc still describes an older single-chart flow in places — see the phase 2 Makefile targets, `deploy-openshell-infra`/`deploy-openshell-oci`, as the source of truth for what's actually live).
+Validated on OpenShift with chart `0.0.83`, TLS + certgen hook, SCC via Helm RoleBinding, and post-install mTLS client bundle sync to the local CLI (`scripts/openshift-openshell-sync-mtls.sh`). Full procedure documented in [openshell-installation.md](../openshell-installation.md#openshift--rhoai-cluster-deployment) (that doc still describes an older single-chart flow in places — see `deploy/Makefile`'s `deploy-openshell` target as the source of truth for what's actually live).
 
 Post-install verification:
 

@@ -50,7 +50,7 @@ Pin every operator, Helm chart, and container image to an explicit version. Upgr
 | Component | Pinned version | Where enforced |
 |---|---|---|
 | RHOAI operator | <!-- TODO: pin CSV --> | `deploy/helm/` Subscription |
-| OpenShell OCI chart (gateway) | `0.0.83` | `deploy/Makefile` (`OPENSHELL_OCI_VERSION`) — the actual, enforced pin |
+| OpenShell OCI chart (gateway) | `0.0.83` | `deploy/helm/openshell/Chart.yaml` (`dependencies[].version`) + committed `Chart.lock` — the actual, enforced pin (moved here 2026-08-05, see note below; previously a Makefile variable, and briefly a dead, unenforced `dependencies:` entry before that) |
 | OpenClaw (npm, in-sandbox) | `2026.6.34` | `scripts/launch-openclaw.sh` (`OPENCLAW_PIN`) |
 | `@mlflow/mlflow-openclaw` (npm, in-sandbox) | `0.2.0-rc.0` | `scripts/launch-openclaw.sh` |
 | Dependent operators | <!-- TODO: pin CSVs --> | `deploy/helm/` Subscriptions |
@@ -96,6 +96,16 @@ the "0.0.80, not 0.0.83" claim against what actually gets installed — a
 textbook case of exactly what this ADR exists to prevent, and a repeat of the
 OpenClaw npm-pin lesson above: written-down pins drift from reality unless a
 from-scratch deploy periodically proves them.
+
+**Pin relocated to the chart itself (2026-08-05, later the same day)**: the dead
+`dependencies:` entry above was dead because of one specific mistake (an OCI `repository:`
+path pointing at the chart instead of its parent — see ADR-0003's "Chart architecture" section
+for the fix), not because a real Helm dependency can't work here. With that fixed, the
+version pin now lives in `Chart.yaml`'s `dependencies[].version` plus the committed
+`Chart.lock` (Helm's own digest-pinning mechanism) — visible by reading the chart alone,
+instead of a Makefile variable a reader would have no reason to cross-check against the
+chart. `deploy/Makefile`'s `deploy-openshell` target no longer has its own version variable
+for this component at all.
 
 ## Related Decisions
 

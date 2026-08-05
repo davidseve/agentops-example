@@ -14,10 +14,13 @@
 #   make undeploy-everything  (OpenShell/oauth2-proxy -> RHOAI apps -> DSCI -> operators -> orphans)
 #   make validate-cleanup     (confirm the cluster is actually clean before redeploying)
 #
-# NOTE: the `openshell-install`/`openshell-upgrade`/`openshell-uninstall` targets further
-# below are a legacy single-chart flow kept for reference; they are NOT what's currently
-# deployed (see docs/adr/0003-openshell-deployment-on-openshift.md). The live flow is
-# deploy-openshell (deploy-openshell-infra + deploy-openshell-oci) / undeploy-openshell.
+# deploy-openshell installs OpenShell as a single Helm release: this repo's
+# wrapper chart (deploy/helm/openshell) declares the upstream OCI chart as a
+# real Helm subchart dependency (see its Chart.yaml), so one
+# `helm upgrade --install` renders the namespace extras (SCC RoleBinding,
+# Route) and the gateway itself together. See docs/adr/0003 for the history
+# of two earlier, abandoned approaches (a dead unused dependency, then a
+# two-release ConfigMap round-trip) that this replaced on 2026-08-05.
 #
 # Race condition fixes from open-claw-in-openshell (constraints #21, #23):
 # - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
@@ -54,23 +57,25 @@ PLATFORM_RELEASE  := rhoai-platform
 DATABASE_RELEASE  := rhoai-database
 MLFLOW_RELEASE    := rhoai-mlflow
 EVALHUB_RELEASE   := rhoai-evalhub
-OPENSHELL_RELEASE := openshell-infra
+OPENSHELL_RELEASE := openshell
 OAUTH2_PROXY_RELEASE := oauth2-proxy
 
-# OpenShell OCI chart
-OPENSHELL_OCI_CHART := oci://ghcr.io/nvidia/openshell/helm-chart
-OPENSHELL_OCI_VERSION := 0.0.83
 OPENSHELL_NAMESPACE := openshell
+
+# Empty Docker config to avoid `credsStore: desktop`/keychain lookups when
+# pulling the OpenShell OCI chart dependency on Podman-based hosts.
+DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 
 .PHONY: deploy-operators wait-operators deploy-platform deploy-database
 .PHONY: wait-dashboard-crd adopt-dashboard-config wait-llamastack wait-llamastack-and-refresh-dashboard
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
-.PHONY: deploy-openshell-infra deploy-openshell-oci deploy-openshell validate-openshell
+.PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
 .PHONY: validate-openclaw validate-traces validate-security
 .PHONY: test-e2e test-ui test-security test-mlflow
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: deploy-oauth2-proxy undeploy-openshell undeploy-everything
-.PHONY: template lint validate validate-cleanup
+.PHONY: openshell-sync-mtls
+.PHONY: validate validate-cleanup validate-smoke deploy-all-quiet
 
 # --- Deploy targets (ordered) ---
 
@@ -182,11 +187,19 @@ deploy-all: deploy-platform deploy-database deploy-mlflow deploy-evalhub
 	@echo "All RHOAI components deployed."
 	@echo "Next: make deploy-openshell HELM_OPTS='--set global.appsDomain=<your-apps-domain>'"
 
+# Agent token-efficient: quiet logs + .agent-status/deploy-all.json (long-running-scripts skill)
+deploy-all-quiet:
+	@bash -c 'source $(ROOT_DIR)/scripts/lib/agent-run.sh && agent_run "deploy-all" $(MAKE) deploy-all'
+
 # --- OpenShell targets (Phase 2) ---
 # OpenShell MUST be deployed AFTER RHOAI (constraint #10: MLflow RBAC depends on
 # the redhat-ods-applications namespace and mlflow-integration ClusterRole).
 
-deploy-openshell-infra:
+helm-env:
+	@mkdir -p $(DOCKER_CONFIG)
+	@test -f $(DOCKER_CONFIG)/config.json || printf '{}' > $(DOCKER_CONFIG)/config.json
+
+deploy-openshell: helm-env
 	@if [ -z "$(findstring global.appsDomain,$(HELM_OPTS))" ] && [ -z "$(APPS_DOMAIN)" ]; then \
 		echo "ERROR: global.appsDomain required. Usage:"; \
 		echo "  make deploy-openshell HELM_OPTS='--set global.appsDomain=apps.ocp.example.com'"; \
@@ -197,21 +210,30 @@ deploy-openshell-infra:
 	oc apply -f manifests/agent-sandbox-v0.5.1.yaml
 	@echo "Waiting for Agent Sandbox CRD..."
 	@until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do sleep 3; done
+	@echo "Resolving OpenShell chart dependency (pinned in Chart.yaml/Chart.lock)..."
+	DOCKER_CONFIG=$(DOCKER_CONFIG) $(HELM) dependency build $(OPENSHELL_CHART)
+	@echo "Installing OpenShell (single release: namespace extras + gateway)..."
+	@# The server's mTLS cert is minted by the subchart's own certgen Job with
+	@# only default SANs (localhost/cluster-internal names) — the external
+	@# Route hostname must be added explicitly via pkiInitJob.serverDnsNames,
+	@# or CLI/gRPC clients connecting through the Route fail with "certificate
+	@# not valid for name ...". Route host follows OpenShift's default
+	@# "<route.name>-<namespace>.<appsDomain>" pattern (no explicit host set
+	@# in route.yaml). Found 2026-08-05 during a from-scratch redeploy test.
+	@# NOTE: each SAN is its own --set with an indexed path (serverDnsNames[N]=...)
+	@# rather than one --set with a brace list ({a,b}) -- a literal comma inside
+	@# a single Make "if" function argument below is parsed by Make itself as
+	@# the condition/true-text/false-text separator, silently truncating the
+	@# value. Found 2026-08-05 while wiring this up.
 	$(HELM) upgrade --install $(OPENSHELL_RELEASE) $(OPENSHELL_CHART) \
+		--namespace $(OPENSHELL_NAMESPACE) --create-namespace \
 		-f $(OPENSHELL_CHART)/values-openshift.yaml \
-		$(if $(APPS_DOMAIN),--set global.appsDomain=$(APPS_DOMAIN)) $(HELM_OPTS)
-
-deploy-openshell-oci: deploy-openshell-infra
-	@echo "Extracting rendered values from ConfigMap..."
-	@oc -n $(OPENSHELL_NAMESPACE) get configmap openshell-helm-values \
-		-o jsonpath='{.data.values\.yaml}' > /tmp/openshell-values.yaml
-	@echo "Installing OpenShell OCI chart v$(OPENSHELL_OCI_VERSION)..."
-	$(HELM) upgrade --install openshell $(OPENSHELL_OCI_CHART) \
-		--version $(OPENSHELL_OCI_VERSION) \
-		--namespace $(OPENSHELL_NAMESPACE) \
-		-f /tmp/openshell-values.yaml $(HELM_OPTS)
-
-deploy-openshell: deploy-openshell-oci
+		$(if $(APPS_DOMAIN),--set global.appsDomain=$(APPS_DOMAIN)) \
+		$(if $(APPS_DOMAIN),--set "openshell.pkiInitJob.serverDnsNames[0]=openshell-gw-$(OPENSHELL_NAMESPACE).$(APPS_DOMAIN)") \
+		$(if $(APPS_DOMAIN),--set "openshell.pkiInitJob.serverDnsNames[1]=*.$(APPS_DOMAIN)") \
+		$(HELM_OPTS)
+	@echo "Labeling namespace for RHOAI Dashboard (Data Science Project)..."
+	oc label namespace $(OPENSHELL_NAMESPACE) opendatahub.io/dashboard=true --overwrite
 	@echo "Waiting for OpenShell gateway rollout..."
 	oc -n $(OPENSHELL_NAMESPACE) rollout status statefulset/openshell --timeout=600s
 	@echo "Waiting for PKI secrets..."
@@ -227,7 +249,7 @@ deploy-openshell: deploy-openshell-oci
 	@echo "Next: register gateway with CLI (see docs/adr/0003-openshell-deployment-on-openshift.md)"
 
 # MLflow's openclawIntegration RBAC (see deploy/helm/mlflow/values.yaml) needs the
-# openshell-sandbox ServiceAccount, which is created by deploy-openshell-oci above,
+# openshell-sandbox ServiceAccount, which is created by deploy-openshell above,
 # so it can't run as part of deploy-mlflow/deploy-all (constraint #10, ADR-0003).
 # Run automatically as the last step of deploy-openshell.
 deploy-mlflow-openclaw-integration:
@@ -272,15 +294,17 @@ deploy-oauth2-proxy:
 	fi
 	@echo "UI URL: https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)"
 
+# Fast smoke checks for agent iteration (no Playwright / full E2E — see long-running-scripts skill)
+validate-smoke: validate-openshell validate-security
+	@echo "Smoke validation complete (infra + security only)."
+
 # --- OpenShell + oauth2-proxy + Agent Sandbox teardown ---
 # Reverse of deploy-openshell/deploy-oauth2-proxy. Order: oauth2-proxy (depends on
-# openshell Service) -> openshell OCI gateway -> openshell-infra (namespace/SCC/CRDs,
-# release lives in the `default` namespace, not `openshell` -- see NOTE at top of file)
+# openshell Service) -> openshell (single release: namespace extras + gateway)
 # -> namespace -> Agent Sandbox raw manifest (CRD + cluster-scoped RBAC).
 undeploy-openshell:
 	-$(HELM) uninstall $(OAUTH2_PROXY_RELEASE) -n $(OPENSHELL_NAMESPACE)
-	-$(HELM) uninstall openshell -n $(OPENSHELL_NAMESPACE)
-	-$(HELM) uninstall $(OPENSHELL_RELEASE) -n default
+	-$(HELM) uninstall $(OPENSHELL_RELEASE) -n $(OPENSHELL_NAMESPACE)
 	-@oc delete namespace $(OPENSHELL_NAMESPACE) --wait=false 2>/dev/null || true
 	@echo "Removing Agent Sandbox raw manifest (CRD + cluster-scoped RBAC)..."
 	-@oc delete -f manifests/agent-sandbox-v0.5.1.yaml --ignore-not-found --wait=false 2>/dev/null || true
@@ -517,7 +541,7 @@ validate-cleanup:
 	fi
 	@echo "=== Helm releases (OpenShell / oauth2-proxy) ==="
 	@LEFTOVER=false; \
-	for rel_ns in "openshell:$(OPENSHELL_NAMESPACE)" "$(OPENSHELL_RELEASE):default" "$(OAUTH2_PROXY_RELEASE):$(OPENSHELL_NAMESPACE)"; do \
+	for rel_ns in "$(OPENSHELL_RELEASE):$(OPENSHELL_NAMESPACE)" "$(OAUTH2_PROXY_RELEASE):$(OPENSHELL_NAMESPACE)"; do \
 		REL=$${rel_ns%%:*}; NS=$${rel_ns##*:}; \
 		if helm status "$$REL" -n "$$NS" >/dev/null 2>&1; then \
 			echo "FAIL: release $$REL still deployed in ns $$NS"; LEFTOVER=true; \
@@ -559,66 +583,12 @@ validate-cleanup:
 	@echo "Cleanup validation complete."
 
 # --- OpenShell (cluster) ---
-
-HELM_CHART_DIR := $(ROOT_DIR)/deploy/helm/openshell
-
-RELEASE_NAME ?= openshell
-NAMESPACE ?= openshell
-HELM_TIMEOUT ?= 10m
-DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
-
-.PHONY: help openshell-deps openshell-install openshell-upgrade openshell-sync-mtls openshell-status openshell-uninstall helm-env
-
-helm-env:
-	@mkdir -p $(DOCKER_CONFIG)
-	@test -f $(DOCKER_CONFIG)/config.json || printf '{}' > $(DOCKER_CONFIG)/config.json
-
-help:
-	@echo "OpenShell cluster targets:"
-	@echo "  make openshell-deps       Update Helm chart dependencies (Chart.lock)"
-	@echo "  make openshell-install    Install OpenShell gateway (Helm — namespace + SCC + gateway + mTLS sync)"
-	@echo "  make openshell-upgrade    Upgrade release with current values (+ mTLS sync)"
-	@echo "  make openshell-sync-mtls  Sync openshell-client-tls to local CLI mTLS bundle"
-	@echo "  make openshell-status     Show release and pod status"
-	@echo "  make openshell-uninstall  Remove Helm release"
-
-openshell-deps: helm-env
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm dependency update
+# mTLS client bundle sync only. Install/upgrade/uninstall/status are the
+# deploy-openshell/undeploy-openshell/validate-openshell targets above — this
+# used to be a separate, since-removed "legacy" single-chart flow
+# (openshell-install/-upgrade/-uninstall/-status/-deps) that briefly diverged
+# from deploy-openshell's two-release split; both are now the same single
+# release, so there is nothing left for that duplicate flow to do.
 
 openshell-sync-mtls:
-	NAMESPACE=$(NAMESPACE) $(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh
-
-openshell-install: helm-env openshell-deps
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade --install $(RELEASE_NAME) . \
-		--namespace $(NAMESPACE) \
-		--create-namespace \
-		-f values.yaml \
-		-f values-openshift.yaml \
-		--wait \
-		--timeout $(HELM_TIMEOUT)
-	@$(MAKE) openshell-sync-mtls
-	@$(MAKE) openshell-status
-
-openshell-upgrade: helm-env openshell-deps
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade $(RELEASE_NAME) . \
-		--namespace $(NAMESPACE) \
-		-f values.yaml \
-		-f values-openshift.yaml \
-		--wait \
-		--timeout $(HELM_TIMEOUT)
-	@$(MAKE) openshell-sync-mtls
-	@$(MAKE) openshell-status
-
-openshell-status:
-	@echo "--- Helm ---"
-	@DOCKER_CONFIG=$(DOCKER_CONFIG) helm list -n $(NAMESPACE) 2>/dev/null || true
-	@echo "--- Workloads ---"
-	@oc -n $(NAMESPACE) get statefulset,pods,svc,secret 2>/dev/null | grep -E 'NAME|openshell' || true
-	@echo "--- SCC ---"
-	@oc -n $(NAMESPACE) get rolebinding 2>/dev/null | grep -E 'NAME|privileged' || true
-
-openshell-uninstall: helm-env
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) || true
-	@echo "Deleting namespace $(NAMESPACE)..."
-	-@oc delete ns $(NAMESPACE) --wait=false 2>/dev/null || true
-	@echo "OpenShell cluster cleanup complete."
+	NAMESPACE=$(OPENSHELL_NAMESPACE) $(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh

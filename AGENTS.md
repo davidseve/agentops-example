@@ -122,7 +122,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `cluster-cleanup` | Remove RHOAI platform stack from OpenShift — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | `openshell-local-install` | Install OpenShell CLI + local gateway on macOS/Linux — see [openshell-installation.md](docs/openshell-installation.md) |
 | `openshell-local-cleanup` | Uninstall local OpenShell stack on macOS/Linux |
-| `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy openshell-install` |
+| `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy deploy-openshell` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
 | `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/); required before reversing Accepted decisions |
@@ -147,7 +147,7 @@ agentops-example/
 │   ├── architecture.md            # Detailed architecture (Phase 2)
 │   └── demo-script.md             # Step-by-step demo script (Phase 4)
 ├── deploy/
-│   ├── Makefile               # make deploy-all, validate, openshell-install, …
+│   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
 │   └── openshift/             # OpenShift-specific manifests (non-Helm)

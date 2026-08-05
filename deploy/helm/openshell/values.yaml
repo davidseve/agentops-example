@@ -1,32 +1,31 @@
 # Default values for agentops-openshell.
-# Upstream chart values are nested under the `openshell` alias (see Chart.yaml).
+# Upstream chart values are nested under the `openshell` alias (see Chart.yaml
+# `dependencies[].alias`) and passed straight through to the real OpenShell
+# subchart dependency rendered as part of this same release.
 
 # --- Wrapper-level settings ---
 
 openshift:
-  namespace:
-    create: false
   scc:
     privilegedSandbox: false
-    # Must match the sandbox ServiceAccount actually created by the *separate*
-    # `deploy-openshell-oci` Helm release (hardcoded release name "openshell"
-    # in deploy/Makefile, which the upstream OCI chart's helpers turn into
-    # "<release>-sandbox"). This release is "openshell-infra", so the
-    # `agentops-openshell.sandboxSA` helper's own default
-    # ("<this-release>-sandbox" = "openshell-infra-sandbox") would bind the
-    # privileged SCC to a ServiceAccount that doesn't exist — must be set
-    # explicitly here instead. Found 2026-08-05 during a from-scratch
-    # redeploy test.
-    serviceAccount: "openshell-sandbox"
+    # Left unset by default: the `agentops-openshell.sandboxSA` helper
+    # (templates/_helpers.tpl) already defaults to "<release name>-sandbox",
+    # and this chart is always installed with release name "openshell" (see
+    # deploy/Makefile), so it resolves to "openshell-sandbox" automatically —
+    # matching the sandbox ServiceAccount the subchart itself creates. Only
+    # set this to override if the release is ever installed under a
+    # different name.
+    serviceAccount: ""
 
-# --- Upstream subchart overrides ---
+# --- Upstream subchart overrides (alias: openshell) ---
 
 openshell:
-  # Must match OPENSHELL_OCI_VERSION in deploy/Makefile (the chart version actually
-  # installed by `deploy-openshell-oci`) — that Makefile variable is the single
-  # source of truth for this pin, per docs/adr/0006-explicit-version-pinning.md.
-  # These tags flow into the rendered openshell-helm-values ConfigMap consumed by
-  # that install, so a mismatch here silently pins the wrong image tag.
+  # The version actually installed is pinned in Chart.yaml's
+  # `dependencies[].version` + Chart.lock (Helm's own dependency-pinning
+  # mechanism) — that is the single source of truth per
+  # docs/adr/0006-explicit-version-pinning.md. Keep these tags in sync with
+  # that version; a mismatch here silently pins the wrong image tag even
+  # though the chart itself was correctly resolved.
   image:
     repository: ghcr.io/nvidia/openshell/gateway
     tag: "0.0.83"
@@ -65,14 +64,6 @@ openshell:
 
   networkPolicy:
     enabled: true
-
-# --- OpenClaw Gateway Route (Service + Route for HTTP access to sandbox gateway) ---
-openclawGateway:
-  enabled: true
-  sandboxNameHash: "171028ef"
-
-# Namespace (used by templates)
-namespace: openshell
 
 # Route (existing gRPC route for openshell CLI)
 route:

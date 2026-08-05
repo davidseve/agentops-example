@@ -53,7 +53,7 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 │   ├── cluster-bootstrap.md   # RHOAI platform deploy on OpenShift
 │   └── openshell-installation.md  # OpenShell install (local + cluster)
 ├── deploy/                # Deployment manifests (Helm, Kustomize)
-│   ├── Makefile           # Cluster deploy targets (deploy-all, openshell-install, …)
+│   ├── Makefile           # Cluster deploy targets (deploy-all, deploy-openshell, …)
 │   └── helm/              # RHOAI platform + OpenShell wrapper charts
 ├── agent/                 # Agent source code, prompts, guardrails config
 ├── tests/                 # Health checks, red teaming

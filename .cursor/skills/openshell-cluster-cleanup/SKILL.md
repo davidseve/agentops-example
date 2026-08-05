@@ -11,14 +11,6 @@ description: >-
 Remove OpenShell + oauth2-proxy + the Agent Sandbox raw-manifest install from OpenShift.
 Destructive for the namespace workload — confirm with the user first.
 
-> **Do not use `make -C deploy openshell-uninstall`.** That target only
-> reverses the older single-chart flow (a single `helm uninstall openshell -n
-> openshell`) — it does **not** remove the `openshell-infra` release
-> (installed in namespace `default`, easy to miss), `oauth2-proxy`, or the
-> Agent Sandbox raw-manifest resources (CRD + cluster-scoped `ClusterRole`/
-> `ClusterRoleBinding`), which are not tied to any Helm release. Use
-`undeploy-openshell` below instead.
-
 Does **not** remove local CLI (`openshell-local-cleanup`) or the RHOAI/Agent Sandbox
 operators installed via OLM (`make -C deploy undeploy-all`, a separate, RHOAI-wide
 teardown).
@@ -48,10 +40,9 @@ oc get ns openshell agent-sandbox-system 2>&1
 make -C deploy undeploy-openshell
 ```
 
-Removes, in order: `oauth2-proxy` release, `openshell` release (OCI gateway,
-namespace `openshell`), `openshell-infra` release (namespace `default` — easy to
-forget when uninstalling by hand), the `openshell` namespace itself, and the Agent
-Sandbox raw manifest (`oc delete -f manifests/agent-sandbox-v0.5.1.yaml` — CRD
+Removes, in order: `oauth2-proxy` release, `openshell` release (single release: namespace
+extras + gateway StatefulSet, in namespace `openshell`), the `openshell` namespace itself,
+and the Agent Sandbox raw manifest (`oc delete -f manifests/agent-sandbox-v0.5.1.yaml` — CRD
 `sandboxes.agents.x-k8s.io`, `ClusterRole`/`ClusterRoleBinding agent-sandbox-controller`,
 namespace `agent-sandbox-system`).
 
@@ -61,10 +52,10 @@ namespace `agent-sandbox-system`).
 make -C deploy validate-cleanup
 ```
 
-Checks: no `openshell`/`openshell-infra`/`oauth2-proxy` Helm releases, no Agent Sandbox
-cluster-scoped leftovers, namespace `openshell` gone (or draining — namespaces stuck in
-`Terminating` due to an orphaned finalizer, e.g. on a `tenants.maas.opendatahub.io`
-resource after its owning controller is already gone, need a manual
+Checks: no `openshell`/`oauth2-proxy` Helm releases, no Agent Sandbox cluster-scoped
+leftovers, namespace `openshell` gone (or draining — namespaces stuck in `Terminating` due
+to an orphaned finalizer, e.g. on a `tenants.maas.opendatahub.io` resource after its owning
+controller is already gone, need a manual
 `oc patch <resource> --type=merge -p '{"metadata":{"finalizers":[]}}'`; `cleanup-orphans`
 already does this for the known `models-as-a-service` case).
 
@@ -77,8 +68,7 @@ this skill alone.
 
 | Component | Removed by `undeploy-openshell` |
 |---|---|
-| `openshell` Helm release (gateway StatefulSet, TLS/JWT secrets) | Yes |
-| `openshell-infra` Helm release (namespace, SCC RoleBinding, Route, ConfigMap) | Yes |
+| `openshell` Helm release (namespace extras + gateway StatefulSet, TLS/JWT secrets) | Yes |
 | `oauth2-proxy` Helm release | Yes |
 | Namespace `openshell` (+ PVC data) | Yes |
 | Agent Sandbox raw manifest (CRD, cluster-scoped RBAC, `agent-sandbox-system` namespace) | Yes |

@@ -63,7 +63,7 @@
 
 ## Phase 4 - Packaging and Polish
 
-- [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: [`deploy/helm/openshell/`](../deploy/helm/openshell/) + `make -C deploy openshell-install`
+- [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: [`deploy/helm/openshell/`](../deploy/helm/openshell/) + `make -C deploy deploy-openshell`
 - [x] Refactor OpenShell wrapper chart (`0.2.0`): absorb namespace + SCC RoleBinding into Helm; pin Agent Sandbox `v0.5.1`; retire kustomize + SCC script — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
 - [ ] Write step-by-step demo script with timing marks (10-13 min)
 - [x] Create health-check script (`tests/health-check.sh`)
