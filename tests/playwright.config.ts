@@ -16,6 +16,7 @@ if (process.env.MLFLOW_WORKSPACE) {
 }
 
 const STORAGE_STATE = path.join(__dirname, 'test-results', '.auth', 'state.json');
+const MLFLOW_STORAGE_STATE = path.join(__dirname, 'test-results', '.auth', 'mlflow-state.json');
 
 export default defineConfig({
   testDir: '.',
@@ -41,12 +42,23 @@ export default defineConfig({
       use: { storageState: STORAGE_STATE },
     },
     {
+      name: 'mlflow-auth-setup',
+      testMatch: /mlflow-auth\.setup\.ts/,
+      use: { baseURL: mlflowBaseURL },
+    },
+    {
       name: 'mlflow-ui-tests',
       testMatch: /mlflow-ui\.spec\.ts/,
-      dependencies: ['ui-tests'],
+      // Depends on ui-tests so the E2E chat test (which produces the trace
+      // this project asserts on) has already run, and on its own auth setup
+      // — see mlflow-auth.setup.ts for why the openclaw-ui storageState
+      // can't be reused (RHOAI's `data-science` OAuthClient forces
+      // re-authentication regardless of cluster SSO session).
+      dependencies: ['ui-tests', 'mlflow-auth-setup'],
       use: {
         baseURL: mlflowBaseURL,
         extraHTTPHeaders: mlflowAuthHeaders,
+        storageState: MLFLOW_STORAGE_STATE,
       },
     },
   ],

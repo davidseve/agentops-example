@@ -39,6 +39,19 @@ if [[ -z "$APPS_DOMAIN" ]]; then
   APPS_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')
 fi
 
+# Pod/Service network CIDRs for gateway.trustedProxies — must reflect this
+# cluster's actual network config (varies per OCP install), not a copied
+# constant from another environment (e.g. CRC's 10.217.0.0/22).
+POD_NETWORK_CIDR="${POD_NETWORK_CIDR:-}"
+if [[ -z "$POD_NETWORK_CIDR" ]]; then
+  POD_NETWORK_CIDR=$(oc get network.config cluster -o jsonpath='{.spec.clusterNetwork[0].cidr}')
+fi
+SERVICE_NETWORK_CIDR="${SERVICE_NETWORK_CIDR:-}"
+if [[ -z "$SERVICE_NETWORK_CIDR" ]]; then
+  SERVICE_NETWORK_CIDR=$(oc get network.config cluster -o jsonpath='{.spec.serviceNetwork[0]}')
+fi
+info "Pod network: ${POD_NETWORK_CIDR}, Service network: ${SERVICE_NETWORK_CIDR}"
+
 # ─── MLflow wiring ────────────────────────────────────────────────────────────
 step "Reading MLflow wiring"
 MLFLOW_TOKEN="${MLFLOW_TOKEN:-}"
@@ -63,6 +76,8 @@ mkdir -p "$(dirname "$CONFIG_RENDERED")"
 sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
     -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
     -e "s|__MLFLOW_EXPERIMENT_ID__|${MLFLOW_EXPERIMENT_ID}|g" \
+    -e "s|__POD_NETWORK_CIDR__|${POD_NETWORK_CIDR}|g" \
+    -e "s|__SERVICE_NETWORK_CIDR__|${SERVICE_NETWORK_CIDR}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
 pass "Rendered config (mlflow-openclaw plugin enabled, experiment=${MLFLOW_EXPERIMENT_ID})"
 
@@ -75,22 +90,44 @@ if ! oc -n "$NAMESPACE" get pod "$SANDBOX_POD" &>/dev/null; then
 fi
 info "Sandbox pod: $SANDBOX_POD"
 
-# Detect sandbox UID (OpenShift assigns arbitrary UIDs)
-SANDBOX_UID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -u 2>/dev/null || echo "1000820000")
-SANDBOX_GID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -g 2>/dev/null || echo "0")
+# Detect sandbox UID (OpenShift assigns arbitrary UIDs). Note: `oc exec`
+# without an explicit user runs as the container's default user (root in
+# the "agent" container), NOT the "sandbox" user the actual OpenClaw
+# process runs as (via `openshell sandbox exec`) — so `id -u` alone would
+# wrongly report 0. Query the named "sandbox" user explicitly instead.
+SANDBOX_UID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -u sandbox 2>/dev/null || echo "1000820000")
+SANDBOX_GID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -g sandbox 2>/dev/null || echo "1000820000")
 info "Sandbox UID:GID = ${SANDBOX_UID}:${SANDBOX_GID}"
 
 # ─── Step 1: Kill stale gateway processes ─────────────────────────────────────
 step "Cleaning stale gateway processes"
 oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c \
   'for p in $(pgrep -f "openclaw|node" 2>/dev/null); do kill -9 $p 2>/dev/null; done; sleep 2; rm -f /sandbox/workspace/.openclaw/state/*.lock /tmp/openclaw*/*.lock' 2>/dev/null || true
+# Our template is the single source of truth (declarative, GitOps-style) —
+# stale openclaw.json.bak* files from prior runs have no `meta.lastTouchedVersion`
+# match with our fresh upload, which trips OpenClaw's "missing-meta-vs-last-good"
+# anomaly detector and can make it silently *restore config from an old backup*
+# instead of using what we just uploaded (bit us with a backup carrying a
+# stale `auth.mode: token` + `bind: auto`, from an env var we no longer pass).
+oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c \
+  'rm -f /sandbox/workspace/.openclaw/openclaw.json.bak*' 2>/dev/null || true
 pass "Stale processes cleaned"
 
-# ─── Step 2: Install OpenClaw ─────────────────────────────────────────────────
-step "Ensuring OpenClaw is installed"
-if ! oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- which openclaw &>/dev/null; then
-  info "Installing OpenClaw via npm..."
-  oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- npm install -g openclaw
+# ─── Step 2: Install OpenClaw (pinned — ADR-0006) ────────────────────────────
+# Unpinned `npm install -g openclaw` installs whatever "latest" resolves to
+# at exec time — not reproducible, and a real config schema (e.g.
+# `gateway.terminal`) can silently change between versions, breaking gateway
+# startup with "Invalid config". open-claw-in-openshell pins 2026.7.1, but
+# that release requires Node >=22.22.3 while this sandbox image ships
+# v22.22.1 — so we pin 2026.6.34 instead: the newest release still
+# compatible with this Node (engines >=22.19.0) whose config validation
+# tolerates our template (2026.6.33 rejects `gateway.terminal` as unknown).
+OPENCLAW_PIN="${OPENCLAW_PIN:-2026.6.34}"
+step "Ensuring OpenClaw ${OPENCLAW_PIN} is installed"
+CURRENT_VERSION=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- openclaw --version 2>/dev/null | head -1 || true)
+if [[ "$CURRENT_VERSION" != *"$OPENCLAW_PIN"* ]]; then
+  info "Installing openclaw@${OPENCLAW_PIN} (found: ${CURRENT_VERSION:-none})..."
+  oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- npm install -g "openclaw@${OPENCLAW_PIN}"
 fi
 OPENCLAW_VERSION=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- openclaw --version 2>&1 | head -1)
 pass "OpenClaw version: $OPENCLAW_VERSION"
@@ -225,7 +262,7 @@ fi
 # ─── Summary ──────────────────────────────────────────────────────────────────
 step "OpenClaw launch complete"
 echo ""
-info "Gateway:  https://openclaw-gw-${NAMESPACE}.${APPS_DOMAIN}/"
+info "Gateway UI (via oauth-proxy): https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/"
 info "Tracing:  mlflow-openclaw → ${MLFLOW_SVC_URL} (workspace=${NAMESPACE}, experiment=${MLFLOW_EXPERIMENT_ID})"
 info "Plugins:  memory-core, mlflow-openclaw"
 info ""

@@ -1,24 +1,47 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 const CHAT_TIMEOUT = 30_000;
+
+// The Control UI occasionally shows its own built-in "Control UI did not
+// start" recovery screen (app bundle registration race, not an auth/infra
+// issue — see docs.openclaw.ai/web/control-ui#blank-control-ui-page) when
+// tests navigate back-to-back rapidly against the same gateway process.
+// The UI itself offers a "Try again" button for exactly this case; retry
+// via reload (observed more reliable than the in-page button) up to twice.
+async function gotoControlUi(page: Page) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt === 0) {
+      await page.goto('/');
+    } else {
+      await page.reload();
+    }
+    const messageInput = page.getByPlaceholder(/Message/);
+    const startFailed = page.getByText('Control UI did not start');
+    const result = await Promise.race([
+      messageInput.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'ok' as const),
+      startFailed.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'failed' as const),
+    ]).catch(() => 'timeout' as const);
+    if (result === 'ok') return;
+  }
+}
 
 test.describe('OpenClaw Control UI', () => {
 
   test('loads and shows chat interface', async ({ page }) => {
-    await page.goto('/');
+    await gotoControlUi(page);
     await expect(page).toHaveTitle('OpenClaw Control');
     await expect(page.getByPlaceholder(/Message/)).toBeVisible();
     await expect(page.getByText(/claude-sonnet|Claude Sonnet|maas/).first()).toHaveCount(1, { timeout: 10000 });
   });
 
   test('sidebar navigation is present', async ({ page }) => {
-    await page.goto('/');
+    await gotoControlUi(page);
     await expect(page.getByText('Overview')).toBeVisible();
-    await expect(page.getByText('Main Session')).toBeVisible();
+    await expect(page.getByText('Main Session').first()).toBeVisible();
   });
 
   test('chat input is functional', async ({ page }) => {
-    await page.goto('/');
+    await gotoControlUi(page);
     const messageInput = page.getByPlaceholder(/Message/);
     await expect(messageInput).toBeVisible();
     await messageInput.fill('test message');
@@ -28,7 +51,7 @@ test.describe('OpenClaw Control UI', () => {
   });
 
   test('E2E chat: model responds via MaaS', async ({ page }) => {
-    await page.goto('/');
+    await gotoControlUi(page);
 
     const messageInput = page.getByPlaceholder(/Message/);
     await messageInput.waitFor({ state: 'visible' });

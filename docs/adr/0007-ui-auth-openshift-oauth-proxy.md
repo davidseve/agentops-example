@@ -44,8 +44,10 @@ Browser → oauth-proxy (reencrypt Route, OCP OAuth)
   Nginx handles mTLS with the OpenShell relay using `openshell-client-tls` cert/key and
   `openshell-server-tls` CA. This is required because the relay enforces client certificate
   authentication and `ose-oauth-proxy` doesn't support `--upstream-client-cert-file`.
-- **Gateway auth mode**: `none` — safe because the gateway binds to `loopback` only; all
-  external access passes through OCP OAuth + mTLS. No `OPENCLAW_GATEWAY_TOKEN` needed.
+- **Gateway auth mode**: `trusted-proxy` — the gateway trusts the
+  `x-forwarded-email` identity header set by the proxy chain, but only from
+  the pod/service network CIDRs (see "Gateway auth mode" investigation
+  below for why this replaced an initial `none` decision).
 - **TLS**: Route uses `reencrypt` (oauth-proxy terminates TLS with service-CA cert)
 - **Session**: Cookie-based, 168h expiry, 1h refresh
 - **Service exposure**: `openshell service expose openclaw-gw 18789 openclaw-ui` registers
@@ -171,6 +173,64 @@ the specific lateral-movement bypass found here; a `NetworkPolicy` for
 defense-in-depth on `8443` is a reasonable future hardening step, not yet
 implemented.
 
+### Gateway auth mode: why we tried `none`, then reverted to `trusted-proxy` (2026-08-05)
+
+While debugging an "Auth required" error in the Control UI, `gateway.auth.mode`
+was changed from `trusted-proxy` to `none` (with `bind: loopback`) as a
+pragmatic fix under time pressure. This was **wrong to leave in place** —
+`trusted-proxy` is strictly better (it forwards real per-user identity from
+`x-forwarded-email` into OpenClaw's audit/ownership model instead of every
+request looking like an anonymous local user) and was already validated as
+working in `open-claw-in-openshell` (its ADR-0012 covers the same header
+contract in depth). Re-investigated instead of assuming either config was
+right, per this project's restrictive-credentials principle:
+
+- **What `auth: none` actually bought us**: nothing that `trusted-proxy`
+  doesn't also provide, since both configurations already require `bind:
+  loopback` (only reachable via the proxy chain). `none` additionally
+  discards the caller's real identity, which is a strict regression for
+  audit/ownership — not an acceptable trade even temporarily.
+- **The real failures were elsewhere**, and `auth: none` only masked them by
+  coincidence of timing. Root-caused each one directly from gateway logs and
+  fixed at the source instead of re-reaching for `auth: none`:
+  1. **`allowedOrigins` mismatch** — the WebSocket handshake's `Origin` header
+     (the Control UI's own route hostname) wasn't in
+     `gateway.controlUi.allowedOrigins`, causing "Browser origin not allowed".
+     Fixed by adding the actual route hostname to the template.
+  2. **Sandbox UID misdetection** — `launch-openclaw.sh` used `id -u` inside
+     the sandbox pod's `agent` container (returns `0`/root, the `exec`
+     process's own UID) instead of `id -u sandbox` (the actual `sandbox` user
+     OpenClaw runs as). Ownership fixups then chowned files to root, and the
+     `sandbox` user's subsequent write attempts failed with permission errors
+     that surfaced as opaque gateway startup failures.
+  3. **Unpinned OpenClaw version drift** — `npm install -g openclaw` (no
+     version pin) had drifted to a release whose stricter gateway config
+     validation rejected `gateway.terminal` as an unrecognized key. See
+     ADR-0006 for the full fix (pin `2026.6.34`, remove the unsupported key).
+  4. **Stale `openclaw.json.bak*` files** — from earlier iteration days, with
+     no `meta.lastTouchedVersion`. OpenClaw's own config-integrity check
+     compared our fresh (also meta-less) upload against these backups,
+     flagged a `missing-meta-vs-last-good` anomaly, and on one run silently
+     **restored the stale backup** — which had `auth.mode: token` and
+     `bind: auto`, depending on an `OPENCLAW_GATEWAY_TOKEN` env var we'd
+     since stopped passing. Fixed by having `launch-openclaw.sh` delete
+     `openclaw.json.bak*` before every fresh upload — our template is the
+     single declarative source of truth, so a stale backup silently winning
+     is itself a bug, not a feature, for this project's GitOps approach.
+- **Verified `trusted-proxy` end-to-end** after each fix: confirmed via nginx
+  bridge logs that `x-forwarded-email`, `x-forwarded-proto`, and
+  `x-forwarded-host` all reach the gateway correctly on WebSocket upgrades
+  (not just plain HTTP), including through the full chain (browser →
+  oauth-proxy → nginx mTLS bridge → OpenShell relay → gateway). Full
+  Playwright suite (19 tests: auth, UI, security, MLflow tracing) passes
+  against `trusted-proxy`.
+- `gateway.trustedProxies` CIDRs are now injected dynamically by
+  `launch-openclaw.sh` from `oc get network.config cluster` (pod/service
+  network) rather than hardcoded — the original hardcoded values were
+  copied from the reference project's CRC cluster and didn't match this
+  OCP sandbox's actual network ranges (another instance of not blindly
+  trusting a reference-project config value).
+
 ## Consequences
 
 - Any OCP cluster user can log in to the UI (HTPasswd, LDAP, any configured IdP)
@@ -181,8 +241,12 @@ implemented.
   since OpenShell's service-routing has no application-layer auth check of
   its own
 - The direct `openclaw-gw` route (without auth) is removed
-- WebSocket connections work through the proxy after OAuth login
-- Gateway binds to loopback with `auth: none` — secured by the proxy chain, not by token
+- WebSocket connections work through the proxy after OAuth login, including
+  header propagation (`x-forwarded-email` etc.) required by `trusted-proxy`
+- Gateway binds to loopback with `auth: trusted-proxy` — the proxy chain is
+  still the only reachability path (unchanged from the `none` alternative),
+  but the gateway now also receives and trusts real per-user identity
+  instead of treating every request as anonymous
 - nginx sidecar adds minimal overhead (~32Mi RAM) but solves mTLS without custom proxy builds;
   it **must** bind to `127.0.0.1` only (see security finding above) — any future edit to
   `nginx-configmap.yaml` must preserve `listen 127.0.0.1:8090;`
@@ -192,6 +256,7 @@ implemented.
 
 ## References
 
+- [ADR-0006: Explicit Version Pinning](0006-explicit-version-pinning.md) — OpenClaw npm version pin, found missing during this investigation
 - open-claw-in-openshell: ADR-0016 (OpenShift-native OAuth spike)
 - open-claw-in-openshell: ADR-0012 (Trusted-Proxy Auth — `x-forwarded-email` header contract)
 - open-claw-in-openshell: charts/oauth2-proxy/

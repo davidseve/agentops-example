@@ -67,16 +67,19 @@
     "bind": "loopback",
     "port": 18789,
     "auth": {
-      "mode": "none"
+      "mode": "trusted-proxy",
+      "trustedProxy": {
+        "userHeader": "x-forwarded-email",
+        "requiredHeaders": ["x-forwarded-proto", "x-forwarded-host"],
+        "allowLoopback": true
+      }
     },
+    "trustedProxies": ["127.0.0.1", "::1", "__POD_NETWORK_CIDR__", "__SERVICE_NETWORK_CIDR__"],
     "controlUi": {
       "allowedOrigins": [
         "https://openclaw-gw--openclaw-ui.__APPS_DOMAIN__"
       ],
       "dangerouslyDisableDeviceAuth": true
-    },
-    "terminal": {
-      "enabled": false
     },
     "reload": {
       "mode": "off"
