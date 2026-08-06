@@ -4,7 +4,7 @@
 # This is the one imperative step that cannot be expressed as a Helm chart
 # because it requires runtime interaction with the sandbox process namespace.
 #
-# Key design decisions (from open-claw-in-openshell reference):
+# Key design decisions (from the reference project):
 #   - mlflow-openclaw plugin is the sole trace source (not diagnostics-otel)
 #   - Plugin requires patching for OpenClaw 2026.7.1 compat (patch-mlflow-plugin.py)
 #   - Extensions must be root-owned (OpenClaw "suspicious ownership" check)
@@ -117,7 +117,7 @@ pass "Stale processes cleaned"
 # Unpinned `npm install -g openclaw` installs whatever "latest" resolves to
 # at exec time — not reproducible, and a real config schema (e.g.
 # `gateway.terminal`) can silently change between versions, breaking gateway
-# startup with "Invalid config". open-claw-in-openshell pins 2026.7.1, but
+# startup with "Invalid config". The reference project pins 2026.7.1, but
 # that release requires Node >=22.22.3 while this sandbox image ships
 # v22.22.1 — so we pin 2026.6.34 instead: the newest release still
 # compatible with this Node (engines >=22.19.0) whose config validation

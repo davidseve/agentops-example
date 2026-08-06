@@ -3,7 +3,7 @@
 **Status**: Accepted (updated 2026-08-05)  
 **Date**: 2026-08-04  
 **Layer**: Agent  
-**Source**: open-claw-in-openshell (ADR-0016)
+**Source**: Migrated learnings from a reference OpenShell/OpenClaw deployment (its ADR-0016)
 
 ## Context
 
@@ -89,8 +89,8 @@ per-action authorization (that lives in `tools.deny` / `policies/openclaw-sandbo
 
 ### Root cause of why mTLS (and therefore nginx) is required here
 
-Investigated directly in the OpenShell gateway source
-(`/home/dseveria/git/ai/agents/OpenShell`), not assumed. The relay's TLS
+Investigated directly in the OpenShell gateway source (local clone of the
+upstream repo), not assumed. The relay's TLS
 listener decides whether to require a client certificate with a single
 formula:
 
@@ -106,7 +106,7 @@ but not required (`allow_unauthenticated()` on the verifier); with
 
 This exactly explains the difference from the reference project:
 
-| | agentops-example | open-claw-in-openshell |
+| | agentops-example | reference project |
 |---|---|---|
 | Client CA (PKI) | Yes | Yes |
 | `server.oidc.issuer` | Not configured (no Keycloak) | Configured (Keycloak) |
@@ -182,7 +182,7 @@ pragmatic fix under time pressure. This was **wrong to leave in place** —
 `trusted-proxy` is strictly better (it forwards real per-user identity from
 `x-forwarded-email` into OpenClaw's audit/ownership model instead of every
 request looking like an anonymous local user) and was already validated as
-working in `open-claw-in-openshell` (its ADR-0012 covers the same header
+working in the reference project (its ADR-0012 covers the same header
 contract in depth). Re-investigated instead of assuming either config was
 right, per this project's restrictive-credentials principle:
 
@@ -258,9 +258,9 @@ right, per this project's restrictive-credentials principle:
 ## References
 
 - [ADR-0006: Explicit Version Pinning](0006-explicit-version-pinning.md) — OpenClaw npm version pin, found missing during this investigation
-- open-claw-in-openshell: ADR-0016 (OpenShift-native OAuth spike)
-- open-claw-in-openshell: ADR-0012 (Trusted-Proxy Auth — `x-forwarded-email` header contract)
-- open-claw-in-openshell: charts/oauth2-proxy/
+- Reference project: ADR-0016 (OpenShift-native OAuth spike)
+- Reference project: ADR-0012 (Trusted-Proxy Auth — `x-forwarded-email` header contract)
+- Reference project: its own oauth2-proxy chart
 - OpenShift docs: Using service accounts as OAuth clients
 - OpenShell source: `crates/openshell-server/src/cli.rs` (`require_client_auth` formula),
   `crates/openshell-server/src/tls.rs` (client-cert verifier modes),

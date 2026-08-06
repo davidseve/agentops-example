@@ -22,7 +22,7 @@ The Agent Sandbox controller was originally installed from the upstream `kuberne
 
 The original deployment used a hybrid approach: a thin Helm wrapper chart for the gateway, plus imperative scripts (`openshift-openshell-scc.sh`) and kustomize overlays (`deploy/openshift/openshell/`) for the namespace and SCC grant. This split complicated the install flow and prevented Helm from managing the full release lifecycle (SCC bindings were invisible to `helm uninstall`).
 
-**Ordering and templating lessons carried over from open-claw-in-openshell** (`scripts/deploy-openshell.sh`, `docs/constraints.md` #10, #12, #19; merged in from a since-retired duplicate ADR, 2026-08-05):
+**Ordering and templating lessons carried over from the reference project** (its own deployment script and constraints documentation #10, #12, #19; merged in from a since-retired duplicate ADR, 2026-08-05):
 
 - OpenShell must be deployed **after** RHOAI — the MLflow integration RBAC (used by the agent tracing path) depends on the `redhat-ods-applications` namespace and the `mlflow-integration` ClusterRole existing first (constraint #10). The Makefile enforces this ordering (`deploy-openshell` is never invoked before `deploy-all`/`deploy-platform`).
 - mTLS client-bundle registration is fragile across `helm upgrade` (constraint #19) — this is why a dedicated post-install sync step exists (see Validation below) rather than assuming the client bundle survives an upgrade untouched.
@@ -287,12 +287,12 @@ The "Security Attack" demo segment uses OpenShell to show agent execution isolat
 - [Kubernetes Setup — TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup)
 - [Red Hat build of Agent Sandbox — Install](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/install-agent-sandbox-overview_agent-sandbox)
 - [Agent Sandbox upstream](https://github.com/kubernetes-sigs/agent-sandbox)
-- open-claw-in-openshell: `scripts/deploy-openshell.sh`, `docs/constraints.md` #10, #12, #19 (deployment-ordering and mTLS-fragility lessons, merged in from a since-retired duplicate ADR — see note below)
+- Reference project: deployment-ordering and mTLS-fragility lessons (constraints #10, #12, #19), merged in from a since-retired duplicate ADR — see note below
 
 ## Note on merged ADR (2026-08-05)
 
-This ADR and a second one — written independently during the
-open-claw-in-openshell migration and (after a numbering-collision fix)
+This ADR and a second one — written independently during the initial
+migration of learnings from the reference project and (after a numbering-collision fix)
 numbered `0009-openshell-deployment-method.md` — ended up documenting the
 same decision: deploying OpenShell via this project's wrapper Helm chart.
 Neither ADR was cross-checked against the other when written. The unique,

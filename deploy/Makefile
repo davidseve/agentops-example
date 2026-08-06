@@ -22,7 +22,7 @@
 # of two earlier, abandoned approaches (a dead unused dependency, then a
 # two-release ConfigMap round-trip) that this replaced on 2026-08-05.
 #
-# Race condition fixes from open-claw-in-openshell (constraints #21, #23):
+# Race condition fixes carried over from the reference project's lessons (constraints #21, #23):
 # - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
 # - adopt-dashboard-config: operator auto-creates singleton without Helm ownership
 # - wait-llamastack: Gen AI Studio nav requires LlamaStackOperatorReady=True
@@ -66,7 +66,7 @@ OPENSHELL_NAMESPACE := openshell
 # pulling the OpenShell OCI chart dependency on Podman-based hosts.
 DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 
-.PHONY: deploy-operators wait-operators deploy-platform deploy-database
+.PHONY: deploy-operators wait-operators deploy-platform deploy-platform-fresh ensure-mlflowoperator-managed deploy-database
 .PHONY: wait-dashboard-crd adopt-dashboard-config wait-llamastack wait-llamastack-and-refresh-dashboard
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
@@ -78,9 +78,21 @@ DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 .PHONY: validate validate-cleanup validate-smoke deploy-all-quiet
 
 # --- Deploy targets (ordered) ---
+#
+# Cluster coexistence (see ADR-0002's addendum, docs/adr/0002-ocp-with-rhoai-as-platform.md):
+# RHOAI, its DataScienceCluster, the Postgres backend, and MLflow itself are
+# cluster-wide/shared resources. Another, independent OpenShell/OpenClaw
+# deployment project may install them under the exact same Helm release
+# names on this same cluster. If that already happened, skip re-installing
+# here and reuse the shared instance instead of a redundant/values-resetting
+# `helm upgrade`.
 
 deploy-operators:
-	$(HELM) upgrade --install $(OPERATORS_RELEASE) $(OPERATORS_CHART) $(HELM_OPTS)
+	@if $(HELM) status $(OPERATORS_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(OPERATORS_RELEASE)' already deployed (shared cluster resource) — skipping install."; \
+	else \
+		$(HELM) upgrade --install $(OPERATORS_RELEASE) $(OPERATORS_CHART) $(HELM_OPTS); \
+	fi
 
 wait-operators: deploy-operators
 	@echo "Waiting for RHOAI operator CSV..."
@@ -111,6 +123,28 @@ wait-operators: deploy-operators
 	done
 
 deploy-platform: wait-operators
+	@if $(HELM) status $(PLATFORM_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(PLATFORM_RELEASE)' already deployed (shared cluster resource) — skipping helm upgrade, reconciling mlflowoperator only."; \
+		$(MAKE) ensure-mlflowoperator-managed; \
+	else \
+		$(MAKE) deploy-platform-fresh; \
+	fi
+
+# Minimal, non-destructive reconciliation for a DataScienceCluster this
+# project doesn't own the Helm release for: only touches
+# spec.components.mlflowoperator, not a full `helm upgrade` with this
+# project's own values (which could flip a component the other project
+# configured, e.g. dashboard/genAiStudio).
+ensure-mlflowoperator-managed:
+	@CURRENT=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}' 2>/dev/null || true); \
+	if [ "$$CURRENT" = "Managed" ]; then \
+		echo "mlflowoperator already Managed on the shared DataScienceCluster."; \
+	else \
+		echo "Patching shared DataScienceCluster: mlflowoperator -> Managed (was '$$CURRENT')..."; \
+		oc patch datasciencecluster default-dsc --type merge -p '{"spec":{"components":{"mlflowoperator":{"managementState":"Managed"}}}}'; \
+	fi
+
+deploy-platform-fresh:
 	@CURRENT_DASHBOARD=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.dashboard.managementState}' 2>/dev/null || true); \
 	if [ "$$CURRENT_DASHBOARD" != "Managed" ]; then \
 		echo "Fresh Dashboard enable: sequencing llamastackoperator BEFORE dashboard"; \
@@ -163,7 +197,11 @@ wait-llamastack-and-refresh-dashboard: wait-llamastack
 	fi
 
 deploy-database:
-	$(HELM) upgrade --install $(DATABASE_RELEASE) $(DATABASE_CHART) $(HELM_OPTS)
+	@if $(HELM) status $(DATABASE_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(DATABASE_RELEASE)' already deployed (shared cluster resource) — skipping install."; \
+	else \
+		$(HELM) upgrade --install $(DATABASE_RELEASE) $(DATABASE_CHART) $(HELM_OPTS); \
+	fi
 
 wait-mlflow-crd:
 	@echo "Waiting for MLflow CRD..."
@@ -172,7 +210,11 @@ wait-mlflow-crd:
 	done
 
 deploy-mlflow: deploy-database wait-mlflow-crd
-	$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) $(HELM_OPTS)
+	@if $(HELM) status $(MLFLOW_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(MLFLOW_RELEASE)' already deployed (shared cluster resource) — skipping install, reusing shared MLflow instance."; \
+	else \
+		$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) $(HELM_OPTS); \
+	fi
 
 wait-evalhub-crd:
 	@echo "Waiting for EvalHub CRD..."

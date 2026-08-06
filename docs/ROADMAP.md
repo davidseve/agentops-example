@@ -30,7 +30,7 @@
 - [ ] Map each demo feature to Red Hat product/component (study guide)
 - [ ] Document initial pinned versions manifest (operator CSVs, image tags/digests)
 
-## Phase 1.5 - OpenShell + OpenClaw Integration (from open-claw-in-openshell)
+## Phase 1.5 - OpenShell + OpenClaw Integration
 
 - [x] Deploy OpenShell from OCI Helm chart (ADR-0003)
 - [x] Define OpenShell auth strategy: OpenShift-native OAuth via oauth-proxy, `trusted-proxy` gateway auth (ADR-0011)
@@ -45,7 +45,7 @@
 
 ## Phase 2 - Architecture and Agent Design
 
-- [x] Decide agent harness: OpenClaw (validated in open-claw-in-openshell)
+- [x] Decide agent harness: OpenClaw (validated against a reference deployment)
 - [ ] Decide agent use case (what the agent actually does)
 - [ ] Create detailed architecture document with deployment topology
 - [ ] Define guardrails policies (topic control, jailbreak prevention, data protection)

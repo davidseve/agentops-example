@@ -81,6 +81,36 @@ Cluster bootstrap validated on demo.redhat.com. Full deploy, validate, and teard
 - [ADR-0010: MLflow tracing via mlflow-openclaw](0010-mlflow-tracing-otel.md) — depends on RHOAI's MLflow operator
 - [ADR-0011: OpenClaw UI auth](0011-ui-auth-openshift-oauth-proxy.md) — depends on OCP's native OAuth server
 
+## Addendum (2026-08-05): shared-cluster coexistence with another OpenShell/OpenClaw deployment
+
+This project can now share one OCP cluster, one RHOAI installation, and one
+MLflow instance with another, independent OpenShell/OpenClaw deployment
+project instead of each needing its own: `deploy/Makefile`'s
+`deploy-operators`/`deploy-platform`/`deploy-database`/`deploy-mlflow`
+targets each skip their `helm upgrade --install` if the release already
+exists (installed by whichever project got there first), and
+`deploy-platform` reconciles only `mlflowoperator: Managed` via a minimal
+`oc patch` rather than a full `helm upgrade` when skipping, so it never
+resets a component the other project configured (e.g. dashboard/genAiStudio).
+This project's own `deploy-openshell`/`deploy-oauth2-proxy` targets and
+OpenShell namespace (`openshell`) are unchanged — coexistence with a second
+OpenShell/OpenClaw stack on the same cluster requires the *other* project to
+deploy into an alternate namespace and sandbox name on its own side. No
+functional change to this project's own deploy flow on a cluster where it
+runs alone.
+
+**Operational caveat, confirmed live while validating coexistence
+(2026-08-06):** the `openshell` CLI's "active gateway" selection is local
+machine state shared across *every* project driving it — running the other
+project's own deploy/verify tooling on the same machine can leave a
+different gateway (e.g. its own alternate alias) selected as active. This
+project's `deploy/Makefile` targets that shell out to `openshell sandbox
+...` (`validate-security`, `test-ui`, `test-security`, `test-mlflow`, etc.)
+resolve the *currently active* gateway, not necessarily this project's own
+`ocp` alias, and will fail with a misleading `sandbox not found` if some
+other gateway is active. Run `openshell gateway select ocp` first if you've
+been operating the other project's tooling in the same terminal/session.
+
 ## References
 
 - [Red Hat OpenShift AI Self-Managed 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)

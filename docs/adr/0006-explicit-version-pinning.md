@@ -61,7 +61,7 @@ ran unpinned `npm install -g openclaw` (whatever "latest" resolved to at exec
 time), which had drifted to `2026.6.33` — a release whose gateway config
 validation rejects `gateway.terminal` as an unrecognized key
 (`gateway: Unrecognized key: "terminal"`), causing gateway startup to fail
-with "Invalid config". `open-claw-in-openshell` pins `2026.7.1`, but that
+with "Invalid config". The reference project pins `2026.7.1`, but that
 release raised its Node engine requirement to `>=22.22.3` while this
 sandbox's base image ships Node `v22.22.1` — installing it makes `openclaw`
 refuse to run at all. Settled on `2026.6.34`: newest release compatible with
@@ -75,7 +75,7 @@ investigation for the same lesson applied to config, not just versions).
 **Follow-on config gap**: `2026.6.34`'s `gateway` schema has no `terminal`
 property at all (confirmed via `openclaw config schema`) — it's a
 `2026.7.x`-only hardening knob (`gateway.terminal.enabled: false`, disables
-the gateway's built-in web terminal) that `open-claw-in-openshell` sets and
+the gateway's built-in web terminal) that the reference project sets and
 we copied verbatim. On `2026.6.34` the runtime's strict Zod validation
 rejects it outright (`gateway: Invalid input`, only surfaced at actual
 gateway startup — `openclaw doctor` does not catch it), so it was removed

@@ -3,7 +3,7 @@
 **Status**: Accepted (supersedes initial OTEL-only approach)  
 **Date**: 2026-08-04  
 **Layer**: Agent  
-**Source**: open-claw-in-openshell (ADR-0017, ADR-0018, constraints #15, #22)
+**Source**: Migrated learnings from a reference OpenShell/OpenClaw deployment (its ADR-0017, ADR-0018, constraints #15, #22)
 
 ## Context
 
@@ -20,7 +20,7 @@ events — it only produces transport-level spans.
 
 ### Reference project approach (mlflow-openclaw) — adopted
 
-The open-claw-in-openshell project uses `@mlflow/mlflow-openclaw@0.2.0-rc.0`
+The reference project uses `@mlflow/mlflow-openclaw@0.2.0-rc.0`
 which hooks into OpenClaw's `llm_input`, `llm_output`, and `agent_end` events.
 This produces rich traces containing:
 - Full user message (Request)
@@ -125,7 +125,6 @@ OpenClaw's MLflow tracing end-to-end — no manual `--set` flags needed.
 ## References
 
 - RHOAI MLflow RBAC: `mlflow-operator-mlflow-integration` ClusterRole
-- open-claw-in-openshell: docs/constraints.md #15, #22
-- open-claw-in-openshell: scripts/patch-mlflow-plugin.py
-- open-claw-in-openshell: scripts/launch-openclaw.sh (Step 6-7)
+- Reference project: constraints #15, #22 (mlflow-openclaw plugin patching and transport)
+- Reference project: its own MLflow plugin patch script and gateway launch steps (Step 6-7)
 - mlflow/mlflow#23927 (X-MLFLOW-WORKSPACE header fix)

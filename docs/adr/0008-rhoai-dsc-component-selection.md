@@ -3,13 +3,13 @@
 **Status**: Accepted  
 **Date**: 2026-08-03  
 **Layer**: Infrastructure  
-**Source**: Migrated learnings from open-claw-in-openshell (ADR-0017, ADR-0018, constraints #20-#23)
+**Source**: Migrated learnings from a reference OpenShell/OpenClaw deployment (its ADR-0017, ADR-0018, constraints #20-#23)
 
 ## Context
 
 RHOAI 3.4's DataScienceCluster supports many components. Enabling all of them
 wastes cluster resources and introduces race conditions during deployment.
-The open-claw-in-openshell project discovered (live on AWS OCP) that:
+The reference project discovered (live on AWS OCP) that:
 
 1. The Dashboard's `genAiStudio` feature requires `llamastackoperator: Managed`
    (constraint #23 — the `gen-ai-ui` micro-frontend self-gates on
@@ -79,5 +79,5 @@ that was already `Managed` from an earlier, differently-valued run.
 ## References
 
 - Red Hat RHOAI 3.4 documentation: DataScienceCluster API
-- open-claw-in-openshell: docs/constraints.md #20, #21, #23
-- open-claw-in-openshell: charts/rhoai/Makefile (wait-dashboard-crd, adopt-dashboard-config)
+- Reference project: constraints #20, #21, #23
+- Reference project: its own RHOAI Makefile (wait-dashboard-crd, adopt-dashboard-config)
