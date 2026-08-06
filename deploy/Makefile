@@ -124,6 +124,7 @@ wait-operators: deploy-operators
 		echo "  platform CRDs not ready yet..."; sleep 10; \
 	done
 
+# OdhDashboardConfig CRD appears only after DSC enables Dashboard — wait only for DSC CRD.
 deploy-platform: wait-operators
 	@if $(HELM) status $(PLATFORM_RELEASE) >/dev/null 2>&1; then \
 		echo "Release '$(PLATFORM_RELEASE)' already deployed (shared cluster resource) — skipping helm upgrade, reconciling mlflowoperator only."; \
