@@ -15,7 +15,7 @@ set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-openshell}"
 SECRET="${OPENSHELL_CLIENT_TLS_SECRET:-openshell-client-tls}"
-GATEWAY_NAME="${GATEWAY_NAME:-openshift}"
+GATEWAY_NAME="${GATEWAY_NAME:-ocp}"
 OPENSHELL_CONFIG_DIR="${OPENSHELL_CONFIG_DIR:-${HOME}/.config/openshell}"
 MTLS_DIR="${OPENSHELL_CONFIG_DIR}/gateways/${GATEWAY_NAME}/mtls"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-120}"
@@ -64,10 +64,11 @@ if command -v openssl >/dev/null 2>&1; then
 fi
 
 cat <<EOF
-Next (CLI connect):
-  oc -n ${NAMESPACE} port-forward svc/openshell 8080:8080
-  openshell gateway add https://127.0.0.1:8080 --local --name ${GATEWAY_NAME}
-  # Re-sync if gateway add overwrote the bundle with local Podman/Docker certs:
-  make -C deploy openshell-sync-mtls
+Prefer full registration (certs + gateway add + select + status):
+  make -C deploy openshell-register-gateway GATEWAY_NAME=${GATEWAY_NAME}
+
+Or manual:
+  openshell gateway add https://<openshell-gw-route> --local --name ${GATEWAY_NAME}
+  openshell gateway select ${GATEWAY_NAME}
   openshell status
 EOF

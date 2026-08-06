@@ -16,11 +16,11 @@ Verify:
   oc -n {{ .Release.Namespace }} get rolebinding | grep privileged
 {{- end }}
 
-Connect (from your workstation):
-  oc -n {{ .Release.Namespace }} port-forward svc/openshell 8080:8080
-  openshell gateway add https://127.0.0.1:8080 --local --name openshift
-  make -C deploy openshell-sync-mtls   # required after gateway add --local
+Connect (from your workstation — also run automatically by
+`make -C deploy deploy-openshell` / `./scripts/launch-openclaw.sh`):
+  make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
   openshell status
+  ./scripts/launch-openclaw.sh               # creates sandbox if needed
 
 Documentation:
   docs/openshell-installation.md

@@ -161,7 +161,9 @@ agentops-example/
 └── scripts/
     ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
     ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
+    ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
     ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
+    ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
     ├── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
     ├── warm-up.sh             # Pre-warm model
     └── demo-reset.sh          # Reset demo state

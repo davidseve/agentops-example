@@ -25,7 +25,9 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 |---|---|
 | Deploy OpenShell on OpenShift | `APPS_DOMAIN=<domain> make -C deploy deploy-openshell` |
 | First-time cluster setup | `make -C deploy deploy-operators` then deploy (must come after RHOAI — ADR-0003) |
-| Refresh local mTLS certs only | `GATEWAY_NAME=<name> make -C deploy openshell-sync-mtls` (gateway name must match `openshell gateway list`, commonly `ocp`) |
+| Re-register local CLI gateway + mTLS | `make -C deploy openshell-register-gateway` (default alias `ocp`) |
+| Refresh local mTLS certs only | `GATEWAY_NAME=<name> make -C deploy openshell-sync-mtls` |
+| Launch OpenClaw (creates sandbox if needed) | `./scripts/launch-openclaw.sh` |
 | Check deployment | `make -C deploy validate-openshell` |
 | Remove everything | `make -C deploy undeploy-openshell` |
 
@@ -53,7 +55,8 @@ one `helm upgrade --install openshell deploy/helm/openshell --namespace openshel
 --create-namespace -f values-openshift.yaml` (namespace extras + the actual gateway
 StatefulSet together, pinned `0.0.83` in `Chart.yaml`) → `oc label namespace` (RHOAI
 Dashboard opt-in) → wait for rollout/PKI secrets → MLflow RBAC wiring
-(`deploy-mlflow-openclaw-integration`, runs automatically as the last step).
+(`deploy-mlflow-openclaw-integration`) → **CLI gateway register + mTLS**
+(`openshell-register-gateway`, alias `GATEWAY_NAME` default `ocp`).
 
 4. **Deploy the browser-auth proxy** (required for the Control UI, see ADR-0011):
 
@@ -61,10 +64,17 @@ Dashboard opt-in) → wait for rollout/PKI secrets → MLflow RBAC wiring
 APPS_DOMAIN=<apps-domain> make -C deploy deploy-oauth2-proxy
 ```
 
-5. **Verify**:
+5. **Launch OpenClaw** (creates the sandbox if missing, then starts the gateway):
+
+```bash
+./scripts/launch-openclaw.sh
+```
+
+6. **Verify**:
 
 ```bash
 make -C deploy validate-openshell
+openshell status   # Status: Connected (alias GATEWAY_NAME, default ocp)
 oc -n openshell get rolebinding | grep privileged
 oc -n openshell get sa openshell-sandbox
 ```
@@ -73,16 +83,11 @@ Expect secrets: `openshell-jwt-keys`, `openshell-server-tls`, `openshell-client-
 Expect RoleBinding: `openshell-sandbox-privileged-scc`, targeting SA `openshell-sandbox`.
 Expect logs: `TLS enabled — listening on encrypted HTTPS`.
 
-6. **Optional — connect local CLI**:
+Re-register CLI only (idempotent, usually unnecessary after `deploy-openshell`):
 
 ```bash
-openshell gateway add https://openshell-gw-openshell.<apps-domain> --name ocp
-GATEWAY_NAME=ocp make -C deploy openshell-sync-mtls
-openshell status   # Status: Connected
+make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
 ```
-
-(Or port-forward instead of using the Route — either way, `GATEWAY_NAME` passed to
-`openshell-sync-mtls` must match the name shown by `openshell gateway list`.)
 
 ## Chart values (pinned)
 
@@ -102,7 +107,7 @@ openshell status   # Status: Connected
 - **Confirm namespace** — always `openshell` (created via `--create-namespace`, not a chart-owned `Namespace` template — see chart README for why).
 - **Agent Sandbox** currently has two coexisting install paths (OLM + raw manifest) — a known, still-open gap (ADR-0003). Both are cleaned up by `undeploy-openshell` + `cleanup-orphans`.
 - **Helm OCI on Podman hosts** — Makefile sets `DOCKER_CONFIG` automatically for the dependency build step.
-- **mTLS sync** writes only under `~/.config/openshell/` (never into the git repo). Re-run after every redeploy or after `gateway add`.
+- **mTLS / CLI registration** writes only under `~/.config/openshell/` (never into the git repo). `deploy-openshell` and `launch-openclaw.sh` run `openshell-register-gateway` automatically (idempotent).
 
 ## Troubleshooting
 
@@ -114,7 +119,7 @@ openshell status   # Status: Connected
 | Sandbox pods fail | Re-run `make -C deploy deploy-openshell` (Helm re-applies SCC) |
 | Helm OCI pull fails | Fix `~/.docker/config.json` (unset `credsStore: desktop` or point `DOCKER_CONFIG` elsewhere) |
 | certgen Job failed | `oc -n openshell logs job/openshell-certgen` |
-| `invalid peer certificate: BadSignature` | `GATEWAY_NAME=<name> make -C deploy openshell-sync-mtls` then `openshell status` — must match the registered gateway name |
+| `invalid peer certificate: BadSignature` | `make -C deploy openshell-register-gateway` then `openshell status` — must match the registered gateway name (`GATEWAY_NAME`, default `ocp`) |
 | `invalid peer certificate: certificate not valid for name "openshell-gw-openshell.<domain>"` | Server cert is missing the Route hostname SAN (`deploy-openshell` sets it via `--set openshell.pkiInitJob.serverDnsNames[N]`, but certgen doesn't rotate an existing cert on `helm upgrade`) — `make -C deploy undeploy-openshell` then redeploy against the clean namespace |
 
 ## Token-efficient execution
@@ -131,5 +136,6 @@ Follow global skill **`long-running-scripts`**. For this repo:
 - Local CLI install: `openshell-local-install` skill
 - Guide: [docs/openshell-installation.md § OpenShift](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment) (partially stale — see the banner at the top of that section)
 - Chart: [deploy/helm/openshell/README.md](../../../deploy/helm/openshell/README.md)
-- Sync script: [scripts/openshift-openshell-sync-mtls.sh](../../../scripts/openshift-openshell-sync-mtls.sh)
+- Sync / register: [scripts/openshift-openshell-register-gateway.sh](../../../scripts/openshift-openshell-register-gateway.sh), [scripts/openshift-openshell-sync-mtls.sh](../../../scripts/openshift-openshell-sync-mtls.sh)
+- Launch: [scripts/launch-openclaw.sh](../../../scripts/launch-openclaw.sh)
 - ADR: [ADR-0003](../../../docs/adr/0003-openshell-deployment-on-openshift.md) — includes the full history of this chart's architecture and a list of bugs found and fixed on 2026-08-05

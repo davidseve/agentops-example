@@ -44,12 +44,19 @@ certificate not valid for name ...`. The underlying certgen step does **not** ro
 already-issued certificate on `helm upgrade`, so a SAN change only takes effect against a
 clean namespace (`undeploy-openshell` then `deploy-openshell`).
 
-After install, sync the mTLS client bundle to the local CLI (gateway name must match
-whatever `openshell gateway list` shows — commonly `ocp` for a Route-based connection, or
-`openshift` per the upstream port-forward convention):
+After install, `deploy-openshell` registers the local CLI gateway and syncs mTLS
+automatically (`openshell-register-gateway`, alias `GATEWAY_NAME` default `ocp`).
+To re-run only that step:
 
 ```bash
-GATEWAY_NAME=ocp make -C deploy openshell-sync-mtls
+make -C deploy openshell-register-gateway
+# or: GATEWAY_NAME=my-alias make -C deploy openshell-register-gateway
+```
+
+Then launch OpenClaw (creates the sandbox if missing):
+
+```bash
+./scripts/launch-openclaw.sh
 ```
 
 ## Values files

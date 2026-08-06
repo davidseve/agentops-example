@@ -60,6 +60,9 @@ OPENSHELL_RELEASE := openshell
 OAUTH2_PROXY_RELEASE := oauth2-proxy
 
 OPENSHELL_NAMESPACE := openshell
+# Local CLI gateway alias (coexistence-safe; override if another project
+# already owns "ocp" on this machine — see ADR-0002 addendum).
+GATEWAY_NAME ?= ocp
 
 # Empty Docker config to avoid `credsStore: desktop`/keychain lookups when
 # pulling the OpenShell OCI chart dependency on Podman-based hosts.
@@ -73,7 +76,7 @@ DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 .PHONY: test-e2e test-ui test-security test-mlflow
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: deploy-oauth2-proxy undeploy-openshell undeploy-everything
-.PHONY: openshell-sync-mtls
+.PHONY: openshell-sync-mtls openshell-register-gateway
 .PHONY: validate validate-cleanup validate-smoke deploy-all-quiet
 
 # --- Deploy targets (ordered) ---
@@ -261,8 +264,10 @@ deploy-openshell: helm-env
 		echo "  $$secret exists"; \
 	done
 	@$(MAKE) deploy-mlflow-openclaw-integration
+	@$(MAKE) openshell-register-gateway
 	@echo "OpenShell deployed successfully."
-	@echo "Next: register gateway with CLI (see docs/adr/0003-openshell-deployment-on-openshift.md)"
+	@echo "Next: ./scripts/launch-openclaw.sh  (creates sandbox if needed)"
+	@echo "      APPS_DOMAIN=<domain> make deploy-oauth2-proxy  (browser UI auth)"
 
 # MLflow's openclawIntegration RBAC (see deploy/helm/mlflow/values.yaml) needs the
 # openshell-sandbox ServiceAccount, which is created by deploy-openshell above,
@@ -603,12 +608,13 @@ validate-cleanup:
 	@echo "Cleanup validation complete."
 
 # --- OpenShell (cluster) ---
-# mTLS client bundle sync only. Install/upgrade/uninstall/status are the
-# deploy-openshell/undeploy-openshell/validate-openshell targets above — this
-# used to be a separate, since-removed "legacy" single-chart flow
-# (openshell-install/-upgrade/-uninstall/-status/-deps) that briefly diverged
-# from deploy-openshell's two-release split; both are now the same single
-# release, so there is nothing left for that duplicate flow to do.
+# mTLS client bundle sync + gateway CLI registration. Install/upgrade/uninstall
+# are the deploy-openshell/undeploy-openshell/validate-openshell targets above.
+
+openshell-register-gateway:
+	NAMESPACE=$(OPENSHELL_NAMESPACE) GATEWAY_NAME=$(GATEWAY_NAME) \
+		$(ROOT_DIR)/scripts/openshift-openshell-register-gateway.sh
 
 openshell-sync-mtls:
-	NAMESPACE=$(OPENSHELL_NAMESPACE) $(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh
+	NAMESPACE=$(OPENSHELL_NAMESPACE) GATEWAY_NAME=$(GATEWAY_NAME) \
+		$(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh

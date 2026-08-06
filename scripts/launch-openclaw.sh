@@ -4,6 +4,10 @@
 # This is the one imperative step that cannot be expressed as a Helm chart
 # because it requires runtime interaction with the sandbox process namespace.
 #
+# Automates (idempotent):
+#   - CLI gateway select / register+mTLS if missing (openshift-openshell-register-gateway.sh)
+#   - Sandbox create if missing (openshell sandbox create)
+#
 # Key design decisions (from the reference project):
 #   - mlflow-openclaw plugin is the sole trace source (not diagnostics-otel)
 #   - Plugin requires patching for OpenClaw 2026.7.1 compat (patch-mlflow-plugin.py)
@@ -13,15 +17,17 @@
 #   - OTEL exporters disabled (OTEL_*_EXPORTER=none) — mlflow-openclaw handles traces
 #
 # Usage: ./scripts/launch-openclaw.sh
-# Prereqs: openshell CLI configured, sandbox created, secrets/secrets.env exists
+# Prereqs: OpenShell deployed (make -C deploy deploy-openshell), secrets/secrets.env
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 NAMESPACE="${NAMESPACE:-openshell}"
 SANDBOX_NAME="${SANDBOX_NAME:-openclaw-gw}"
+GATEWAY_NAME="${GATEWAY_NAME:-ocp}"
 APPS_DOMAIN="${APPS_DOMAIN:-}"
 RHOAI_NS="${RHOAI_NS:-redhat-ods-applications}"
+POLICY_FILE="${POLICY_FILE:-${PROJECT_DIR}/policies/openclaw-sandbox.yaml}"
 
 info()  { echo "[INFO]  $*"; }
 warn()  { echo "[WARN]  $*"; }
@@ -35,9 +41,17 @@ if [[ -f "${PROJECT_DIR}/secrets/secrets.env" ]]; then
 fi
 : "${MAAS_API_KEY:?MAAS_API_KEY required (set in secrets/secrets.env)}"
 
+command -v openshell >/dev/null 2>&1 || { error "openshell CLI is required"; exit 1; }
+command -v oc >/dev/null 2>&1 || { error "oc is required"; exit 1; }
+
 if [[ -z "$APPS_DOMAIN" ]]; then
   APPS_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')
 fi
+
+# ─── Ensure local CLI points at this project's gateway ────────────────────────
+step "Ensuring OpenShell CLI gateway '${GATEWAY_NAME}'"
+NAMESPACE="${NAMESPACE}" GATEWAY_NAME="${GATEWAY_NAME}" \
+  "${SCRIPT_DIR}/openshift-openshell-register-gateway.sh"
 
 # Pod/Service network CIDRs for gateway.trustedProxies — must reflect this
 # cluster's actual network config (varies per OCP install), not a copied
@@ -60,7 +74,7 @@ if [[ -z "$MLFLOW_TOKEN" ]]; then
     -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null || true)
 fi
 if [[ -z "$MLFLOW_TOKEN" ]]; then
-  error "MLflow token not available. Deploy MLflow RBAC first (Phase 5)."
+  error "MLflow token not available. Run: make -C deploy deploy-openshell"
   exit 1
 fi
 info "MLflow SA token read from Secret"
@@ -81,11 +95,59 @@ sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
 pass "Rendered config (mlflow-openclaw plugin enabled, experiment=${MLFLOW_EXPERIMENT_ID})"
 
-# ─── Validate sandbox pod ─────────────────────────────────────────────────────
+# ─── Create sandbox if missing ────────────────────────────────────────────────
+# MaaS credentials are baked into openclaw.json (not an OpenShell provider),
+# so create does not need --provider. --from openclaw uses the stock image.
 SANDBOX_POD="${SANDBOX_NAME}"
+step "Ensuring sandbox '${SANDBOX_NAME}'"
+if openshell sandbox list 2>/dev/null | awk -v n="$SANDBOX_NAME" 'index($0, n) { found=1 } END { exit !found }'; then
+  info "Sandbox '$SANDBOX_NAME' already exists"
+else
+  [[ -f "$POLICY_FILE" ]] || { error "Policy file not found: $POLICY_FILE"; exit 1; }
+  info "Creating sandbox (policy=$(basename "$POLICY_FILE"))..."
+  openshell sandbox create \
+    --from openclaw \
+    --name "$SANDBOX_NAME" \
+    --policy "$POLICY_FILE" \
+    --upload "${CONFIG_RENDERED}:/sandbox/.openclaw/config.json" \
+    --no-tty &
+  CREATE_PID=$!
+
+  info "Waiting for sandbox to be ready..."
+  retries=0
+  while [[ $retries -lt 120 ]]; do
+    # Match name + Ready on the same list line (ANSI-safe; avoid bare
+    # "${NAME}.*Ready" which is wrong if NAME is empty / multiline).
+    if openshell sandbox list 2>/dev/null | awk -v n="$SANDBOX_NAME" '
+        index($0, n) && /Ready/ { found=1 }
+        END { exit !found }
+      '; then
+      info "Sandbox is Ready"
+      break
+    fi
+    # Fallback: pod exists and Ready even if list formatting differs
+    if oc -n "$NAMESPACE" get pod "$SANDBOX_NAME" -o jsonpath='{.status.phase}' 2>/dev/null | grep -q Running; then
+      ready=$(oc -n "$NAMESPACE" get pod "$SANDBOX_NAME" -o jsonpath='{.status.containerStatuses[?(@.name=="agent")].ready}' 2>/dev/null || true)
+      if [[ "$ready" == "true" ]]; then
+        info "Sandbox pod Running/Ready"
+        break
+      fi
+    fi
+    sleep 5
+    retries=$((retries + 1))
+  done
+  kill "$CREATE_PID" 2>/dev/null || true
+  wait "$CREATE_PID" 2>/dev/null || true
+
+  if [[ $retries -ge 120 ]]; then
+    error "Sandbox did not become ready within 10 minutes"
+    exit 1
+  fi
+  pass "Sandbox created"
+fi
+
 if ! oc -n "$NAMESPACE" get pod "$SANDBOX_POD" &>/dev/null; then
-  error "Sandbox pod '$SANDBOX_POD' not found. Create it first:"
-  error "  openshell sandbox create --name $SANDBOX_NAME --policy policies/openclaw-sandbox.yaml"
+  error "Sandbox pod '$SANDBOX_POD' not found after create"
   exit 1
 fi
 info "Sandbox pod: $SANDBOX_POD"
