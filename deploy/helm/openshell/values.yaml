@@ -1,28 +1,40 @@
 # Default values for agentops-openshell.
-# Upstream chart values are nested under the `openshell` alias (see Chart.yaml).
+# Upstream chart values are nested under the `openshell` alias (see Chart.yaml
+# `dependencies[].alias`) and passed straight through to the real OpenShell
+# subchart dependency rendered as part of this same release.
 
 # --- Wrapper-level settings ---
 
 openshift:
-  namespace:
-    create: false
   scc:
     privilegedSandbox: false
+    # Left unset by default: the `agentops-openshell.sandboxSA` helper
+    # (templates/_helpers.tpl) already defaults to "<release name>-sandbox",
+    # and this chart is always installed with release name "openshell" (see
+    # deploy/Makefile), so it resolves to "openshell-sandbox" automatically —
+    # matching the sandbox ServiceAccount the subchart itself creates. Only
+    # set this to override if the release is ever installed under a
+    # different name.
     serviceAccount: ""
 
-# --- Upstream subchart overrides ---
+# --- Upstream subchart overrides (alias: openshell) ---
 
 openshell:
-  # Pin images to match chart appVersion (0.0.80).
+  # The version actually installed is pinned in Chart.yaml's
+  # `dependencies[].version` + Chart.lock (Helm's own dependency-pinning
+  # mechanism) — that is the single source of truth per
+  # docs/adr/0006-explicit-version-pinning.md. Keep these tags in sync with
+  # that version; a mismatch here silently pins the wrong image tag even
+  # though the chart itself was correctly resolved.
   image:
     repository: ghcr.io/nvidia/openshell/gateway
-    tag: "0.0.80"
+    tag: "0.0.83"
     pullPolicy: IfNotPresent
 
   supervisor:
     image:
       repository: ghcr.io/nvidia/openshell/supervisor
-      tag: "0.0.80"
+      tag: "0.0.83"
 
   # TLS + certgen hook (default). Do not disable pkiInitJob on OpenShift.
   # See: https://github.com/NVIDIA/OpenShell/issues/2089
@@ -30,6 +42,14 @@ openshell:
     disableTls: false
     sandboxImage: ghcr.io/nvidia/openshell-community/sandboxes/base:latest
     logLevel: info
+    auth:
+      # Gateway's own CLI/gRPC endpoint is mTLS-only (client cert required, see
+      # openshell-client-tls secret) — "unauthenticated" means no *additional*
+      # bearer token on top of the client cert, not open access. Was previously
+      # unset here (no default at all), which made `helm template` fail outright
+      # with a nil-pointer error — found and fixed 2026-08-05 while redeploying
+      # from scratch. See docs/adr/0003-openshell-deployment-on-openshift.md.
+      allowUnauthenticatedUsers: true
 
   pkiInitJob:
     enabled: true
@@ -44,3 +64,13 @@ openshell:
 
   networkPolicy:
     enabled: true
+
+# Route (existing gRPC route for openshell CLI)
+route:
+  enabled: true
+  name: openshell-gw
+  targetPort: grpc
+  tlsTermination: passthrough
+
+global:
+  appsDomain: ""

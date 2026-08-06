@@ -14,12 +14,12 @@ datasciencecluster:
           permitCodeExecution: deny
           permitOnline: allow
     kserve:
-      managementState: Managed
+      managementState: Removed
       rawDeploymentServiceConfig: Headed
       wva:
         managementState: Removed
     modelsAsService:
-      managementState: Managed
+      managementState: Removed
     aipipelines:
       managementState: Removed
     feastoperator:

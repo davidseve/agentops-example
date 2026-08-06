@@ -1,0 +1,85 @@
+# nginx Deployment: sole browser entrypoint for the OpenClaw Control UI.
+#
+# Architecture (ADR-0011):
+#   Browser → Route (reencrypt) → nginx (:8443, service-CA TLS)
+#   → OpenShell relay (:8080, mTLS client cert)
+#   → sandbox openclaw-gw → OpenClaw gateway :18789 (password auth)
+#
+# nginx is required because the OpenShell relay enforces client certificates
+# when a client CA is configured and no OIDC issuer is set. The browser cannot
+# present those certs; nginx does.
+{{- $openshellSvc := lookup "v1" "Service" .Values.namespace "openshell" }}
+{{- if not $openshellSvc }}
+{{- fail (printf "Service 'openshell' not found in namespace '%s' — deploy OpenShell first" .Values.namespace) }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw-ui-proxy
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: openclaw-ui-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openclaw-ui-proxy
+  template:
+    metadata:
+      labels:
+        app: openclaw-ui-proxy
+    spec:
+      containers:
+        - name: mtls-bridge
+          image: {{ .Values.image }}
+          command: ["/usr/sbin/nginx", "-c", "/etc/nginx-custom/nginx.conf", "-g", "daemon off;"]
+          ports:
+            - containerPort: 8443
+              name: https
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx-custom
+              readOnly: true
+            - name: tls
+              mountPath: /etc/tls/private
+              readOnly: true
+            - name: openshell-client
+              mountPath: /etc/openshell-client
+              readOnly: true
+            - name: openshell-ca
+              mountPath: /etc/openshell-ca
+              readOnly: true
+          livenessProbe:
+            tcpSocket:
+              port: https
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: https
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: tls
+          secret:
+            secretName: openclaw-ui-proxy-tls
+        - name: openshell-client
+          secret:
+            secretName: openshell-client-tls
+        - name: openshell-ca
+          secret:
+            secretName: openshell-server-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
+        - name: nginx-config
+          configMap:
+            name: openclaw-ui-proxy-nginx-config

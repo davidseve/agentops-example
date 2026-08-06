@@ -122,7 +122,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `cluster-cleanup` | Remove RHOAI platform stack from OpenShift — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | `openshell-local-install` | Install OpenShell CLI + local gateway on macOS/Linux — see [openshell-installation.md](docs/openshell-installation.md) |
 | `openshell-local-cleanup` | Uninstall local OpenShell stack on macOS/Linux |
-| `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy openshell-install` |
+| `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy deploy-openshell` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
 | `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/); required before reversing Accepted decisions |
@@ -147,7 +147,7 @@ agentops-example/
 │   ├── architecture.md            # Detailed architecture (Phase 2)
 │   └── demo-script.md             # Step-by-step demo script (Phase 4)
 ├── deploy/
-│   ├── Makefile               # make deploy-all, validate, openshell-install, …
+│   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
 │   └── openshift/             # OpenShift-specific manifests (non-Helm)
@@ -161,7 +161,9 @@ agentops-example/
 └── scripts/
     ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
     ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
+    ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
     ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
+    ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
     ├── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
     ├── warm-up.sh             # Pre-warm model
     └── demo-reset.sh          # Reset demo state
@@ -186,6 +188,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **Target platform**: RHOAI 3.x on demo.redhat.com - everything must be deployable there
 - **Pinned versions**: All operators and components use explicit version pinning (see [ADR-0006](docs/adr/0006-explicit-version-pinning.md)). No automatic updates. Version bumps are deliberate and tested.
 - **No secrets in repo**: This is a public repo. Use environment variables, sealed secrets, or external secret management. Enforced by `.cursor/rules/no-secrets.mdc` and the `no-secrets` skill (scan before commit/PR).
+- **Browser UI auth**: OpenClaw `gateway.auth.mode: password` behind the nginx mTLS bridge (`deploy-openclaw-ui-proxy`). Do not reintroduce oauth-proxy / `trusted-proxy` without updating [ADR-0011](docs/adr/0011-ui-auth-openshift-oauth-proxy.md).
 - **English**: All code, comments, docs, and demo content in English
 - **GitOps**: All configuration as code, no manual cluster changes
 - **Idempotent**: Deploy/teardown must be repeatable with a single command

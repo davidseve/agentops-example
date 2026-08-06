@@ -3,16 +3,39 @@
 # RHOAI (full platform):
 #   make deploy-all    (full stack)
 #   make validate      (post-deploy health checks)
-#   make undeploy-all  (teardown)
+#   make undeploy-all  (teardown: RHOAI stack only)
 #
-# OpenShell (cluster):
-#   make openshell-install    # Helm install wrapper chart (namespace + SCC + gateway + mTLS sync)
-#   make openshell-sync-mtls  # Sync cluster client TLS bundle to local CLI config
-#   make openshell-status
-#   make openshell-uninstall
+# OpenShell + OpenClaw:
+#   make deploy-openshell HELM_OPTS='--set global.appsDomain=<domain>'
+#   make deploy-openclaw-ui-proxy APPS_DOMAIN=<domain>
+#   make undeploy-openshell   (teardown: OpenShell + openclaw-ui-proxy + Agent Sandbox)
+#
+# Full reset (everything this Makefile can deploy, in one shot):
+#   make undeploy-everything  (OpenShell/ui-proxy -> RHOAI apps -> DSCI -> operators -> orphans)
+#   make validate-cleanup     (confirm the cluster is actually clean before redeploying)
+#
+# deploy-openshell installs OpenShell as a single Helm release: this repo's
+# wrapper chart (deploy/helm/openshell) declares the upstream OCI chart as a
+# real Helm subchart dependency (see its Chart.yaml), so one
+# `helm upgrade --install` renders the namespace extras (SCC RoleBinding,
+# Route) and the gateway itself together. See docs/adr/0003 for the history
+# of two earlier, abandoned approaches (a dead unused dependency, then a
+# two-release ConfigMap round-trip) that this replaced on 2026-08-05.
+#
+# Race condition fixes carried over from the reference project's lessons (constraint #21):
+# - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
+# - adopt-dashboard-config: operator auto-creates singleton without Helm ownership
+# See docs/adr/0008-rhoai-dsc-component-selection.md
 
 SHELL := /bin/bash
+# NOTE: dir() must wrap ONLY the Makefile path; appending "/.." *inside* dir()
+# (as this used to read) makes `dir` treat the literal string "Makefile/.." as
+# the path and return "Makefile/", so abspath resolved to ".../deploy/Makefile"
+# instead of the repo root — silently breaking openshell-sync-mtls and every
+# test-* target that references $(ROOT_DIR). Found + fixed 2026-08-05 during a
+# from-scratch redeploy test.
 ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+
 
 HELM := helm
 HELM_OPTS ?=
@@ -24,6 +47,8 @@ PLATFORM_CHART  := helm/platform
 DATABASE_CHART  := helm/database
 MLFLOW_CHART    := helm/mlflow
 EVALHUB_CHART   := helm/evalhub
+OPENSHELL_CHART := helm/openshell
+OPENCLAW_UI_PROXY_CHART := helm/openclaw-ui-proxy
 
 # Release names
 OPERATORS_RELEASE := rhoai-operators
@@ -31,20 +56,57 @@ PLATFORM_RELEASE  := rhoai-platform
 DATABASE_RELEASE  := rhoai-database
 MLFLOW_RELEASE    := rhoai-mlflow
 EVALHUB_RELEASE   := rhoai-evalhub
+OPENSHELL_RELEASE := openshell
+OPENCLAW_UI_PROXY_RELEASE := openclaw-ui-proxy
 
-.PHONY: deploy-operators wait-operators deploy-platform deploy-database
+OPENSHELL_NAMESPACE := openshell
+# Local CLI gateway alias (coexistence-safe; override if another project
+# already owns "ocp" on this machine — see ADR-0002 addendum).
+GATEWAY_NAME ?= ocp
+
+# Empty Docker config to avoid `credsStore: desktop`/keychain lookups when
+# pulling the OpenShell OCI chart dependency on Podman-based hosts.
+DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
+
+.PHONY: deploy-operators wait-operators deploy-platform deploy-platform-fresh ensure-mlflowoperator-managed deploy-database
+.PHONY: wait-dashboard-crd adopt-dashboard-config
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
+.PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
+.PHONY: validate-openclaw validate-traces validate-security
+.PHONY: test-e2e test-ui test-security test-mlflow
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
-.PHONY: template lint validate validate-cleanup
+.PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
+.PHONY: openshell-sync-mtls openshell-register-gateway
+.PHONY: validate validate-cleanup validate-smoke deploy-all-quiet
 
 # --- Deploy targets (ordered) ---
+#
+# Cluster coexistence (see ADR-0002's addendum, docs/adr/0002-ocp-with-rhoai-as-platform.md):
+# RHOAI, its DataScienceCluster, the Postgres backend, and MLflow itself are
+# cluster-wide/shared resources. Another, independent OpenShell/OpenClaw
+# deployment project may install them under the exact same Helm release
+# names on this same cluster. If that already happened, skip re-installing
+# here and reuse the shared instance instead of a redundant/values-resetting
+# `helm upgrade`.
 
 deploy-operators:
-	$(HELM) upgrade --install $(OPERATORS_RELEASE) $(OPERATORS_CHART) $(HELM_OPTS)
+	@if $(HELM) status $(OPERATORS_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(OPERATORS_RELEASE)' already deployed (shared cluster resource) — skipping install."; \
+	else \
+		$(HELM) upgrade --install $(OPERATORS_RELEASE) $(OPERATORS_CHART) $(HELM_OPTS); \
+	fi
 
 wait-operators: deploy-operators
 	@echo "Waiting for RHOAI operator CSV..."
 	@until oc get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}' 2>/dev/null | grep -q Succeeded; do \
+		PLAN=$$(oc get subscription rhods-operator -n redhat-ods-operator -o jsonpath='{.status.installplan.name}' 2>/dev/null || true); \
+		if [ -n "$$PLAN" ]; then \
+			APPROVED=$$(oc get installplan "$$PLAN" -n redhat-ods-operator -o jsonpath='{.spec.approved}' 2>/dev/null || true); \
+			if [ "$$APPROVED" != "true" ]; then \
+				echo "  Auto-approving InstallPlan $$PLAN (pinned channel in git = already reviewed)"; \
+				oc -n redhat-ods-operator patch installplan "$$PLAN" --type merge -p '{"spec":{"approved":true}}' >/dev/null; \
+			fi; \
+		fi; \
 		echo "  CSV not ready yet..."; sleep 15; \
 	done
 	@echo "Waiting for operator pods..."
@@ -61,13 +123,82 @@ wait-operators: deploy-operators
 	@until oc get crd datascienceclusters.datasciencecluster.opendatahub.io >/dev/null 2>&1; do \
 		echo "  platform CRDs not ready yet..."; sleep 10; \
 	done
+	@echo "Waiting for Agent Sandbox Operator CSV..."
+	@# Match by displayName — a bare `{.items[*].status.phase}` can also surface
+	@# Succeeded CSVs from other operators in this namespace view, exiting the
+	@# wait before approving the Manual InstallPlan (sandbox stuck Provisioning).
+	@until oc get csv -n agent-sandbox-system -o jsonpath='{.items[?(@.spec.displayName=="Red Hat build of Agent Sandbox")].status.phase}' 2>/dev/null | grep -q Succeeded; do \
+		PLAN=$$(oc get subscription agent-sandbox-operator -n agent-sandbox-system -o jsonpath='{.status.installplan.name}' 2>/dev/null || true); \
+		if [ -n "$$PLAN" ]; then \
+			APPROVED=$$(oc get installplan "$$PLAN" -n agent-sandbox-system -o jsonpath='{.spec.approved}' 2>/dev/null || true); \
+			if [ "$$APPROVED" != "true" ]; then \
+				echo "  Auto-approving InstallPlan $$PLAN (pinned channel in git = already reviewed)"; \
+				oc -n agent-sandbox-system patch installplan "$$PLAN" --type merge -p '{"spec":{"approved":true}}' >/dev/null; \
+			fi; \
+		fi; \
+		echo "  Agent Sandbox CSV not ready yet..."; sleep 15; \
+	done
+	@echo "Waiting for Agent Sandbox CRDs..."
+	@until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do \
+		echo "  sandboxes.agents.x-k8s.io not ready yet..."; sleep 5; \
+	done
 
 # OdhDashboardConfig CRD appears only after DSC enables Dashboard — wait only for DSC CRD.
 deploy-platform: wait-operators
-	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS)
+	@if $(HELM) status $(PLATFORM_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(PLATFORM_RELEASE)' already deployed (shared cluster resource) — skipping helm upgrade, reconciling mlflowoperator only."; \
+		$(MAKE) ensure-mlflowoperator-managed; \
+	else \
+		$(MAKE) deploy-platform-fresh; \
+	fi
+
+# Minimal, non-destructive reconciliation for a DataScienceCluster this
+# project doesn't own the Helm release for: only touches
+# spec.components.mlflowoperator, not a full `helm upgrade` with this
+# project's own values (which could flip a component the other project
+# configured).
+ensure-mlflowoperator-managed:
+	@CURRENT=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}' 2>/dev/null || true); \
+	if [ "$$CURRENT" = "Managed" ]; then \
+		echo "mlflowoperator already Managed on the shared DataScienceCluster."; \
+	else \
+		echo "Patching shared DataScienceCluster: mlflowoperator -> Managed (was '$$CURRENT')..."; \
+		oc patch datasciencecluster default-dsc --type merge -p '{"spec":{"components":{"mlflowoperator":{"managementState":"Managed"}}}}'; \
+	fi
+
+deploy-platform-fresh:
+	@$(MAKE) adopt-dashboard-config
+	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) --reset-values
+	@$(MAKE) wait-dashboard-crd
+	@$(MAKE) adopt-dashboard-config
+
+wait-dashboard-crd:
+	@echo "Waiting for OdhDashboardConfig CRD..."
+	@i=0; until oc get crd odhdashboardconfigs.opendatahub.io >/dev/null 2>&1; do \
+		i=$$((i+1)); if [ $$i -ge 30 ]; then echo "  WARNING: CRD not registered after 150s"; break; fi; \
+		echo "  OdhDashboardConfig CRD not registered yet..."; sleep 5; \
+	done
+	@echo "Waiting for odh-dashboard-config singleton..."
+	@i=0; until oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications >/dev/null 2>&1; do \
+		i=$$((i+1)); if [ $$i -ge 18 ]; then echo "  WARNING: odh-dashboard-config not created after 90s"; break; fi; \
+		echo "  odh-dashboard-config not created yet..."; sleep 5; \
+	done
+
+adopt-dashboard-config:
+	@if oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications >/dev/null 2>&1; then \
+		echo "Adopting odh-dashboard-config into $(PLATFORM_RELEASE) Helm release..."; \
+		oc annotate odhdashboardconfig odh-dashboard-config -n redhat-ods-applications --overwrite \
+			meta.helm.sh/release-name=$(PLATFORM_RELEASE) meta.helm.sh/release-namespace=default; \
+		oc label odhdashboardconfig odh-dashboard-config -n redhat-ods-applications --overwrite \
+			app.kubernetes.io/managed-by=Helm; \
+	fi
 
 deploy-database:
-	$(HELM) upgrade --install $(DATABASE_RELEASE) $(DATABASE_CHART) $(HELM_OPTS)
+	@if $(HELM) status $(DATABASE_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(DATABASE_RELEASE)' already deployed (shared cluster resource) — skipping install."; \
+	else \
+		$(HELM) upgrade --install $(DATABASE_RELEASE) $(DATABASE_CHART) $(HELM_OPTS); \
+	fi
 
 wait-mlflow-crd:
 	@echo "Waiting for MLflow CRD..."
@@ -76,7 +207,11 @@ wait-mlflow-crd:
 	done
 
 deploy-mlflow: deploy-database wait-mlflow-crd
-	$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) $(HELM_OPTS)
+	@if $(HELM) status $(MLFLOW_RELEASE) >/dev/null 2>&1; then \
+		echo "Release '$(MLFLOW_RELEASE)' already deployed (shared cluster resource) — skipping install, reusing shared MLflow instance."; \
+	else \
+		$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) $(HELM_OPTS); \
+	fi
 
 wait-evalhub-crd:
 	@echo "Waiting for EvalHub CRD..."
@@ -88,13 +223,257 @@ deploy-evalhub: deploy-database wait-evalhub-crd
 	$(HELM) upgrade --install $(EVALHUB_RELEASE) $(EVALHUB_CHART) $(HELM_OPTS)
 
 deploy-all: deploy-platform deploy-database deploy-mlflow deploy-evalhub
-	@echo "All components deployed."
-	@echo "Note: DataScienceCluster may show Not Ready if modelsAsService gateway is missing (expected for this demo)."
+	@echo "All RHOAI components deployed."
+	@echo "Next: make deploy-openshell HELM_OPTS='--set global.appsDomain=<your-apps-domain>'"
+
+# Agent token-efficient: quiet logs + .agent-status/deploy-all.json (long-running-scripts skill)
+deploy-all-quiet:
+	@bash -c 'source $(ROOT_DIR)/scripts/lib/agent-run.sh && agent_run "deploy-all" $(MAKE) deploy-all'
+
+# --- OpenShell targets (Phase 2) ---
+# OpenShell MUST be deployed AFTER RHOAI (constraint #10: MLflow RBAC depends on
+# the redhat-ods-applications namespace and mlflow-integration ClusterRole).
+
+helm-env:
+	@mkdir -p $(DOCKER_CONFIG)
+	@test -f $(DOCKER_CONFIG)/config.json || printf '{}' > $(DOCKER_CONFIG)/config.json
+
+deploy-openshell: helm-env
+	@if [ -z "$(findstring global.appsDomain,$(HELM_OPTS))" ] && [ -z "$(APPS_DOMAIN)" ]; then \
+		echo "ERROR: global.appsDomain required. Usage:"; \
+		echo "  make deploy-openshell HELM_OPTS='--set global.appsDomain=apps.ocp.example.com'"; \
+		echo "  or: APPS_DOMAIN=apps.ocp.example.com make deploy-openshell"; \
+		exit 1; \
+	fi
+	@echo "Waiting for Agent Sandbox CRDs from OLM operator (agent-sandbox-operator)..."
+	@# Sole source: Red Hat build of Agent Sandbox Operator (installed by
+	@# deploy-operators). Do NOT apply upstream kubernetes-sigs/agent-sandbox
+	@# manifests — that path was retired (ADR-0003, OSC 1.13).
+	@i=0; until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do \
+		i=$$((i+1)); \
+		if [ $$i -ge 60 ]; then \
+			echo "FAIL: CRD sandboxes.agents.x-k8s.io not available."; \
+			echo "  Ensure 'make deploy-operators' installed agent-sandbox-operator"; \
+			echo "  and its InstallPlan was approved (channel preview-0.9)."; \
+			exit 1; \
+		fi; \
+		echo "  Agent Sandbox CRD not ready yet..."; sleep 5; \
+	done
+	@echo "OK: Agent Sandbox CRD present"
+	@echo "Resolving OpenShell chart dependency (pinned in Chart.yaml/Chart.lock)..."
+	DOCKER_CONFIG=$(DOCKER_CONFIG) $(HELM) dependency build $(OPENSHELL_CHART)
+	@echo "Installing OpenShell (single release: namespace extras + gateway)..."
+	@# The server's mTLS cert is minted by the subchart's own certgen Job with
+	@# only default SANs (localhost/cluster-internal names) — the external
+	@# Route hostname must be added explicitly via pkiInitJob.serverDnsNames,
+	@# or CLI/gRPC clients connecting through the Route fail with "certificate
+	@# not valid for name ...". Route host follows OpenShift's default
+	@# "<route.name>-<namespace>.<appsDomain>" pattern (no explicit host set
+	@# in route.yaml). Found 2026-08-05 during a from-scratch redeploy test.
+	@# NOTE: each SAN is its own --set with an indexed path (serverDnsNames[N]=...)
+	@# rather than one --set with a brace list ({a,b}) -- a literal comma inside
+	@# a single Make "if" function argument below is parsed by Make itself as
+	@# the condition/true-text/false-text separator, silently truncating the
+	@# value. Found 2026-08-05 while wiring this up.
+	$(HELM) upgrade --install $(OPENSHELL_RELEASE) $(OPENSHELL_CHART) \
+		--namespace $(OPENSHELL_NAMESPACE) --create-namespace \
+		-f $(OPENSHELL_CHART)/values-openshift.yaml \
+		$(if $(APPS_DOMAIN),--set global.appsDomain=$(APPS_DOMAIN)) \
+		$(if $(APPS_DOMAIN),--set "openshell.pkiInitJob.serverDnsNames[0]=openshell-gw-$(OPENSHELL_NAMESPACE).$(APPS_DOMAIN)") \
+		$(if $(APPS_DOMAIN),--set "openshell.pkiInitJob.serverDnsNames[1]=*.$(APPS_DOMAIN)") \
+		$(HELM_OPTS)
+	@echo "Labeling namespace for RHOAI Dashboard (Data Science Project)..."
+	oc label namespace $(OPENSHELL_NAMESPACE) opendatahub.io/dashboard=true --overwrite
+	@echo "Waiting for OpenShell gateway rollout..."
+	oc -n $(OPENSHELL_NAMESPACE) rollout status statefulset/openshell --timeout=600s
+	@echo "Waiting for PKI secrets..."
+	@for secret in openshell-server-tls openshell-client-tls openshell-jwt-keys; do \
+		i=0; while ! oc -n $(OPENSHELL_NAMESPACE) get secret "$$secret" &>/dev/null; do \
+			i=$$((i+1)); if [ $$i -ge 60 ]; then echo "FAIL: $$secret not created"; exit 1; fi; \
+			sleep 2; \
+		done; \
+		echo "  $$secret exists"; \
+	done
+	@$(MAKE) deploy-mlflow-openclaw-integration
+	@$(MAKE) openshell-register-gateway
+	@echo "OpenShell deployed successfully."
+	@echo "Next: ./scripts/launch-openclaw.sh  (creates sandbox if needed)"
+	@echo "      APPS_DOMAIN=<domain> make deploy-openclaw-ui-proxy  (browser UI via nginx mTLS bridge)"
+
+# MLflow's openclawIntegration RBAC (see deploy/helm/mlflow/values.yaml) needs the
+# openshell-sandbox ServiceAccount, which is created by deploy-openshell above,
+# so it can't run as part of deploy-mlflow/deploy-all (constraint #10, ADR-0003).
+# Run automatically as the last step of deploy-openshell.
+deploy-mlflow-openclaw-integration:
+	@echo "Waiting for openshell-sandbox ServiceAccount..."
+	@i=0; while ! oc -n $(OPENSHELL_NAMESPACE) get sa openshell-sandbox &>/dev/null; do \
+		i=$$((i+1)); if [ $$i -ge 60 ]; then echo "FAIL: openshell-sandbox SA not found in time"; exit 1; fi; \
+		sleep 2; \
+	done
+	@echo "Enabling MLflow RBAC integration for OpenClaw tracing..."
+	$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) \
+		--set openclawIntegration.enabled=true $(HELM_OPTS)
+	@oc -n $(OPENSHELL_NAMESPACE) get secret openshell-sandbox-mlflow-token >/dev/null \
+		&& echo "OK: openshell-sandbox-mlflow-token created" \
+		|| echo "WARN: openshell-sandbox-mlflow-token not found yet (token controller may still be catching up)"
+
+# --- openclaw-ui-proxy (nginx mTLS bridge for OpenClaw Control UI) ---
+# Sole browser entrypoint: Route → nginx (TLS + mTLS to relay) → OpenShell → gateway.
+# OpenClaw password auth protects the WebSocket session (ADR-0011).
+# Prereq: OpenShell deployed (needs the openshell Service ClusterIP for nginx upstream).
+deploy-openclaw-ui-proxy:
+	@if [ -z "$(APPS_DOMAIN)" ]; then \
+		echo "ERROR: APPS_DOMAIN required. Usage: APPS_DOMAIN=apps.ocp.example.com make deploy-openclaw-ui-proxy"; \
+		exit 1; \
+	fi
+	@echo "Deploying openclaw-ui-proxy (nginx mTLS bridge)..."
+	$(HELM) upgrade --install $(OPENCLAW_UI_PROXY_RELEASE) $(OPENCLAW_UI_PROXY_CHART) \
+		--namespace $(OPENSHELL_NAMESPACE) \
+		--set appsDomain=$(APPS_DOMAIN) \
+		--set namespace=$(OPENSHELL_NAMESPACE) \
+		--wait --timeout 120s
+	@echo "Verifying UI Route..."
+	@sleep 3
+	@HTTP_CODE=$$(curl -sk -o /dev/null -w '%{http_code}' \
+		"https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)/" 2>/dev/null || echo "000"); \
+	if [ "$$HTTP_CODE" = "200" ] || [ "$$HTTP_CODE" = "301" ] || [ "$$HTTP_CODE" = "302" ]; then \
+		echo "OK: Control UI reachable via nginx bridge (HTTP $$HTTP_CODE)"; \
+	else \
+		echo "WARN: Expected 200/3xx, got HTTP $$HTTP_CODE (sandbox may not be launched yet)"; \
+	fi
+	@echo "UI URL: https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)"
+	@echo "Auth: enter OPENCLAW_GATEWAY_PASSWORD from secrets/secrets.env in Control UI settings"
+
+# Fast smoke checks for agent iteration (no Playwright / full E2E — see long-running-scripts skill)
+validate-smoke: validate-openshell validate-security
+	@echo "Smoke validation complete (infra + security only)."
+
+# --- OpenShell + openclaw-ui-proxy teardown ---
+# Reverse of deploy-openshell/deploy-openclaw-ui-proxy. Order: ui-proxy (depends on
+# openshell Service) -> openshell (single release: namespace extras + gateway)
+# -> namespace. Agent Sandbox Operator (OLM) is shared cluster infra — tear it
+# down via cleanup-orphans / undeploy-all, not here.
+undeploy-openshell:
+	-$(HELM) uninstall $(OPENCLAW_UI_PROXY_RELEASE) -n $(OPENSHELL_NAMESPACE)
+	-$(HELM) uninstall $(OPENSHELL_RELEASE) -n $(OPENSHELL_NAMESPACE)
+	-@oc delete namespace $(OPENSHELL_NAMESPACE) --wait=false 2>/dev/null || true
+	@echo "OpenShell + openclaw-ui-proxy teardown complete."
+	@echo "NOTE: Agent Sandbox Operator (agent-sandbox-system) was NOT removed — use 'make cleanup-orphans' / 'make undeploy-all'."
+
+validate-openshell:
+	@echo "=== OpenShell ==="
+	@oc -n $(OPENSHELL_NAMESPACE) get statefulset openshell -o jsonpath='{.status.readyReplicas}{"\n"}' | grep -q 1
+	@echo "OK: OpenShell StatefulSet ready"
+	@for secret in openshell-server-tls openshell-client-tls openshell-jwt-keys; do \
+		oc -n $(OPENSHELL_NAMESPACE) get secret "$$secret" >/dev/null 2>&1 || \
+			{ echo "FAIL: $$secret missing"; exit 1; }; \
+	done
+	@echo "OK: PKI secrets present"
+	@oc -n $(OPENSHELL_NAMESPACE) get route openshell-gw -o jsonpath='{.spec.host}{"\n"}' >/dev/null
+	@echo "OK: Route exists ($$(oc -n $(OPENSHELL_NAMESPACE) get route openshell-gw -o jsonpath='{.spec.host}'))"
+
+validate-openclaw:
+	@echo "=== OpenClaw Gateway Health ==="
+	@# The gateway listens on a loopback bound *inside* the sandbox's own network
+	@# namespace (isolated from the "agent" container's netns) — must reach it via
+	@# `openshell sandbox exec`, not a plain `oc exec -c agent`, which gets
+	@# "curl: (7) Failed to connect" even though the process is alive. Same
+	@# mechanism launch-openclaw.sh already uses for its own health check.
+	@# Found + fixed 2026-08-05 during a from-scratch redeploy test.
+	@openshell sandbox exec -n openclaw-gw --no-tty --timeout 10 \
+		--env "HOME=/sandbox/workspace" \
+		-- bash -c 'curl -sf http://127.0.0.1:18789/health' >/dev/null
+	@echo "OK: Gateway process alive"
+	@echo "=== CLI: openclaw agent → MaaS → Response ==="
+	@# NOTE: this bare `openclaw agent` CLI invocation cannot present the device
+	@# identity the running gateway process expects over its WebSocket, so it
+	@# silently falls back to an "embedded" in-process agent run (not routed
+	@# through the gateway) — confirmed by `executionTrace.runner: "embedded"` /
+	@# `fallbackFrom: "gateway"` in its own JSON output, and by MLflow export
+	@# failures since the embedded run doesn't inherit the gateway's
+	@# MLFLOW_TRACKING_TOKEN/NODE_EXTRA_CA_CERTS env. So this only proves
+	@# MaaS/model connectivity, NOT the gateway-mediated path the UI actually
+	@# uses. Real gateway+trace validation is `test-ui` (Playwright, browser
+	@# WebSocket session) + validate-traces. Previously this target also parsed
+	@# JSON fields ("status", "result.payloads") that don't exist in the CLI's
+	@# actual output shape (payloads is top-level, there is no "status") and so
+	@# always reported FAIL even on a successful reply — fixed 2026-08-05.
+	@RESULT=$$(openshell sandbox exec -n openclaw-gw --no-tty --timeout 65 \
+		--env "HOME=/sandbox/workspace" \
+		--env "OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp" \
+		-- bash -c 'openclaw agent --agent main --message "Reply with exactly: TRACE_OK" --json --timeout 60 2>/dev/null'); \
+	REPLY=$$(echo "$$RESULT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('payloads',[{}])[0].get('text',''))" 2>/dev/null); \
+	if [ -n "$$REPLY" ]; then \
+		echo "OK: MaaS round-trip succeeded (reply: $$REPLY)"; \
+	else \
+		echo "FAIL: Gateway agent request failed"; \
+		echo "$$RESULT" | tail -5; exit 1; \
+	fi
+
+validate-traces:
+	@echo "=== MLflow Trace Validation ==="
+	@MLFLOW_TOKEN=$$(oc -n $(OPENSHELL_NAMESPACE) get secret openshell-sandbox-mlflow-token -o jsonpath='{.data.token}' | base64 -d); \
+	TRACES=$$(oc -n $(OPENSHELL_NAMESPACE) exec openclaw-gw -c agent -- \
+		bash -c "curl -sk 'https://mlflow.redhat-ods-applications.svc:8443/api/2.0/mlflow/traces?experiment_ids=1&max_results=1' \
+		-H 'Authorization: Bearer $${MLFLOW_TOKEN}' \
+		-H 'X-MLFLOW-WORKSPACE: openshell'" 2>/dev/null); \
+	COUNT=$$(echo "$$TRACES" | python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d.get('traces',[])))" 2>/dev/null); \
+	if [ "$$COUNT" -gt 0 ] 2>/dev/null; then \
+		echo "OK: MLflow has traces in experiment openclaw-tracing (found $$COUNT)"; \
+	else \
+		echo "FAIL: No traces found in MLflow experiment openclaw-tracing"; \
+		echo "  Response: $$TRACES"; \
+		echo "  Ensure gateway is running with NODE_TLS_REJECT_UNAUTHORIZED=0"; \
+		echo "  and diagnostics.otel.headers.x-mlflow-experiment-id is set"; \
+		exit 1; \
+	fi
+
+validate-security:
+	@echo "=== Sandbox Policy Enforcement ==="
+	@RESULT=$$(openshell sandbox exec -n openclaw-gw --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "000" ] || [ "$$RESULT" = "403" ] || [ -z "$$RESULT" ]; then \
+		echo "OK: github.com blocked by sandbox policy (code: $${RESULT:-timeout})"; \
+	else \
+		echo "FAIL: github.com reachable (HTTP $$RESULT) — policy not enforcing"; exit 1; \
+	fi
+	@RESULT=$$(openshell sandbox exec -n openclaw-gw --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://maas-rhdp.apps.maas.redhatworkshops.io/v1/models 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "200" ] || [ "$$RESULT" = "401" ]; then \
+		echo "OK: MaaS endpoint reachable (HTTP $$RESULT)"; \
+	else \
+		echo "FAIL: MaaS endpoint not reachable (HTTP $$RESULT)"; exit 1; \
+	fi
+
+# --- Playwright E2E Tests ---
+# These test the REAL user experience: browser → UI → gateway → model → MLflow traces.
+# Unlike Makefile validate-* targets (which test infra from inside the cluster),
+# these tests run from outside and verify what the user actually sees.
+#
+# Prereqs: cd tests && npm install && npx playwright install chromium
+# Env vars: OPENCLAW_BASE_URL, MLFLOW_BASE_URL, MLFLOW_AUTH_TOKEN, MLFLOW_WORKSPACE
+
+test-e2e:
+	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
+	cd $(ROOT_DIR)/tests && npx playwright test
+
+test-ui:
+	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
+	cd $(ROOT_DIR)/tests && npx playwright test openclaw-ui.spec.ts
+
+test-security:
+	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
+	cd $(ROOT_DIR)/tests && npx playwright test sandbox-security.spec.ts
+
+test-mlflow:
+	cd $(ROOT_DIR)/tests && npx playwright test mlflow-ui.spec.ts
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,
 # otherwise the finalizer cannot be processed and DSCI gets stuck in Terminating.
-# Order: apps (evalhub/mlflow/db/platform) → DSCI → operator → orphan cleanup.
+# Order: apps (evalhub/mlflow/db/platform) -> DSCI -> operator -> orphan cleanup.
 
 undeploy-apps:
 	-$(HELM) uninstall $(EVALHUB_RELEASE)
@@ -123,6 +502,10 @@ cleanup-orphans:
 	-@oc delete namespace redhat-ods-applications --wait=false 2>/dev/null || true
 	-@oc delete namespace redhat-ods-monitoring --wait=false 2>/dev/null || true
 	-@oc delete namespace evaluation --wait=false 2>/dev/null || true
+	@echo "Clearing orphaned MaaS tenant finalizers (maas-controller is already gone by this point)..."
+	-@for t in $$(oc get tenants.maas.opendatahub.io -n models-as-a-service -o name 2>/dev/null); do \
+		oc patch "$$t" -n models-as-a-service --type=merge -p '{"metadata":{"finalizers":[]}}' 2>/dev/null || true; \
+	done
 	-@oc delete namespace models-as-a-service --wait=false 2>/dev/null || true
 	-@oc delete namespace rhoai-model-registries --wait=false 2>/dev/null || true
 	-@oc delete subscription agent-sandbox-operator -n agent-sandbox-system 2>/dev/null || true
@@ -133,6 +516,14 @@ cleanup-orphans:
 
 undeploy-all: undeploy-apps purge-dsci undeploy-operators cleanup-orphans
 	@echo "All components undeployed."
+
+# Full-stack reset: everything this Makefile knows how to deploy, torn down in
+# reverse dependency order (see docs/adr/0003-openshell-deployment-on-openshift.md
+# for why OpenShell depends on RHOAI -- so it must come down first).
+# Run `make validate-cleanup` afterwards to confirm before redeploying from scratch.
+undeploy-everything: undeploy-openshell undeploy-all
+	@echo "Full reset complete: OpenShell, openclaw-ui-proxy, Agent Sandbox, RHOAI stack, and operators removed."
+	@echo "Run 'make validate-cleanup' to confirm, then 'make deploy-all' to redeploy from scratch."
 
 # --- Validation ---
 
@@ -152,8 +543,13 @@ lint:
 
 validate:
 	@echo "=== Helm releases ==="
-	@test $$(helm list -f '^rhoai-' -q | wc -l | tr -d ' ') -eq 5
-	@echo "OK: 5 rhoai-* releases deployed"
+	@for rel in $(OPERATORS_RELEASE) $(PLATFORM_RELEASE) $(DATABASE_RELEASE) $(MLFLOW_RELEASE) $(EVALHUB_RELEASE); do \
+		helm status "$$rel" >/dev/null 2>&1 || { echo "FAIL: release $$rel not deployed"; exit 1; }; \
+	done
+	@echo "OK: all 5 expected rhoai-* releases deployed"
+	@echo "    (not asserting an exact total 'rhoai-*' count: a coexisting project"
+	@echo "     on this shared cluster may have its own extra releases sharing"
+	@echo "     the same prefix -- see ADR-0002 addendum)"
 	@echo "=== RHOAI operator ==="
 	@oc get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}{"\n"}' | grep -q Succeeded
 	@oc wait --for=condition=Ready pod -l name=rhods-operator -n redhat-ods-operator --timeout=60s >/dev/null
@@ -167,8 +563,6 @@ validate:
 	DSC_MSG=$$(oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}'); \
 	if [ "$$DSC_PHASE" = "Ready" ]; then \
 		echo "OK: DataScienceCluster phase Ready"; \
-	elif echo "$$DSC_MSG" | grep -q 'modelsasservice'; then \
-		echo "WARN: DataScienceCluster phase $$DSC_PHASE ($$DSC_MSG) — expected without MaaS gateway"; \
 	else \
 		echo "FAIL: DataScienceCluster phase $$DSC_PHASE ($$DSC_MSG)"; exit 1; \
 	fi
@@ -187,13 +581,30 @@ validate:
 	@echo "All validation checks passed."
 
 validate-cleanup:
-	@echo "=== Helm releases ==="
-	@RHOAI_COUNT=$$(helm list -f '^rhoai-' -q 2>/dev/null | wc -l | tr -d ' '); \
-	if [ "$$RHOAI_COUNT" -eq 0 ]; then \
-		echo "OK: no rhoai-* releases"; \
+	@echo "=== Helm releases (RHOAI) ==="
+	@LEFTOVER_RHOAI=false; \
+	for rel in $(OPERATORS_RELEASE) $(PLATFORM_RELEASE) $(DATABASE_RELEASE) $(MLFLOW_RELEASE) $(EVALHUB_RELEASE); do \
+		if helm status "$$rel" >/dev/null 2>&1; then \
+			echo "FAIL: release $$rel still deployed"; LEFTOVER_RHOAI=true; \
+		fi; \
+	done; \
+	if [ "$$LEFTOVER_RHOAI" = "false" ]; then \
+		echo "OK: this project's rhoai-* releases are gone"; \
+		echo "    (not asserting zero total 'rhoai-*' releases: a coexisting"; \
+		echo "     project's own releases sharing the same prefix may still be"; \
+		echo "     up -- see ADR-0002 addendum)"; \
 	else \
-		echo "FAIL: $$RHOAI_COUNT rhoai-* releases still present"; exit 1; \
+		exit 1; \
 	fi
+	@echo "=== Helm releases (OpenShell / openclaw-ui-proxy) ==="
+	@LEFTOVER=false; \
+	for rel_ns in "$(OPENSHELL_RELEASE):$(OPENSHELL_NAMESPACE)" "$(OPENCLAW_UI_PROXY_RELEASE):$(OPENSHELL_NAMESPACE)"; do \
+		REL=$${rel_ns%%:*}; NS=$${rel_ns##*:}; \
+		if helm status "$$REL" -n "$$NS" >/dev/null 2>&1; then \
+			echo "FAIL: release $$REL still deployed in ns $$NS"; LEFTOVER=true; \
+		fi; \
+	done; \
+	if [ "$$LEFTOVER" = "true" ]; then exit 1; else echo "OK: no openshell/openclaw-ui-proxy releases"; fi
 	@echo "=== DSCInitialization ==="
 	@if oc get dscinitialization --no-headers 2>/dev/null | grep -q .; then \
 		echo "FAIL: DSCInitialization still exists"; exit 1; \
@@ -206,9 +617,14 @@ validate-cleanup:
 	else \
 		echo "OK: no DataScienceCluster"; \
 	fi
+	@echo "=== Agent Sandbox Operator (OLM) ==="
+	@AS_LEFTOVER=false; \
+	oc get subscription agent-sandbox-operator -n agent-sandbox-system >/dev/null 2>&1 && { echo "WARN: Subscription agent-sandbox-operator still present"; AS_LEFTOVER=true; }; \
+	oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1 && { echo "WARN: CRD sandboxes.agents.x-k8s.io still present"; AS_LEFTOVER=true; }; \
+	if [ "$$AS_LEFTOVER" = "false" ]; then echo "OK: no Agent Sandbox Operator leftovers"; fi
 	@echo "=== Namespaces ==="
 	@ALL_CLEAN=true; \
-	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system; do \
+	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system $(OPENSHELL_NAMESPACE); do \
 		PHASE=$$(oc get namespace "$$ns" -o jsonpath='{.status.phase}' 2>/dev/null); \
 		if [ -n "$$PHASE" ]; then \
 			echo "WARN: namespace $$ns still $$PHASE"; ALL_CLEAN=false; \
@@ -223,66 +639,13 @@ validate-cleanup:
 	@echo "Cleanup validation complete."
 
 # --- OpenShell (cluster) ---
+# mTLS client bundle sync + gateway CLI registration. Install/upgrade/uninstall
+# are the deploy-openshell/undeploy-openshell/validate-openshell targets above.
 
-HELM_CHART_DIR := $(ROOT_DIR)/deploy/helm/openshell
-
-RELEASE_NAME ?= openshell
-NAMESPACE ?= openshell
-HELM_TIMEOUT ?= 10m
-DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
-
-.PHONY: help openshell-deps openshell-install openshell-upgrade openshell-sync-mtls openshell-status openshell-uninstall helm-env
-
-helm-env:
-	@mkdir -p $(DOCKER_CONFIG)
-	@test -f $(DOCKER_CONFIG)/config.json || printf '{}' > $(DOCKER_CONFIG)/config.json
-
-help:
-	@echo "OpenShell cluster targets:"
-	@echo "  make openshell-deps       Update Helm chart dependencies (Chart.lock)"
-	@echo "  make openshell-install    Install OpenShell gateway (Helm — namespace + SCC + gateway + mTLS sync)"
-	@echo "  make openshell-upgrade    Upgrade release with current values (+ mTLS sync)"
-	@echo "  make openshell-sync-mtls  Sync openshell-client-tls to local CLI mTLS bundle"
-	@echo "  make openshell-status     Show release and pod status"
-	@echo "  make openshell-uninstall  Remove Helm release"
-
-openshell-deps: helm-env
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm dependency update
+openshell-register-gateway:
+	NAMESPACE=$(OPENSHELL_NAMESPACE) GATEWAY_NAME=$(GATEWAY_NAME) \
+		$(ROOT_DIR)/scripts/openshift-openshell-register-gateway.sh
 
 openshell-sync-mtls:
-	NAMESPACE=$(NAMESPACE) $(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh
-
-openshell-install: helm-env openshell-deps
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade --install $(RELEASE_NAME) . \
-		--namespace $(NAMESPACE) \
-		--create-namespace \
-		-f values.yaml \
-		-f values-openshift.yaml \
-		--wait \
-		--timeout $(HELM_TIMEOUT)
-	@$(MAKE) openshell-sync-mtls
-	@$(MAKE) openshell-status
-
-openshell-upgrade: helm-env openshell-deps
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm upgrade $(RELEASE_NAME) . \
-		--namespace $(NAMESPACE) \
-		-f values.yaml \
-		-f values-openshift.yaml \
-		--wait \
-		--timeout $(HELM_TIMEOUT)
-	@$(MAKE) openshell-sync-mtls
-	@$(MAKE) openshell-status
-
-openshell-status:
-	@echo "--- Helm ---"
-	@DOCKER_CONFIG=$(DOCKER_CONFIG) helm list -n $(NAMESPACE) 2>/dev/null || true
-	@echo "--- Workloads ---"
-	@oc -n $(NAMESPACE) get statefulset,pods,svc,secret 2>/dev/null | grep -E 'NAME|openshell' || true
-	@echo "--- SCC ---"
-	@oc -n $(NAMESPACE) get rolebinding 2>/dev/null | grep -E 'NAME|privileged' || true
-
-openshell-uninstall: helm-env
-	cd $(HELM_CHART_DIR) && DOCKER_CONFIG=$(DOCKER_CONFIG) helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) || true
-	@echo "Deleting namespace $(NAMESPACE)..."
-	-@oc delete ns $(NAMESPACE) --wait=false 2>/dev/null || true
-	@echo "OpenShell cluster cleanup complete."
+	NAMESPACE=$(OPENSHELL_NAMESPACE) GATEWAY_NAME=$(GATEWAY_NAME) \
+		$(ROOT_DIR)/scripts/openshift-openshell-sync-mtls.sh

@@ -3,10 +3,17 @@
 #
 # Prerequisites (not installed by this chart):
 #   - Red Hat build of Agent Sandbox Operator: deploy/helm/operators/ (make deploy-operators)
+#
+# Namespace creation is NOT done by this chart (see deploy/Makefile's
+# deploy-openshell target: `helm upgrade --install ... --create-namespace`).
+# A chart-owned Namespace template combined with --create-namespace makes
+# Helm refuse to adopt the pre-existing namespace on a truly fresh install
+# ("exists and cannot be imported... invalid ownership metadata") — so
+# namespace creation is left to the Helm flag, and the one extra label this
+# project needs (RHOAI dashboard opt-in) is applied by a single idempotent
+# `oc label` line in the same Makefile target instead.
 
 openshift:
-  namespace:
-    create: true
   scc:
     privilegedSandbox: true
 

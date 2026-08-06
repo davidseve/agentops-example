@@ -1,24 +1,27 @@
-OpenShell gateway installed for the AgentOps demo.
+OpenShell gateway deployed for the AgentOps demo.
 
-Release:   {{ .Release.Name }}
-Namespace: {{ .Release.Namespace }}
-Chart:     {{ .Chart.Name }}-{{ .Chart.Version }} (upstream {{ .Values.openshell.image.tag }})
+This is a single Helm release ({{ .Release.Name }}, namespace {{ .Release.Namespace }})
+that renders both this wrapper's OpenShift extras (privileged SCC RoleBinding, Route)
+and the upstream OpenShell gateway itself (subchart dependency, image tag
+{{ .Values.openshell.image.tag }}) together — see deploy/Makefile's `deploy-openshell`
+target and Chart.yaml's `dependencies:` block for the pinned upstream version.
 {{- if .Values.openshift.scc.privilegedSandbox }}
-SCC:       privileged → {{ include "agentops-openshell.sandboxSA" . }} (post-install hook)
+SCC:       privileged → {{ include "agentops-openshell.sandboxSA" . }} (namespace {{ .Release.Namespace }})
 {{- end }}
 
 Verify:
-  oc -n {{ .Release.Namespace }} rollout status statefulset/{{ .Release.Name }}
+  oc -n {{ .Release.Namespace }} rollout status statefulset/openshell
   oc -n {{ .Release.Namespace }} get pods,secret | grep -E 'NAME|openshell'
 {{- if .Values.openshift.scc.privilegedSandbox }}
   oc -n {{ .Release.Namespace }} get rolebinding | grep privileged
 {{- end }}
 
-Connect (from your workstation):
-  oc -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }} 8080:8080
-  openshell gateway add https://127.0.0.1:8080 --local --name openshift
-  make -C deploy openshell-sync-mtls   # required after gateway add --local
+Connect (from your workstation — also run automatically by
+`make -C deploy deploy-openshell` / `./scripts/launch-openclaw.sh`):
+  make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
   openshell status
+  ./scripts/launch-openclaw.sh               # creates sandbox if needed
 
 Documentation:
   docs/openshell-installation.md
+  docs/adr/0003-openshell-deployment-on-openshift.md
