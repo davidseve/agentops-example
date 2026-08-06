@@ -1,8 +1,0 @@
-# Apps domain passed at deploy time (--set appsDomain=...)
-appsDomain: ""
-
-# Namespace where OpenShell is deployed
-namespace: openshell
-
-# OpenShift's oauth-proxy fork (only this fork supports --provider=openshift + SA-based OAuth)
-image: registry.redhat.io/openshift4/ose-oauth-proxy:latest

@@ -1,0 +1,8 @@
+# Apps domain passed at deploy time (--set appsDomain=...)
+appsDomain: ""
+
+# Namespace where OpenShell is deployed
+namespace: openshell
+
+# UBI nginx image (OpenShift-compatible, non-root)
+image: registry.access.redhat.com/ubi9/nginx-124:latest

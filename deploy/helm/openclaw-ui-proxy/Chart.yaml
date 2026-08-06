@@ -1,0 +1,9 @@
+apiVersion: v2
+name: openclaw-ui-proxy
+description: >-
+  nginx mTLS bridge as the sole browser entrypoint for the OpenClaw Control UI.
+  Presents client certificates to the OpenShell relay; OpenClaw password auth
+  protects the gateway (ADR-0011).
+type: application
+version: 0.1.0
+appVersion: "1.24"

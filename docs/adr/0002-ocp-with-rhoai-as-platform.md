@@ -79,7 +79,7 @@ Cluster bootstrap validated on demo.redhat.com. Full deploy, validate, and teard
 - [ADR-0006: Explicit version pinning](0006-explicit-version-pinning.md) — RHOAI operator CSV is pinned
 - [ADR-0008: RHOAI DSC component selection](0008-rhoai-dsc-component-selection.md) — depends on RHOAI's DataScienceCluster CRD
 - [ADR-0010: MLflow tracing via mlflow-openclaw](0010-mlflow-tracing-otel.md) — depends on RHOAI's MLflow operator
-- [ADR-0011: OpenClaw UI auth](0011-ui-auth-openshift-oauth-proxy.md) — depends on OCP's native OAuth server
+- [ADR-0011: OpenClaw UI auth](0011-ui-auth-openshift-oauth-proxy.md) — browser UI via nginx mTLS bridge + OpenClaw password (OCP OAuth no longer used for the Control UI)
 
 ## Addendum (2026-08-05): shared-cluster coexistence with another OpenShell/OpenClaw deployment
 
@@ -92,7 +92,7 @@ exists (installed by whichever project got there first), and
 `deploy-platform` reconciles only `mlflowoperator: Managed` via a minimal
 `oc patch` rather than a full `helm upgrade` when skipping, so it never
 resets a component the other project configured (e.g. dashboard/genAiStudio).
-This project's own `deploy-openshell`/`deploy-oauth2-proxy` targets and
+This project's own `deploy-openshell`/`deploy-openclaw-ui-proxy` targets and
 OpenShell namespace (`openshell`) are unchanged — coexistence with a second
 OpenShell/OpenClaw stack on the same cluster requires the *other* project to
 deploy into an alternate namespace and sandbox name on its own side. No

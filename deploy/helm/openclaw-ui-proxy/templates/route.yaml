@@ -1,0 +1,20 @@
+# Browser Route for the OpenClaw Control UI.
+# Host matches OpenShell's {sandbox}--{service} routing pattern.
+# TLS: reencrypt (nginx terminates with service-CA cert; router uses cluster cert at the edge).
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openclaw-ui
+  namespace: {{ .Values.namespace }}
+  annotations:
+    haproxy.router.openshift.io/timeout: 3600s
+spec:
+  host: openclaw-gw--openclaw-ui.{{ .Values.appsDomain }}
+  to:
+    kind: Service
+    name: openclaw-ui-proxy
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect

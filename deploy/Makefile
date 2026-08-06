@@ -124,7 +124,10 @@ wait-operators: deploy-operators
 		echo "  platform CRDs not ready yet..."; sleep 10; \
 	done
 	@echo "Waiting for Agent Sandbox Operator CSV..."
-	@until oc get csv -n agent-sandbox-system -o jsonpath='{.items[*].status.phase}' 2>/dev/null | grep -q Succeeded; do \
+	@# Match by displayName — a bare `{.items[*].status.phase}` can also surface
+	@# Succeeded CSVs from other operators in this namespace view, exiting the
+	@# wait before approving the Manual InstallPlan (sandbox stuck Provisioning).
+	@until oc get csv -n agent-sandbox-system -o jsonpath='{.items[?(@.spec.displayName=="Red Hat build of Agent Sandbox")].status.phase}' 2>/dev/null | grep -q Succeeded; do \
 		PLAN=$$(oc get subscription agent-sandbox-operator -n agent-sandbox-system -o jsonpath='{.status.installplan.name}' 2>/dev/null || true); \
 		if [ -n "$$PLAN" ]; then \
 			APPROVED=$$(oc get installplan "$$PLAN" -n agent-sandbox-system -o jsonpath='{.spec.approved}' 2>/dev/null || true); \

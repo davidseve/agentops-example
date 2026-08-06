@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { controlUiPath } from './helpers';
 
 const CHAT_TIMEOUT = 30_000;
 
@@ -8,12 +9,14 @@ const CHAT_TIMEOUT = 30_000;
 // tests navigate back-to-back rapidly against the same gateway process.
 // The UI itself offers a "Try again" button for exactly this case; retry
 // via reload (observed more reliable than the in-page button) up to twice.
+// Password must be re-supplied on each navigation (Control UI does not
+// persist gateway.auth.password across reloads).
 async function gotoControlUi(page: Page) {
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt === 0) {
-      await page.goto('/');
+      await page.goto(controlUiPath('/'));
     } else {
-      await page.reload();
+      await page.goto(controlUiPath('/'));
     }
     const messageInput = page.getByPlaceholder(/Message/);
     const startFailed = page.getByText('Control UI did not start');
@@ -31,7 +34,7 @@ test.describe('OpenClaw Control UI', () => {
     await gotoControlUi(page);
     await expect(page).toHaveTitle('OpenClaw Control');
     await expect(page.getByPlaceholder(/Message/)).toBeVisible();
-    await expect(page.getByText(/claude-sonnet|Claude Sonnet|maas/).first()).toHaveCount(1, { timeout: 10000 });
+    await expect(page.getByText(/gpt-oss|GPT-OSS|maas/).first()).toHaveCount(1, { timeout: 10000 });
   });
 
   test('sidebar navigation is present', async ({ page }) => {
@@ -75,7 +78,7 @@ test.describe('OpenClaw Control UI', () => {
   test('chat completions HTTP API is disabled', async ({ request }) => {
     const resp = await request.post('/v1/chat/completions', {
       data: {
-        model: 'claude-sonnet-4-6',
+        model: 'gpt-oss-120b',
         messages: [{ role: 'user', content: 'ping' }],
       },
     });

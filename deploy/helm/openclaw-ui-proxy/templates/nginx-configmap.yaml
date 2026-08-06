@@ -1,15 +1,10 @@
-# nginx config for mTLS bridge to OpenShell relay.
-# Listens on HTTP :8090 (loopback only) and proxies to the relay with client
-# certificates. Binding to 127.0.0.1 restricts this bridge to the oauth-proxy
-# container in the same Pod (shared network namespace) — without this, any
-# other pod in the cluster could reach the mTLS bridge directly via the Pod
-# IP and skip oauth-proxy's OAuth check entirely (no Service/Route exposes
-# :8090, but that alone does not block Pod-IP-level traffic).
+# nginx config: TLS termination for the Route + mTLS to the OpenShell relay.
+# Listens on :8443 with the OpenShift service-serving certificate.
 {{- $openshellSvc := lookup "v1" "Service" .Values.namespace "openshell" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: oauth-proxy-nginx-config
+  name: openclaw-ui-proxy-nginx-config
   namespace: {{ .Values.namespace }}
 data:
   nginx.conf: |
@@ -22,23 +17,23 @@ data:
     }
 
     http {
-      # Default combined log format — deliberately does not log
-      # X-Forwarded-Email/User (PII) to container stdout. Verified manually
-      # during ADR-0011 investigation that these headers do reach the
-      # upstream correctly, including on WebSocket upgrades.
       access_log /dev/stdout;
       client_max_body_size 10m;
       proxy_read_timeout 3600s;
       proxy_send_timeout 3600s;
 
-      # WebSocket upgrade support
       map $http_upgrade $connection_upgrade {
         default upgrade;
         '' close;
       }
 
       server {
-        listen 127.0.0.1:8090;
+        listen 8443 ssl;
+        server_name openclaw-gw--openclaw-ui.{{ .Values.appsDomain }};
+
+        ssl_certificate     /etc/tls/private/tls.crt;
+        ssl_certificate_key /etc/tls/private/tls.key;
+        ssl_protocols       TLSv1.2 TLSv1.3;
 
         location / {
           proxy_pass https://{{ $openshellSvc.spec.clusterIP }}:8080;
@@ -49,13 +44,13 @@ data:
           proxy_ssl_server_name on;
           proxy_ssl_name openclaw-gw--openclaw-ui.{{ .Values.appsDomain }};
 
+          # OpenShell service routing keys off Host: {sandbox}--{service}.{domain}
           proxy_set_header Host openclaw-gw--openclaw-ui.{{ .Values.appsDomain }};
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto https;
           proxy_set_header X-Forwarded-Host openclaw-gw--openclaw-ui.{{ .Values.appsDomain }};
 
-          # WebSocket support
           proxy_http_version 1.1;
           proxy_set_header Upgrade $http_upgrade;
           proxy_set_header Connection $connection_upgrade;

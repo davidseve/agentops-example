@@ -40,6 +40,7 @@ if [[ -f "${PROJECT_DIR}/secrets/secrets.env" ]]; then
   set -a; source "${PROJECT_DIR}/secrets/secrets.env"; set +a
 fi
 : "${MAAS_API_KEY:?MAAS_API_KEY required (set in secrets/secrets.env)}"
+: "${OPENCLAW_GATEWAY_PASSWORD:?OPENCLAW_GATEWAY_PASSWORD required (set in secrets/secrets.env)}"
 
 command -v openshell >/dev/null 2>&1 || { error "openshell CLI is required"; exit 1; }
 command -v oc >/dev/null 2>&1 || { error "oc is required"; exit 1; }
@@ -52,19 +53,6 @@ fi
 step "Ensuring OpenShell CLI gateway '${GATEWAY_NAME}'"
 NAMESPACE="${NAMESPACE}" GATEWAY_NAME="${GATEWAY_NAME}" \
   "${SCRIPT_DIR}/openshift-openshell-register-gateway.sh"
-
-# Pod/Service network CIDRs for gateway.trustedProxies — must reflect this
-# cluster's actual network config (varies per OCP install), not a copied
-# constant from another environment (e.g. CRC's 10.217.0.0/22).
-POD_NETWORK_CIDR="${POD_NETWORK_CIDR:-}"
-if [[ -z "$POD_NETWORK_CIDR" ]]; then
-  POD_NETWORK_CIDR=$(oc get network.config cluster -o jsonpath='{.spec.clusterNetwork[0].cidr}')
-fi
-SERVICE_NETWORK_CIDR="${SERVICE_NETWORK_CIDR:-}"
-if [[ -z "$SERVICE_NETWORK_CIDR" ]]; then
-  SERVICE_NETWORK_CIDR=$(oc get network.config cluster -o jsonpath='{.spec.serviceNetwork[0]}')
-fi
-info "Pod network: ${POD_NETWORK_CIDR}, Service network: ${SERVICE_NETWORK_CIDR}"
 
 # ─── MLflow wiring ────────────────────────────────────────────────────────────
 step "Reading MLflow wiring"
@@ -90,10 +78,9 @@ mkdir -p "$(dirname "$CONFIG_RENDERED")"
 sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
     -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
     -e "s|__MLFLOW_EXPERIMENT_ID__|${MLFLOW_EXPERIMENT_ID}|g" \
-    -e "s|__POD_NETWORK_CIDR__|${POD_NETWORK_CIDR}|g" \
-    -e "s|__SERVICE_NETWORK_CIDR__|${SERVICE_NETWORK_CIDR}|g" \
+    -e "s|__OPENCLAW_GATEWAY_PASSWORD__|${OPENCLAW_GATEWAY_PASSWORD}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
-pass "Rendered config (mlflow-openclaw plugin enabled, experiment=${MLFLOW_EXPERIMENT_ID})"
+pass "Rendered config (password auth, mlflow-openclaw plugin, experiment=${MLFLOW_EXPERIMENT_ID})"
 
 # ─── Create sandbox if missing ────────────────────────────────────────────────
 # MaaS credentials are baked into openclaw.json (not an OpenShell provider),
@@ -324,8 +311,11 @@ fi
 # ─── Summary ──────────────────────────────────────────────────────────────────
 step "OpenClaw launch complete"
 echo ""
-info "Gateway UI (via oauth-proxy): https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/"
+info "Gateway UI (nginx mTLS bridge): https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/"
+info "Auth: enter OPENCLAW_GATEWAY_PASSWORD (from secrets/secrets.env) in Control UI settings"
+info "      or open: https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/?password=<password>"
 info "Tracing:  mlflow-openclaw → ${MLFLOW_SVC_URL} (workspace=${NAMESPACE}, experiment=${MLFLOW_EXPERIMENT_ID})"
 info "Plugins:  memory-core, mlflow-openclaw"
 info ""
 info "Validate: make validate-openclaw validate-traces"
+info "UI proxy: APPS_DOMAIN=${APPS_DOMAIN} make -C deploy deploy-openclaw-ui-proxy"

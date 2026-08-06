@@ -188,6 +188,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **Target platform**: RHOAI 3.x on demo.redhat.com - everything must be deployable there
 - **Pinned versions**: All operators and components use explicit version pinning (see [ADR-0006](docs/adr/0006-explicit-version-pinning.md)). No automatic updates. Version bumps are deliberate and tested.
 - **No secrets in repo**: This is a public repo. Use environment variables, sealed secrets, or external secret management. Enforced by `.cursor/rules/no-secrets.mdc` and the `no-secrets` skill (scan before commit/PR).
+- **Browser UI auth**: OpenClaw `gateway.auth.mode: password` behind the nginx mTLS bridge (`deploy-openclaw-ui-proxy`). Do not reintroduce oauth-proxy / `trusted-proxy` without updating [ADR-0011](docs/adr/0011-ui-auth-openshift-oauth-proxy.md).
 - **English**: All code, comments, docs, and demo content in English
 - **GitOps**: All configuration as code, no manual cluster changes
 - **Idempotent**: Deploy/teardown must be repeatable with a single command

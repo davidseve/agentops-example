@@ -40,6 +40,7 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 |---|---|
 | Bootstrap RHOAI platform on OpenShift | [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | Install OpenShell (local or cluster) | [docs/openshell-installation.md](docs/openshell-installation.md) |
+| Browser UI (nginx mTLS bridge + password) | `APPS_DOMAIN=<domain> make -C deploy deploy-openclaw-ui-proxy` then `./scripts/launch-openclaw.sh` — see [ADR-0011](docs/adr/0011-ui-auth-openshift-oauth-proxy.md) |
 
 ## Project Structure
 
