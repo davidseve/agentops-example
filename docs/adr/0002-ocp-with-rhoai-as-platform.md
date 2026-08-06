@@ -111,6 +111,20 @@ resolve the *currently active* gateway, not necessarily this project's own
 other gateway is active. Run `openshell gateway select ocp` first if you've
 been operating the other project's tooling in the same terminal/session.
 
+**Generalizes beyond exactly two projects.** Nothing in this coexistence
+model is hardcoded to "one other project" — any number of independent
+OpenShell/OpenClaw agent stacks can share this same cluster-wide RHOAI +
+MLflow platform layer, each isolated only by its own namespace/Route
+hostname/gateway alias, as long as each new one picks values that don't
+collide with any existing one. `validate`/`validate-cleanup` were updated
+(2026-08-06) to check this project's own 5 named releases individually
+instead of asserting an exact *total* count of `rhoai-*` releases — the
+original count-based check only happened to work for exactly two
+coexisting projects (this one's own `rhoai-evalhub` plus the other
+project's four shared-platform releases) and would have broken again as
+soon as a third, independent project added its own extra `rhoai-*`-prefixed
+release.
+
 ## References
 
 - [Red Hat OpenShift AI Self-Managed 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)

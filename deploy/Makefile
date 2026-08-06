@@ -532,8 +532,13 @@ lint:
 
 validate:
 	@echo "=== Helm releases ==="
-	@test $$(helm list -f '^rhoai-' -q | wc -l | tr -d ' ') -eq 5
-	@echo "OK: 5 rhoai-* releases deployed"
+	@for rel in $(OPERATORS_RELEASE) $(PLATFORM_RELEASE) $(DATABASE_RELEASE) $(MLFLOW_RELEASE) $(EVALHUB_RELEASE); do \
+		helm status "$$rel" >/dev/null 2>&1 || { echo "FAIL: release $$rel not deployed"; exit 1; }; \
+	done
+	@echo "OK: all 5 expected rhoai-* releases deployed"
+	@echo "    (not asserting an exact total 'rhoai-*' count: a coexisting project"
+	@echo "     on this shared cluster may have its own extra releases sharing"
+	@echo "     the same prefix -- see ADR-0002 addendum)"
 	@echo "=== RHOAI operator ==="
 	@oc get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}{"\n"}' | grep -q Succeeded
 	@oc wait --for=condition=Ready pod -l name=rhods-operator -n redhat-ods-operator --timeout=60s >/dev/null
@@ -575,11 +580,19 @@ validate:
 
 validate-cleanup:
 	@echo "=== Helm releases (RHOAI) ==="
-	@RHOAI_COUNT=$$(helm list -f '^rhoai-' -q 2>/dev/null | wc -l | tr -d ' '); \
-	if [ "$$RHOAI_COUNT" -eq 0 ]; then \
-		echo "OK: no rhoai-* releases"; \
+	@LEFTOVER_RHOAI=false; \
+	for rel in $(OPERATORS_RELEASE) $(PLATFORM_RELEASE) $(DATABASE_RELEASE) $(MLFLOW_RELEASE) $(EVALHUB_RELEASE); do \
+		if helm status "$$rel" >/dev/null 2>&1; then \
+			echo "FAIL: release $$rel still deployed"; LEFTOVER_RHOAI=true; \
+		fi; \
+	done; \
+	if [ "$$LEFTOVER_RHOAI" = "false" ]; then \
+		echo "OK: this project's rhoai-* releases are gone"; \
+		echo "    (not asserting zero total 'rhoai-*' releases: a coexisting"; \
+		echo "     project's own releases sharing the same prefix may still be"; \
+		echo "     up -- see ADR-0002 addendum)"; \
 	else \
-		echo "FAIL: $$RHOAI_COUNT rhoai-* releases still present"; exit 1; \
+		exit 1; \
 	fi
 	@echo "=== Helm releases (OpenShell / oauth2-proxy) ==="
 	@LEFTOVER=false; \
