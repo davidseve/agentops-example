@@ -27,6 +27,7 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 | First-time cluster setup | `make -C deploy deploy-operators` then deploy (must come after RHOAI — ADR-0003) |
 | Re-register local CLI gateway + mTLS | `make -C deploy openshell-register-gateway` (default alias `ocp`) |
 | Refresh local mTLS certs only | `GATEWAY_NAME=<name> make -C deploy openshell-sync-mtls` |
+| Browser UI proxy (nginx mTLS bridge) | `APPS_DOMAIN=<domain> make -C deploy deploy-openclaw-ui-proxy` |
 | Launch OpenClaw (creates sandbox if needed) | `./scripts/launch-openclaw.sh` |
 | Check deployment | `make -C deploy validate-openshell` |
 | Remove everything | `make -C deploy undeploy-openshell` |
@@ -42,15 +43,15 @@ make -C deploy deploy-all   # or at minimum: deploy-operators, deploy-platform
 
 Idempotent.
 
-3. **Install OpenShell** (one release, plus the Agent Sandbox raw manifest):
+3. **Install OpenShell** (one release; Agent Sandbox CRDs already provided by OLM from step 2):
 
 ```bash
 APPS_DOMAIN=<apps-domain, e.g. apps.ocp.example.com> make -C deploy deploy-openshell
 ```
 
-Runs: `oc apply -f manifests/agent-sandbox-v0.5.1.yaml` (Agent Sandbox controller
-raw path — coexists with the OLM path from step 2, a known unreconciled gap, see
-ADR-0003) → `helm dependency build` (resolves the pinned OCI chart per `Chart.lock`) →
+Runs: wait for `sandboxes.agents.x-k8s.io` CRD from the Red Hat build of Agent
+Sandbox Operator (OLM, sole source — ADR-0003 / OSC 1.13) → `helm dependency build`
+(resolves the pinned OCI chart per `Chart.lock`) →
 one `helm upgrade --install openshell deploy/helm/openshell --namespace openshell
 --create-namespace -f values-openshift.yaml` (namespace extras + the actual gateway
 StatefulSet together, pinned `0.0.83` in `Chart.yaml`) → `oc label namespace` (RHOAI
@@ -58,13 +59,14 @@ Dashboard opt-in) → wait for rollout/PKI secrets → MLflow RBAC wiring
 (`deploy-mlflow-openclaw-integration`) → **CLI gateway register + mTLS**
 (`openshell-register-gateway`, alias `GATEWAY_NAME` default `ocp`).
 
-4. **Deploy the browser-auth proxy** (required for the Control UI, see ADR-0011):
+4. **Deploy the browser UI proxy** (nginx mTLS bridge — required for the Control UI, see ADR-0011):
 
 ```bash
-APPS_DOMAIN=<apps-domain> make -C deploy deploy-oauth2-proxy
+APPS_DOMAIN=<apps-domain> make -C deploy deploy-openclaw-ui-proxy
 ```
 
-5. **Launch OpenClaw** (creates the sandbox if missing, then starts the gateway):
+5. **Launch OpenClaw** (creates the sandbox if missing, then starts the gateway).
+   Requires `MAAS_API_KEY` and `OPENCLAW_GATEWAY_PASSWORD` in `secrets/secrets.env`:
 
 ```bash
 ./scripts/launch-openclaw.sh
@@ -77,11 +79,14 @@ make -C deploy validate-openshell
 openshell status   # Status: Connected (alias GATEWAY_NAME, default ocp)
 oc -n openshell get rolebinding | grep privileged
 oc -n openshell get sa openshell-sandbox
+oc -n openshell get route openclaw-ui
 ```
 
 Expect secrets: `openshell-jwt-keys`, `openshell-server-tls`, `openshell-client-tls`.
 Expect RoleBinding: `openshell-sandbox-privileged-scc`, targeting SA `openshell-sandbox`.
 Expect logs: `TLS enabled — listening on encrypted HTTPS`.
+Control UI: `https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/` — enter the gateway password
+(or open with `/?password=...`).
 
 Re-register CLI only (idempotent, usually unnecessary after `deploy-openshell`):
 
@@ -95,6 +100,7 @@ make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
 |---|---|
 | Wrapper chart | `deploy/helm/openshell/` (`0.3.0`) |
 | Upstream OCI chart (real Helm dependency, alias `openshell`) | `oci://ghcr.io/nvidia/openshell` chart `helm-chart`, `0.0.83` — pinned in `Chart.yaml`'s `dependencies[].version` + committed `Chart.lock`, **not** a Makefile variable |
+| UI proxy chart | `deploy/helm/openclaw-ui-proxy/` (`0.1.0`) — nginx sole entrypoint |
 | `server.disableTls` | `false` |
 | `pkiInitJob.enabled` | `true` (default — do not disable) |
 | `server.auth.allowUnauthenticatedUsers` | `true` (mTLS-only endpoint; means no *additional* bearer token) |
@@ -105,9 +111,10 @@ make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
 
 - **Do not** set `pkiInitJob.enabled=false` without external JWT secret bootstrap.
 - **Confirm namespace** — always `openshell` (created via `--create-namespace`, not a chart-owned `Namespace` template — see chart README for why).
-- **Agent Sandbox** currently has two coexisting install paths (OLM + raw manifest) — a known, still-open gap (ADR-0003). Both are cleaned up by `undeploy-openshell` + `cleanup-orphans`.
+- **Agent Sandbox** is installed solely via the Red Hat build of Agent Sandbox Operator (OLM, channel `preview-0.9`, namespace `agent-sandbox-system`) — the upstream raw-manifest path was retired (ADR-0003 / OSC 1.13). Operator teardown is via `cleanup-orphans` / `undeploy-all`, not `undeploy-openshell`.
 - **Helm OCI on Podman hosts** — Makefile sets `DOCKER_CONFIG` automatically for the dependency build step.
 - **mTLS / CLI registration** writes only under `~/.config/openshell/` (never into the git repo). `deploy-openshell` and `launch-openclaw.sh` run `openshell-register-gateway` automatically (idempotent).
+- **Browser auth** is OpenClaw password mode (`OPENCLAW_GATEWAY_PASSWORD`), not OCP OAuth (ADR-0011).
 
 ## Troubleshooting
 
@@ -121,6 +128,7 @@ make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
 | certgen Job failed | `oc -n openshell logs job/openshell-certgen` |
 | `invalid peer certificate: BadSignature` | `make -C deploy openshell-register-gateway` then `openshell status` — must match the registered gateway name (`GATEWAY_NAME`, default `ocp`) |
 | `invalid peer certificate: certificate not valid for name "openshell-gw-openshell.<domain>"` | Server cert is missing the Route hostname SAN (`deploy-openshell` sets it via `--set openshell.pkiInitJob.serverDnsNames[N]`, but certgen doesn't rotate an existing cert on `helm upgrade`) — `make -C deploy undeploy-openshell` then redeploy against the clean namespace |
+| Control UI "gateway password missing" | Set `OPENCLAW_GATEWAY_PASSWORD` in `secrets/secrets.env`, re-run `launch-openclaw.sh`, open UI with `/?password=...` |
 
 ## Token-efficient execution
 
@@ -134,8 +142,10 @@ Follow global skill **`long-running-scripts`**. For this repo:
 
 - Cluster cleanup: `openshell-cluster-cleanup` skill, or `make -C deploy undeploy-openshell`
 - Local CLI install: `openshell-local-install` skill
-- Guide: [docs/openshell-installation.md § OpenShift](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment) (partially stale — see the banner at the top of that section)
+- Guide: [docs/openshell-installation.md](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment) (partially stale — see the banner at the top of that section)
 - Chart: [deploy/helm/openshell/README.md](../../../deploy/helm/openshell/README.md)
+- UI proxy: [deploy/helm/openclaw-ui-proxy/](../../../deploy/helm/openclaw-ui-proxy/)
 - Sync / register: [scripts/openshift-openshell-register-gateway.sh](../../../scripts/openshift-openshell-register-gateway.sh), [scripts/openshift-openshell-sync-mtls.sh](../../../scripts/openshift-openshell-sync-mtls.sh)
 - Launch: [scripts/launch-openclaw.sh](../../../scripts/launch-openclaw.sh)
 - ADR: [ADR-0003](../../../docs/adr/0003-openshell-deployment-on-openshift.md) — includes the full history of this chart's architecture and a list of bugs found and fixed on 2026-08-05
+- Auth ADR: [ADR-0011](../../../docs/adr/0011-ui-auth-openshift-oauth-proxy.md)

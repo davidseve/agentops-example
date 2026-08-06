@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (updated 2026-08-05 — merged in duplicate content from a since-retired ADR, previously numbered 0009, that documented the same deployment decision independently, see "Note on merged ADR" at the end of this file; updated again the same day after a from-scratch redeploy test found and fixed several real chart/Makefile bugs, see "Chart bugs found and fixed"; updated a third time the same day to replace the two-release/ConfigMap design from that fix with a real, working Helm dependency — see "Chart architecture: from two releases back to one" below)
+Accepted (updated 2026-08-05 — merged in duplicate content from a since-retired ADR, previously numbered 0009, that documented the same deployment decision independently, see "Note on merged ADR" at the end of this file; updated again the same day after a from-scratch redeploy test found and fixed several real chart/Makefile bugs, see "Chart bugs found and fixed"; updated a third time the same day to replace the two-release/ConfigMap design from that fix with a real, working Helm dependency — see "Chart architecture: from two releases back to one" below; updated 2026-08-06 — resolved the dual Agent Sandbox install gap against OpenShift sandboxed containers 1.13 / Red Hat build of Agent Sandbox docs, see Decision)
 
 ## Date
 
@@ -18,7 +18,7 @@ The demo needs a sandboxed execution environment for AI agents to demonstrate ze
 
 Deployment on OpenShift requires the Helm chart with TLS enabled and the certgen pre-install hook, plus the Agent Sandbox controller. OpenShift SCCs must be configured to allow the sandbox service account to run privileged containers.
 
-The Agent Sandbox controller was originally installed from the upstream `kubernetes-sigs/agent-sandbox` manifests (`v0.5.1`) via `oc apply -f`. Red Hat now ships a productised build — the [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) — installable via OLM Subscription from the `redhat-operators` catalog. Using the Red Hat operator aligns lifecycle management with the rest of the RHOAI stack.
+The Agent Sandbox controller was originally installed from the upstream `kubernetes-sigs/agent-sandbox` manifests (`v0.5.1`) via `oc apply -f`. Red Hat now ships a productised build — the [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/) — installable via OLM Subscription from the `redhat-operators` catalog (OpenShift sandboxed containers 1.13 Technology Preview; requires OCP 4.19+). Using the Red Hat operator aligns lifecycle management with the rest of the RHOAI stack. As of 2026-08-06 the upstream raw-manifest path is retired; the OLM operator is the sole source of the sandbox controller, sandbox router, and extension CRDs (`Sandbox`, `SandboxTemplate`, `SandboxClaim`, `SandboxWarmPool`) in the `agent-sandbox-system` namespace.
 
 The original deployment used a hybrid approach: a thin Helm wrapper chart for the gateway, plus imperative scripts (`openshift-openshell-scc.sh`) and kustomize overlays (`deploy/openshift/openshell/`) for the namespace and SCC grant. This split complicated the install flow and prevented Helm from managing the full release lifecycle (SCC bindings were invisible to `helm uninstall`).
 
@@ -73,12 +73,13 @@ Deploy OpenShell on OpenShift using the wrapper Helm chart (`deploy/helm/openshe
    orthogonal to the OpenClaw Control UI's browser auth, which goes through a separate OAuth
    proxy (see [ADR-0011](0011-ui-auth-openshift-oauth-proxy.md)).
 
-Agent Sandbox controller — **two install paths currently coexist, not fully reconciled**:
+Agent Sandbox controller — **sole source: Red Hat build of Agent Sandbox Operator (OLM)**:
 
-- The Red Hat build of Agent Sandbox Operator is installed via OLM Subscription (channel `preview-0.9`) through the `deploy/helm/operators/` chart alongside the RHOAI operator (`make deploy-operators`, Phase 1).
-- Separately, `make deploy-openshell` (Phase 2) also runs `oc apply -f manifests/agent-sandbox-v0.5.1.yaml` as its first step — the raw upstream `kubernetes-sigs/agent-sandbox` manifest, installing its own controller Deployment and CRDs directly, then waits on `crd sandboxes.agents.x-k8s.io` before proceeding to the Helm install.
+- Installed via OLM Subscription (package `agent-sandbox-operator`, channel `preview-0.9`, namespace `agent-sandbox-system`) through the `deploy/helm/operators/` chart alongside the RHOAI operator (`make deploy-operators`, Phase 1). `wait-operators` auto-approves the Manual InstallPlan and waits for the CSV + `sandboxes.agents.x-k8s.io` CRD.
+- `make deploy-openshell` (Phase 2) waits for that CRD before installing the OpenShell Helm release — it does **not** apply any upstream `kubernetes-sigs/agent-sandbox` manifest.
+- The raw `deploy/manifests/agent-sandbox-v0.5.1.yaml` path was retired on 2026-08-06. Official 1.13 docs confirm the Operator alone "deploys the sandbox controller, the sandbox router, and the extension custom resource definitions (CRDs) in the `agent-sandbox-system` namespace" ([Install chapter](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/install-agent-sandbox-overview_agent-sandbox)). Running both the OLM operator and the raw upstream controller risked two competing controllers reconciling the same CRDs — that gap is now closed.
 
-Both paths were carried forward from earlier iterations without verifying whether the raw manifest apply is still necessary once the OLM operator is present, or whether running both risks two competing controllers reconciling the same CRD. **This needs dedicated follow-up investigation** (out of scope for this ADR merge) before being treated as an intentional, validated design.
+Out of scope for this decision (reviewed against the Aug 2026 Red Hat blog, not applicable here): Confidential AI on bare metal GA, Red Hat build of Trustee 1.2, and post-quantum attestation readiness — this project does not use Trustee or confidential computing.
 
 ## Consequences
 
@@ -89,14 +90,16 @@ Both paths were carried forward from earlier iterations without verifying whethe
 - SCC binding is declarative and lifecycle-managed by Helm (cleaned up on uninstall).
 - Single install command: `make deploy-openshell` (`deploy/Makefile`) runs exactly one
   `helm upgrade --install`, rendering namespace extras and the gateway itself together, plus
-  the Agent Sandbox raw-manifest apply, PKI-secret wait, and the MLflow RBAC wiring step
-  (`deploy-mlflow-openclaw-integration`) — no `ConfigMap` round-trip, no second release.
+  a wait for the Agent Sandbox OLM CRD, PKI-secret wait, and the MLflow RBAC wiring step
+  (`deploy-mlflow-openclaw-integration`) — no `ConfigMap` round-trip, no second release,
+  no raw Agent Sandbox manifest.
 
 ### Negative
 
 - Privileged SCC is required, which may not be acceptable in all production environments.
 - Chart `0.0.83` is pre-1.0 and may introduce breaking changes.
-- **Known gap (still open)**: the Agent Sandbox controller currently gets installed twice — once via the OLM Subscription (Phase 1) and once via the raw `v0.5.1` manifest (`deploy-openshell`'s first step, Phase 2). Not yet resolved; tracked as follow-up work rather than silently documented as correct. (Teardown now correctly reverses both paths — see `deploy/Makefile`'s `undeploy-openshell` + `cleanup-orphans`.)
+- Agent Sandbox Operator is Technology Preview (OpenShift sandboxed containers 1.13) and requires OCP 4.19+.
+- Teardown of OpenShell (`undeploy-openshell`) does **not** remove the shared Agent Sandbox Operator — that lives with `cleanup-orphans` / `undeploy-all`.
 
 ## Version Pinning
 
@@ -104,8 +107,7 @@ Both paths were carried forward from earlier iterations without verifying whethe
 |---|---|---|
 | OpenShell OCI chart (gateway) | `0.0.83` | `deploy/helm/openshell/Chart.yaml` (`dependencies[].version`) + committed `Chart.lock` (digest-pinned) — see ADR-0006 for the history of this pin living in the wrong place (a Makefile variable, then briefly a dead dependency) before landing here |
 | Wrapper chart | `0.3.0` | `deploy/helm/openshell/Chart.yaml` |
-| Agent Sandbox Operator (OLM) | `preview-0.9` channel | `deploy/helm/operators/values.yaml` |
-| Agent Sandbox controller (raw manifest) | `v0.5.1` | `deploy/manifests/agent-sandbox-v0.5.1.yaml`, applied by `make deploy-openshell` — see "Known gap" above |
+| Agent Sandbox Operator (OLM) | `preview-0.9` / CSV `agent-sandbox-operator.v0.9.0` (package `agent-sandbox-operator`) | `deploy/helm/operators/values.yaml` — sole source of controller + router + CRDs (OSC 1.13 TP) |
 
 ## Chart bugs found and fixed during a from-scratch redeploy (2026-08-05)
 
@@ -285,7 +287,8 @@ The "Security Attack" demo segment uses OpenShell to show agent execution isolat
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift)
 - [Helm chart README — Secret bootstrap](https://github.com/NVIDIA/OpenShell/blob/main/deploy/helm/openshell/README.md#secret-bootstrap)
 - [Kubernetes Setup — TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup)
-- [Red Hat build of Agent Sandbox — Install](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/install-agent-sandbox-overview_agent-sandbox)
+- [Red Hat build of Agent Sandbox — Install (OSC 1.13)](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/install-agent-sandbox-overview_agent-sandbox)
+- [What's new in Red Hat OpenShift confidential computing and sandboxing (Aug 2026)](https://www.redhat.com/en/blog/whats-new-red-hat-openshift-confidential-computing-and-sandboxing)
 - [Agent Sandbox upstream](https://github.com/kubernetes-sigs/agent-sandbox)
 - Reference project: deployment-ordering and mTLS-fragility lessons (constraints #10, #12, #19), merged in from a since-retired duplicate ADR — see note below
 
@@ -300,8 +303,9 @@ accurate content from `0009` (deployment ordering vs. RHOAI, mTLS-upgrade
 fragility, and the `ConfigMap`/`global.appsDomain` mechanism) has been
 merged into this ADR — along with two gaps this merge review uncovered
 that neither original ADR had flagged: an unset `allowUnauthenticatedUsers`
-default, and an Agent Sandbox controller that gets installed via two
-different, unreconciled paths. `0009` itself has been deleted; per the
+default (since fixed), and an Agent Sandbox controller that got installed via two
+different, unreconciled paths (resolved 2026-08-06 — OLM-only; raw upstream
+manifest retired). `0009` itself has been deleted; per the
 "sequential, never reused" convention in
 [docs/adr/README.md](README.md), `0009` is now permanently retired
 alongside `0005` and the original `0007`, not reassigned.

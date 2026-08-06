@@ -8,7 +8,7 @@ description: >-
 
 # OpenShell Cluster Cleanup
 
-Remove OpenShell + oauth2-proxy + the Agent Sandbox raw-manifest install from OpenShift.
+Remove OpenShell + openclaw-ui-proxy from OpenShift.
 Destructive for the namespace workload — confirm with the user first.
 
 Does **not** remove local CLI (`openshell-local-cleanup`) or the RHOAI/Agent Sandbox
@@ -19,8 +19,8 @@ teardown).
 
 | User intent | Action |
 |---|---|
-| Uninstall OpenShell (+ oauth2-proxy, + Agent Sandbox raw manifest) from cluster | `make -C deploy undeploy-openshell` |
-| Full reset: OpenShell + RHOAI stack | `make -C deploy undeploy-everything` |
+| Uninstall OpenShell (+ openclaw-ui-proxy) from cluster | `make -C deploy undeploy-openshell` |
+| Full reset: OpenShell + RHOAI stack (+ Agent Sandbox Operator) | `make -C deploy undeploy-everything` |
 | Preview what exists | `make -C deploy validate-openshell` (fails loudly if missing) or `helm list -A \| grep openshell` |
 | Confirm cleanup was complete | `make -C deploy validate-cleanup` |
 
@@ -30,7 +30,7 @@ teardown).
 2. **Show current state**:
 
 ```bash
-helm list -A | grep -E 'openshell|oauth2-proxy'
+helm list -A | grep -E 'openshell|openclaw-ui-proxy'
 oc get ns openshell agent-sandbox-system 2>&1
 ```
 
@@ -40,11 +40,9 @@ oc get ns openshell agent-sandbox-system 2>&1
 make -C deploy undeploy-openshell
 ```
 
-Removes, in order: `oauth2-proxy` release, `openshell` release (single release: namespace
-extras + gateway StatefulSet, in namespace `openshell`), the `openshell` namespace itself,
-and the Agent Sandbox raw manifest (`oc delete -f manifests/agent-sandbox-v0.5.1.yaml` — CRD
-`sandboxes.agents.x-k8s.io`, `ClusterRole`/`ClusterRoleBinding agent-sandbox-controller`,
-namespace `agent-sandbox-system`).
+Removes, in order: `openclaw-ui-proxy` release, `openshell` release (single release: namespace
+extras + gateway StatefulSet, in namespace `openshell`), and the `openshell` namespace itself.
+Does **not** remove the Agent Sandbox Operator (shared OLM install in `agent-sandbox-system`).
 
 4. **Verify**:
 
@@ -52,8 +50,7 @@ namespace `agent-sandbox-system`).
 make -C deploy validate-cleanup
 ```
 
-Checks: no `openshell`/`oauth2-proxy` Helm releases, no Agent Sandbox cluster-scoped
-leftovers, namespace `openshell` gone (or draining — namespaces stuck in `Terminating` due
+Checks: no `openshell`/`openclaw-ui-proxy` Helm releases, namespace `openshell` gone (or draining — namespaces stuck in `Terminating` due
 to an orphaned finalizer, e.g. on a `tenants.maas.opendatahub.io` resource after its owning
 controller is already gone, need a manual
 `oc patch <resource> --type=merge -p '{"metadata":{"finalizers":[]}}'`; `cleanup-orphans`
@@ -69,10 +66,9 @@ this skill alone.
 | Component | Removed by `undeploy-openshell` |
 |---|---|
 | `openshell` Helm release (namespace extras + gateway StatefulSet, TLS/JWT secrets) | Yes |
-| `oauth2-proxy` Helm release | Yes |
+| `openclaw-ui-proxy` Helm release (nginx mTLS bridge + UI Route) | Yes |
 | Namespace `openshell` (+ PVC data) | Yes |
-| Agent Sandbox raw manifest (CRD, cluster-scoped RBAC, `agent-sandbox-system` namespace) | Yes |
-| Agent Sandbox Operator (OLM Subscription/CSV) | No — use `make -C deploy cleanup-orphans` |
+| Agent Sandbox Operator (OLM Subscription/CSV, CRDs, `agent-sandbox-system`) | No — use `make -C deploy cleanup-orphans` |
 | Local `openshell` CLI | No |
 
 ## Safety rules
