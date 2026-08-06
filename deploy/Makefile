@@ -22,10 +22,9 @@
 # of two earlier, abandoned approaches (a dead unused dependency, then a
 # two-release ConfigMap round-trip) that this replaced on 2026-08-05.
 #
-# Race condition fixes carried over from the reference project's lessons (constraints #21, #23):
+# Race condition fixes carried over from the reference project's lessons (constraint #21):
 # - wait-dashboard-crd: Dashboard CRD doesn't exist on first helm upgrade
 # - adopt-dashboard-config: operator auto-creates singleton without Helm ownership
-# - wait-llamastack: Gen AI Studio nav requires LlamaStackOperatorReady=True
 # See docs/adr/0008-rhoai-dsc-component-selection.md
 
 SHELL := /bin/bash
@@ -67,7 +66,7 @@ OPENSHELL_NAMESPACE := openshell
 DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 
 .PHONY: deploy-operators wait-operators deploy-platform deploy-platform-fresh ensure-mlflowoperator-managed deploy-database
-.PHONY: wait-dashboard-crd adopt-dashboard-config wait-llamastack wait-llamastack-and-refresh-dashboard
+.PHONY: wait-dashboard-crd adopt-dashboard-config
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
 .PHONY: validate-openclaw validate-traces validate-security
@@ -134,7 +133,7 @@ deploy-platform: wait-operators
 # project doesn't own the Helm release for: only touches
 # spec.components.mlflowoperator, not a full `helm upgrade` with this
 # project's own values (which could flip a component the other project
-# configured, e.g. dashboard/genAiStudio).
+# configured).
 ensure-mlflowoperator-managed:
 	@CURRENT=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}' 2>/dev/null || true); \
 	if [ "$$CURRENT" = "Managed" ]; then \
@@ -145,21 +144,10 @@ ensure-mlflowoperator-managed:
 	fi
 
 deploy-platform-fresh:
-	@CURRENT_DASHBOARD=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.dashboard.managementState}' 2>/dev/null || true); \
-	if [ "$$CURRENT_DASHBOARD" != "Managed" ]; then \
-		echo "Fresh Dashboard enable: sequencing llamastackoperator BEFORE dashboard"; \
-		echo "(see docs/adr/0008-rhoai-dsc-component-selection.md, constraint #23)"; \
-		$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) \
-			--set-string datasciencecluster.components.dashboard.managementState=Removed; \
-		$(MAKE) wait-llamastack; \
-	fi
 	@$(MAKE) adopt-dashboard-config
 	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) --reset-values
 	@$(MAKE) wait-dashboard-crd
 	@$(MAKE) adopt-dashboard-config
-	@echo "Re-applying platform chart (genAiStudio patch now renders after CRD exists)..."
-	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) --reset-values
-	@$(MAKE) wait-llamastack-and-refresh-dashboard
 
 wait-dashboard-crd:
 	@echo "Waiting for OdhDashboardConfig CRD..."
@@ -180,20 +168,6 @@ adopt-dashboard-config:
 			meta.helm.sh/release-name=$(PLATFORM_RELEASE) meta.helm.sh/release-namespace=default; \
 		oc label odhdashboardconfig odh-dashboard-config -n redhat-ods-applications --overwrite \
 			app.kubernetes.io/managed-by=Helm; \
-	fi
-
-wait-llamastack:
-	@echo "Waiting for LlamaStackOperatorReady (required for Gen AI Studio nav)..."
-	@i=0; until oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="LlamaStackOperatorReady")].status}{"\n"}' 2>/dev/null | grep -q True; do \
-		i=$$((i+1)); if [ $$i -ge 24 ]; then echo "  WARNING: LlamaStackOperatorReady not True after 120s"; break; fi; \
-		echo "  LlamaStackOperatorReady not True yet..."; sleep 5; \
-	done
-
-wait-llamastack-and-refresh-dashboard: wait-llamastack
-	@if oc get deployment rhods-dashboard -n redhat-ods-applications >/dev/null 2>&1; then \
-		echo "Restarting rhods-dashboard (re-evaluate LlamaStackOperator capability)..."; \
-		oc rollout restart deployment/rhods-dashboard -n redhat-ods-applications; \
-		oc rollout status deployment/rhods-dashboard -n redhat-ods-applications --timeout=120s; \
 	fi
 
 deploy-database:
@@ -547,20 +521,11 @@ validate:
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="MLflowOperatorReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="TrustyAIReady")].status}{"\n"}' | grep -q True
 	@oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="DashboardReady")].status}{"\n"}' | grep -q True
-	@echo "OK: OGX, MLflow operator, TrustyAI, Dashboard ready"
-	@echo "=== Dashboard genAiStudio ==="
-	@GENAI=$$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.genAiStudio}' 2>/dev/null); \
-	if [ "$$GENAI" = "true" ]; then \
-		echo "OK: genAiStudio enabled"; \
-	else \
-		echo "FAIL: genAiStudio not true (got: '$$GENAI')"; exit 1; \
-	fi
+	@echo "OK: MLflow operator, TrustyAI, Dashboard ready"
 	@DSC_PHASE=$$(oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'); \
 	DSC_MSG=$$(oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}'); \
 	if [ "$$DSC_PHASE" = "Ready" ]; then \
 		echo "OK: DataScienceCluster phase Ready"; \
-	elif echo "$$DSC_MSG" | grep -q 'modelsasservice'; then \
-		echo "WARN: DataScienceCluster phase $$DSC_PHASE ($$DSC_MSG) — expected without MaaS gateway"; \
 	else \
 		echo "FAIL: DataScienceCluster phase $$DSC_PHASE ($$DSC_MSG)"; exit 1; \
 	fi

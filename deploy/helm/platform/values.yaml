@@ -4,14 +4,7 @@ datasciencecluster:
     dashboard:
       managementState: Managed
     llamastackoperator:
-      # Must be Managed: dashboard.genAiStudio (below) self-gates the gen-ai-ui
-      # micro-frontend on requiredComponents:[LLAMA_STACK_OPERATOR] (ADR-0008,
-      # constraint #23). Was "Removed" here, contradicting the ADR and leaving
-      # LlamaStackOperatorReady permanently False / genAiStudio non-functional
-      # despite `make validate` requiring it — found 2026-08-05 during a
-      # from-scratch redeploy test (masked previously because a stale DSC
-      # from an earlier, differently-valued deploy was already Managed).
-      managementState: Managed
+      managementState: Removed
     mlflowoperator:
       managementState: Managed
     trustyai:
@@ -21,12 +14,12 @@ datasciencecluster:
           permitCodeExecution: deny
           permitOnline: allow
     kserve:
-      managementState: Managed
+      managementState: Removed
       rawDeploymentServiceConfig: Headed
       wva:
         managementState: Removed
     modelsAsService:
-      managementState: Managed
+      managementState: Removed
     aipipelines:
       managementState: Removed
     feastoperator:
@@ -49,8 +42,8 @@ datasciencecluster:
 
 dashboard:
   crEnabled: true
-  genAiStudio: true
-  modelAsService: true
+  genAiStudio: false
+  modelAsService: false
   disablePerformanceMetrics: true
   disableModelCatalog: true
   disableModelRegistry: true

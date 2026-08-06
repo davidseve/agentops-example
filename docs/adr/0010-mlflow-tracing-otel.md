@@ -117,7 +117,8 @@ OpenClaw's MLflow tracing end-to-end — no manual `--set` flags needed.
 ## Consequences
 
 - Traces appear in Gen AI Studio with **full Request/Response content**
-- `diagnostics-otel` no longer used for traces (only metrics if needed later)
+- `diagnostics` / `diagnostics-otel` fully disabled — no OTEL collector in this stack;
+  traces go only through `mlflow-openclaw`
 - Plugin requires patching on install (fragile to version upgrades)
 - Plugin install + patch requires `oc exec` (can't use sandbox restricted network)
 - Token rotation requires manual Secret deletion + helm upgrade

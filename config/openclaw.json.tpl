@@ -49,18 +49,7 @@
     }
   },
   "diagnostics": {
-    "enabled": true,
-    "otel": {
-      "enabled": true,
-      "traces": false,
-      "metrics": true,
-      "logs": false,
-      "endpoint": "http://otel-collector.observability.svc:4318",
-      "protocol": "http/protobuf",
-      "serviceName": "openclaw-agent",
-      "sampleRate": 1.0,
-      "captureContent": true
-    }
+    "enabled": false
   },
   "gateway": {
     "mode": "local",
