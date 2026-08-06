@@ -29,7 +29,7 @@ via the alias.
 # From repo root
 make -C deploy deploy-operators                          # once per cluster (RHOAI + Agent Sandbox operators via OLM)
 APPS_DOMAIN=apps.example.com make -C deploy deploy-openshell   # single helm upgrade --install
-make -C deploy deploy-oauth2-proxy                        # browser auth for the Control UI (ADR-0011)
+APPS_DOMAIN=apps.example.com make -C deploy deploy-openclaw-ui-proxy  # nginx mTLS bridge for Control UI (ADR-0011)
 ```
 
 `deploy-openshell` always renders with `-f values-openshift.yaml` — there is no
@@ -92,9 +92,9 @@ the one extra label this project needs (RHOAI Dashboard opt-in,
 make -C deploy undeploy-openshell
 ```
 
-Reverses `deploy-openshell` + `deploy-oauth2-proxy`: uninstalls `oauth2-proxy` and
-`openshell` (this one release), deletes the `openshell` namespace, and removes the Agent
-Sandbox raw manifest (CRD + cluster-scoped RBAC).
+Reverses `deploy-openshell` + `deploy-openclaw-ui-proxy`: uninstalls `openclaw-ui-proxy` and
+`openshell` (this one release), and deletes the `openshell` namespace. Does **not** remove the
+shared Agent Sandbox Operator (OLM) — use `make cleanup-orphans` / `undeploy-all` for that.
 
 ## Documentation
 

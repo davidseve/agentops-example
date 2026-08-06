@@ -33,7 +33,7 @@
 ## Phase 1.5 - OpenShell + OpenClaw Integration
 
 - [x] Deploy OpenShell from OCI Helm chart (ADR-0003)
-- [x] Define OpenShell auth strategy: OpenShift-native OAuth via oauth-proxy, `trusted-proxy` gateway auth (ADR-0011)
+- [x] Define OpenShell auth strategy: nginx mTLS bridge + OpenClaw password auth (ADR-0011; oauth-proxy dropped 2026-08-06)
 - [x] Configure Agent Sandbox SCC requirements
 - [x] Deploy OpenClaw as agent harness inside sandbox
 - [x] Configure sandbox network policy
@@ -64,7 +64,7 @@
 ## Phase 4 - Packaging and Polish
 
 - [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: [`deploy/helm/openshell/`](../deploy/helm/openshell/) + `make -C deploy deploy-openshell`
-- [x] Refactor OpenShell wrapper chart (`0.2.0`): absorb namespace + SCC RoleBinding into Helm; pin Agent Sandbox `v0.5.1`; retire kustomize + SCC script — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
+- [x] Refactor OpenShell wrapper chart (`0.3.0`): absorb namespace + SCC RoleBinding into Helm; Agent Sandbox via OLM only (OSC 1.13); retire kustomize + SCC script + raw `v0.5.1` manifest — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
 - [ ] Write step-by-step demo script with timing marks (10-13 min)
 - [x] Create health-check script (`tests/health-check.sh`)
 - [ ] Create warm-up script
@@ -73,8 +73,24 @@
 - [ ] Rehearsal runs (minimum 3x full run-throughs)
 - [ ] Final polish and edge-case handling
 
+## Deferred
+
+### Multi-user browser identity / OCP SSO
+
+Per-user OCP identity was dropped when ADR-0011 switched from oauth-proxy +
+`trusted-proxy` to nginx + OpenClaw password (2026-08-06). Revisit if the
+demo needs per-user audit trails or SSO.
+
+The full improvement playbook (OpenShell/OpenClaw upstream triggers, target
+architectures A/B/C, and the "is OS-1 fixed yet?" checklist) lives in
+[ADR-0011 — Future improvement map](adr/0011-ui-auth-openshift-oauth-proxy.md#future-improvement-map-revisit-when-upstream-changes).
+
+- [ ] If multi-user identity is required: follow ADR-0011 target B / OC-3 (do not revive `ose-oauth-proxy` until its WebSocket Host-header bug is fixed)
+- [ ] If OpenShell chart gates `client_ca_path` when `clientCaSecretName` is empty (ADR-0011 trigger OS-1): move to target A — direct Route, delete `openclaw-ui-proxy`
+
 ## Open Questions
 
 - demo.redhat.com catalog: which RHOAI demos exist that we can reuse as base?
 - MaaS endpoints available: which models, rate limits, auth method?
 - What is the agent use case?
+- Can CRC also drop the raw `agent-sandbox-v0.5.1` manifest and use OLM-only Agent Sandbox? Tracked as an open Phase 2 item in the reference project (`open-claw-in-openshell/ROADMAP.md`) — this repo has no CRC deploy path.

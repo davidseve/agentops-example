@@ -51,10 +51,13 @@ Pin every operator, Helm chart, and container image to an explicit version. Upgr
 |---|---|---|
 | RHOAI operator | <!-- TODO: pin CSV --> | `deploy/helm/` Subscription |
 | OpenShell OCI chart (gateway) | `0.0.83` | `deploy/helm/openshell/Chart.yaml` (`dependencies[].version`) + committed `Chart.lock` — the actual, enforced pin (moved here 2026-08-05, see note below; previously a Makefile variable, and briefly a dead, unenforced `dependencies:` entry before that) |
+| Agent Sandbox Operator (OLM) | channel `preview-0.9`, CSV `agent-sandbox-operator.v0.9.0` | `deploy/helm/operators/values.yaml` — sole source of controller/router/CRDs (OSC 1.13 TP; raw upstream manifest retired 2026-08-06) |
 | OpenClaw (npm, in-sandbox) | `2026.6.34` | `scripts/launch-openclaw.sh` (`OPENCLAW_PIN`) |
 | `@mlflow/mlflow-openclaw` (npm, in-sandbox) | `0.2.0-rc.0` | `scripts/launch-openclaw.sh` |
 | Dependent operators | <!-- TODO: pin CSVs --> | `deploy/helm/` Subscriptions |
 | Container images | digest where possible, tag as fallback | `deploy/` values files |
+
+**Reviewed and not applicable (Aug 2026 OSC 1.13 blog):** Confidential AI on bare metal GA, Red Hat build of Trustee 1.2, and post-quantum attestation readiness — this project does not use Trustee or confidential computing. Tracked only so future readers know the release was evaluated.
 
 **Found unpinned during ADR-0011 investigation (2026-08-05)**: `launch-openclaw.sh`
 ran unpinned `npm install -g openclaw` (whatever "latest" resolved to at exec

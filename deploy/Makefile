@@ -7,11 +7,11 @@
 #
 # OpenShell + OpenClaw:
 #   make deploy-openshell HELM_OPTS='--set global.appsDomain=<domain>'
-#   make deploy-oauth2-proxy APPS_DOMAIN=<domain>
-#   make undeploy-openshell   (teardown: OpenShell + oauth2-proxy + Agent Sandbox)
+#   make deploy-openclaw-ui-proxy APPS_DOMAIN=<domain>
+#   make undeploy-openshell   (teardown: OpenShell + openclaw-ui-proxy + Agent Sandbox)
 #
 # Full reset (everything this Makefile can deploy, in one shot):
-#   make undeploy-everything  (OpenShell/oauth2-proxy -> RHOAI apps -> DSCI -> operators -> orphans)
+#   make undeploy-everything  (OpenShell/ui-proxy -> RHOAI apps -> DSCI -> operators -> orphans)
 #   make validate-cleanup     (confirm the cluster is actually clean before redeploying)
 #
 # deploy-openshell installs OpenShell as a single Helm release: this repo's
@@ -48,7 +48,7 @@ DATABASE_CHART  := helm/database
 MLFLOW_CHART    := helm/mlflow
 EVALHUB_CHART   := helm/evalhub
 OPENSHELL_CHART := helm/openshell
-OAUTH2_PROXY_CHART := helm/oauth2-proxy
+OPENCLAW_UI_PROXY_CHART := helm/openclaw-ui-proxy
 
 # Release names
 OPERATORS_RELEASE := rhoai-operators
@@ -57,7 +57,7 @@ DATABASE_RELEASE  := rhoai-database
 MLFLOW_RELEASE    := rhoai-mlflow
 EVALHUB_RELEASE   := rhoai-evalhub
 OPENSHELL_RELEASE := openshell
-OAUTH2_PROXY_RELEASE := oauth2-proxy
+OPENCLAW_UI_PROXY_RELEASE := openclaw-ui-proxy
 
 OPENSHELL_NAMESPACE := openshell
 # Local CLI gateway alias (coexistence-safe; override if another project
@@ -75,7 +75,7 @@ DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 .PHONY: validate-openclaw validate-traces validate-security
 .PHONY: test-e2e test-ui test-security test-mlflow
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
-.PHONY: deploy-oauth2-proxy undeploy-openshell undeploy-everything
+.PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
 .PHONY: openshell-sync-mtls openshell-register-gateway
 .PHONY: validate validate-cleanup validate-smoke deploy-all-quiet
 
@@ -122,6 +122,22 @@ wait-operators: deploy-operators
 	@echo "Waiting for platform CRDs..."
 	@until oc get crd datascienceclusters.datasciencecluster.opendatahub.io >/dev/null 2>&1; do \
 		echo "  platform CRDs not ready yet..."; sleep 10; \
+	done
+	@echo "Waiting for Agent Sandbox Operator CSV..."
+	@until oc get csv -n agent-sandbox-system -o jsonpath='{.items[*].status.phase}' 2>/dev/null | grep -q Succeeded; do \
+		PLAN=$$(oc get subscription agent-sandbox-operator -n agent-sandbox-system -o jsonpath='{.status.installplan.name}' 2>/dev/null || true); \
+		if [ -n "$$PLAN" ]; then \
+			APPROVED=$$(oc get installplan "$$PLAN" -n agent-sandbox-system -o jsonpath='{.spec.approved}' 2>/dev/null || true); \
+			if [ "$$APPROVED" != "true" ]; then \
+				echo "  Auto-approving InstallPlan $$PLAN (pinned channel in git = already reviewed)"; \
+				oc -n agent-sandbox-system patch installplan "$$PLAN" --type merge -p '{"spec":{"approved":true}}' >/dev/null; \
+			fi; \
+		fi; \
+		echo "  Agent Sandbox CSV not ready yet..."; sleep 15; \
+	done
+	@echo "Waiting for Agent Sandbox CRDs..."
+	@until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do \
+		echo "  sandboxes.agents.x-k8s.io not ready yet..."; sleep 5; \
 	done
 
 # OdhDashboardConfig CRD appears only after DSC enables Dashboard — wait only for DSC CRD.
@@ -226,10 +242,21 @@ deploy-openshell: helm-env
 		echo "  or: APPS_DOMAIN=apps.ocp.example.com make deploy-openshell"; \
 		exit 1; \
 	fi
-	@echo "Applying Agent Sandbox CRDs + controller..."
-	oc apply -f manifests/agent-sandbox-v0.5.1.yaml
-	@echo "Waiting for Agent Sandbox CRD..."
-	@until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do sleep 3; done
+	@echo "Waiting for Agent Sandbox CRDs from OLM operator (agent-sandbox-operator)..."
+	@# Sole source: Red Hat build of Agent Sandbox Operator (installed by
+	@# deploy-operators). Do NOT apply upstream kubernetes-sigs/agent-sandbox
+	@# manifests — that path was retired (ADR-0003, OSC 1.13).
+	@i=0; until oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; do \
+		i=$$((i+1)); \
+		if [ $$i -ge 60 ]; then \
+			echo "FAIL: CRD sandboxes.agents.x-k8s.io not available."; \
+			echo "  Ensure 'make deploy-operators' installed agent-sandbox-operator"; \
+			echo "  and its InstallPlan was approved (channel preview-0.9)."; \
+			exit 1; \
+		fi; \
+		echo "  Agent Sandbox CRD not ready yet..."; sleep 5; \
+	done
+	@echo "OK: Agent Sandbox CRD present"
 	@echo "Resolving OpenShell chart dependency (pinned in Chart.yaml/Chart.lock)..."
 	DOCKER_CONFIG=$(DOCKER_CONFIG) $(HELM) dependency build $(OPENSHELL_CHART)
 	@echo "Installing OpenShell (single release: namespace extras + gateway)..."
@@ -268,7 +295,7 @@ deploy-openshell: helm-env
 	@$(MAKE) openshell-register-gateway
 	@echo "OpenShell deployed successfully."
 	@echo "Next: ./scripts/launch-openclaw.sh  (creates sandbox if needed)"
-	@echo "      APPS_DOMAIN=<domain> make deploy-oauth2-proxy  (browser UI auth)"
+	@echo "      APPS_DOMAIN=<domain> make deploy-openclaw-ui-proxy  (browser UI via nginx mTLS bridge)"
 
 # MLflow's openclawIntegration RBAC (see deploy/helm/mlflow/values.yaml) needs the
 # openshell-sandbox ServiceAccount, which is created by deploy-openshell above,
@@ -287,50 +314,48 @@ deploy-mlflow-openclaw-integration:
 		&& echo "OK: openshell-sandbox-mlflow-token created" \
 		|| echo "WARN: openshell-sandbox-mlflow-token not found yet (token controller may still be catching up)"
 
-# --- oauth2-proxy (browser auth for OpenClaw Control UI) ---
-# Deploys OpenShift-native oauth-proxy so OCP users can log in to the UI.
-# Prereq: OpenShell deployed (needs the openshell Service for hostAlias lookup).
-deploy-oauth2-proxy:
+# --- openclaw-ui-proxy (nginx mTLS bridge for OpenClaw Control UI) ---
+# Sole browser entrypoint: Route → nginx (TLS + mTLS to relay) → OpenShell → gateway.
+# OpenClaw password auth protects the WebSocket session (ADR-0011).
+# Prereq: OpenShell deployed (needs the openshell Service ClusterIP for nginx upstream).
+deploy-openclaw-ui-proxy:
 	@if [ -z "$(APPS_DOMAIN)" ]; then \
-		echo "ERROR: APPS_DOMAIN required. Usage: APPS_DOMAIN=apps.ocp.example.com make deploy-oauth2-proxy"; \
+		echo "ERROR: APPS_DOMAIN required. Usage: APPS_DOMAIN=apps.ocp.example.com make deploy-openclaw-ui-proxy"; \
 		exit 1; \
 	fi
-	@echo "Ensuring oauth-proxy session secret exists..."
-	@oc -n $(OPENSHELL_NAMESPACE) get secret oauth-proxy-session-secret &>/dev/null || \
-		oc -n $(OPENSHELL_NAMESPACE) create secret generic oauth-proxy-session-secret \
-			--from-literal=session_secret=$$(openssl rand -base64 32 | head -c 32)
-	@echo "Deploying oauth2-proxy..."
-	$(HELM) upgrade --install $(OAUTH2_PROXY_RELEASE) $(OAUTH2_PROXY_CHART) \
+	@echo "Deploying openclaw-ui-proxy (nginx mTLS bridge)..."
+	$(HELM) upgrade --install $(OPENCLAW_UI_PROXY_RELEASE) $(OPENCLAW_UI_PROXY_CHART) \
 		--namespace $(OPENSHELL_NAMESPACE) \
 		--set appsDomain=$(APPS_DOMAIN) \
 		--set namespace=$(OPENSHELL_NAMESPACE) \
 		--wait --timeout 120s
-	@echo "Verifying OAuth redirect..."
+	@echo "Verifying UI Route..."
 	@sleep 3
 	@HTTP_CODE=$$(curl -sk -o /dev/null -w '%{http_code}' \
 		"https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)/" 2>/dev/null || echo "000"); \
-	if [ "$$HTTP_CODE" = "302" ] || [ "$$HTTP_CODE" = "303" ]; then \
-		echo "OK: oauth-proxy redirects to OCP OAuth (HTTP $$HTTP_CODE)"; \
+	if [ "$$HTTP_CODE" = "200" ] || [ "$$HTTP_CODE" = "301" ] || [ "$$HTTP_CODE" = "302" ]; then \
+		echo "OK: Control UI reachable via nginx bridge (HTTP $$HTTP_CODE)"; \
 	else \
-		echo "WARN: Expected 302/303, got HTTP $$HTTP_CODE (may need a few seconds)"; \
+		echo "WARN: Expected 200/3xx, got HTTP $$HTTP_CODE (sandbox may not be launched yet)"; \
 	fi
 	@echo "UI URL: https://openclaw-gw--openclaw-ui.$(APPS_DOMAIN)"
+	@echo "Auth: enter OPENCLAW_GATEWAY_PASSWORD from secrets/secrets.env in Control UI settings"
 
 # Fast smoke checks for agent iteration (no Playwright / full E2E — see long-running-scripts skill)
 validate-smoke: validate-openshell validate-security
 	@echo "Smoke validation complete (infra + security only)."
 
-# --- OpenShell + oauth2-proxy + Agent Sandbox teardown ---
-# Reverse of deploy-openshell/deploy-oauth2-proxy. Order: oauth2-proxy (depends on
+# --- OpenShell + openclaw-ui-proxy teardown ---
+# Reverse of deploy-openshell/deploy-openclaw-ui-proxy. Order: ui-proxy (depends on
 # openshell Service) -> openshell (single release: namespace extras + gateway)
-# -> namespace -> Agent Sandbox raw manifest (CRD + cluster-scoped RBAC).
+# -> namespace. Agent Sandbox Operator (OLM) is shared cluster infra — tear it
+# down via cleanup-orphans / undeploy-all, not here.
 undeploy-openshell:
-	-$(HELM) uninstall $(OAUTH2_PROXY_RELEASE) -n $(OPENSHELL_NAMESPACE)
+	-$(HELM) uninstall $(OPENCLAW_UI_PROXY_RELEASE) -n $(OPENSHELL_NAMESPACE)
 	-$(HELM) uninstall $(OPENSHELL_RELEASE) -n $(OPENSHELL_NAMESPACE)
 	-@oc delete namespace $(OPENSHELL_NAMESPACE) --wait=false 2>/dev/null || true
-	@echo "Removing Agent Sandbox raw manifest (CRD + cluster-scoped RBAC)..."
-	-@oc delete -f manifests/agent-sandbox-v0.5.1.yaml --ignore-not-found --wait=false 2>/dev/null || true
-	@echo "OpenShell + oauth2-proxy + Agent Sandbox (raw manifest) teardown complete."
+	@echo "OpenShell + openclaw-ui-proxy teardown complete."
+	@echo "NOTE: Agent Sandbox Operator (agent-sandbox-system) was NOT removed — use 'make cleanup-orphans' / 'make undeploy-all'."
 
 validate-openshell:
 	@echo "=== OpenShell ==="
@@ -428,12 +453,15 @@ validate-security:
 # Env vars: OPENCLAW_BASE_URL, MLFLOW_BASE_URL, MLFLOW_AUTH_TOKEN, MLFLOW_WORKSPACE
 
 test-e2e:
+	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
 	cd $(ROOT_DIR)/tests && npx playwright test
 
 test-ui:
+	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
 	cd $(ROOT_DIR)/tests && npx playwright test openclaw-ui.spec.ts
 
 test-security:
+	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
 	cd $(ROOT_DIR)/tests && npx playwright test sandbox-security.spec.ts
 
 test-mlflow:
@@ -491,7 +519,7 @@ undeploy-all: undeploy-apps purge-dsci undeploy-operators cleanup-orphans
 # for why OpenShell depends on RHOAI -- so it must come down first).
 # Run `make validate-cleanup` afterwards to confirm before redeploying from scratch.
 undeploy-everything: undeploy-openshell undeploy-all
-	@echo "Full reset complete: OpenShell, oauth2-proxy, Agent Sandbox, RHOAI stack, and operators removed."
+	@echo "Full reset complete: OpenShell, openclaw-ui-proxy, Agent Sandbox, RHOAI stack, and operators removed."
 	@echo "Run 'make validate-cleanup' to confirm, then 'make deploy-all' to redeploy from scratch."
 
 # --- Validation ---
@@ -565,15 +593,15 @@ validate-cleanup:
 	else \
 		exit 1; \
 	fi
-	@echo "=== Helm releases (OpenShell / oauth2-proxy) ==="
+	@echo "=== Helm releases (OpenShell / openclaw-ui-proxy) ==="
 	@LEFTOVER=false; \
-	for rel_ns in "$(OPENSHELL_RELEASE):$(OPENSHELL_NAMESPACE)" "$(OAUTH2_PROXY_RELEASE):$(OPENSHELL_NAMESPACE)"; do \
+	for rel_ns in "$(OPENSHELL_RELEASE):$(OPENSHELL_NAMESPACE)" "$(OPENCLAW_UI_PROXY_RELEASE):$(OPENSHELL_NAMESPACE)"; do \
 		REL=$${rel_ns%%:*}; NS=$${rel_ns##*:}; \
 		if helm status "$$REL" -n "$$NS" >/dev/null 2>&1; then \
 			echo "FAIL: release $$REL still deployed in ns $$NS"; LEFTOVER=true; \
 		fi; \
 	done; \
-	if [ "$$LEFTOVER" = "true" ]; then exit 1; else echo "OK: no openshell/oauth2-proxy releases"; fi
+	if [ "$$LEFTOVER" = "true" ]; then exit 1; else echo "OK: no openshell/openclaw-ui-proxy releases"; fi
 	@echo "=== DSCInitialization ==="
 	@if oc get dscinitialization --no-headers 2>/dev/null | grep -q .; then \
 		echo "FAIL: DSCInitialization still exists"; exit 1; \
@@ -586,12 +614,11 @@ validate-cleanup:
 	else \
 		echo "OK: no DataScienceCluster"; \
 	fi
-	@echo "=== Agent Sandbox (raw manifest cluster-scoped resources) ==="
+	@echo "=== Agent Sandbox Operator (OLM) ==="
 	@AS_LEFTOVER=false; \
+	oc get subscription agent-sandbox-operator -n agent-sandbox-system >/dev/null 2>&1 && { echo "WARN: Subscription agent-sandbox-operator still present"; AS_LEFTOVER=true; }; \
 	oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1 && { echo "WARN: CRD sandboxes.agents.x-k8s.io still present"; AS_LEFTOVER=true; }; \
-	oc get clusterrole agent-sandbox-controller >/dev/null 2>&1 && { echo "WARN: ClusterRole agent-sandbox-controller still present"; AS_LEFTOVER=true; }; \
-	oc get clusterrolebinding agent-sandbox-controller >/dev/null 2>&1 && { echo "WARN: ClusterRoleBinding agent-sandbox-controller still present"; AS_LEFTOVER=true; }; \
-	if [ "$$AS_LEFTOVER" = "false" ]; then echo "OK: no Agent Sandbox cluster-scoped leftovers"; fi
+	if [ "$$AS_LEFTOVER" = "false" ]; then echo "OK: no Agent Sandbox Operator leftovers"; fi
 	@echo "=== Namespaces ==="
 	@ALL_CLEAN=true; \
 	for ns in redhat-ods-operator redhat-ods-applications redhat-ods-monitoring evaluation models-as-a-service rhoai-model-registries agent-sandbox-system $(OPENSHELL_NAMESPACE); do \

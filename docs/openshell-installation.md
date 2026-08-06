@@ -26,7 +26,7 @@ A working OpenShell setup has two components:
 
 **Local:** the project installer (`scripts/install-openshell.sh`) installs both components, configures Podman as the compute driver, and starts a gateway on `https://127.0.0.1:17670`.
 
-**Cluster:** the Helm chart deploys the gateway into OpenShift; sandboxes are provisioned by the Kubernetes driver via the [Red Hat build of Agent Sandbox](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) Operator.
+**Cluster:** the Helm chart deploys the gateway into OpenShift; sandboxes are provisioned by the Kubernetes driver via the [Red Hat build of Agent Sandbox](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/) Operator.
 
 In **Cursor**, use the OpenShell skills for each scenario — see [Install via Cursor skills](#install-via-cursor-skills).
 
@@ -485,7 +485,7 @@ openshell CLI  ──HTTPS──►  openshell-gateway (StatefulSet)
 |---|---|
 | OpenShift 4.x with `oc` configured | Cluster admin or sufficient RBAC in target namespace |
 | Helm 3.x | For OCI chart install from GHCR |
-| [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/) | Installed via OLM with `make deploy-operators` or `make deploy-all` |
+| [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/) | Installed via OLM with `make deploy-operators` or `make deploy-all` |
 | Pinned chart version | `0.0.80` (see [Version pinning](#version-pinning-cluster)) |
 
 The Agent Sandbox Operator is deployed as an OLM Subscription alongside RHOAI through the `deploy/helm/operators/` chart:
@@ -683,7 +683,7 @@ See [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging) f
 
 - [OpenShell Installation](https://docs.nvidia.com/openshell/latest/about/installation) (CLI)
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift)
-- [Red Hat build of Agent Sandbox — Install](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.12/html/deploying_red_hat_build_of_agent_sandbox/)
+- [Red Hat build of Agent Sandbox — Install](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/)
 - [Kubernetes Setup (Agent Sandbox)](https://docs.nvidia.com/openshell/kubernetes/setup)
 - [Kubernetes Setup — TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup) (copy `openshell-client-tls` for CLI port-forward access)
 - [Helm chart — Secret bootstrap](https://github.com/NVIDIA/OpenShell/blob/main/deploy/helm/openshell/README.md#secret-bootstrap)
