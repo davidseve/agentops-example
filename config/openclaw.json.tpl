@@ -26,7 +26,7 @@
           },
           {
             "id": "claude-sonnet-4-6",
-            "name": "Claude Sonnet 4.6 (backup)",
+            "name": "Claude Sonnet 4.6",
             "reasoning": true,
             "input": ["text", "image"],
             "contextWindow": 200000,
@@ -40,13 +40,13 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "maas/gpt-oss-120b",
-        "fallbacks": ["maas/llama-scout-17b"]
+        "primary": "maas/claude-sonnet-4-6",
+        "fallbacks": ["maas/gpt-oss-120b", "maas/llama-scout-17b"]
       },
       "models": {
-        "maas/gpt-oss-120b": { "alias": "GPT-OSS" },
+        "maas/gpt-oss-120b": { "alias": "GPT-OSS-fallback" },
         "maas/llama-scout-17b": { "alias": "Scout-fallback" },
-        "maas/claude-sonnet-4-6": { "alias": "Sonnet-backup" }
+        "maas/claude-sonnet-4-6": { "alias": "Sonnet" }
       },
       "workspace": "/sandbox/workspace"
     }
@@ -87,7 +87,7 @@
     },
     "controlUi": {
       "allowedOrigins": [
-        "https://openclaw-gw--openclaw-ui.__APPS_DOMAIN__"
+        "https://__UI_HOST__"
       ],
       "dangerouslyDisableDeviceAuth": true
     },

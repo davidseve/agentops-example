@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { controlUiPath } from './helpers';
+import { connectControlUi } from './helpers';
 
 const CHAT_TIMEOUT = 30_000;
 
@@ -7,25 +7,18 @@ const CHAT_TIMEOUT = 30_000;
 // start" recovery screen (app bundle registration race, not an auth/infra
 // issue — see docs.openclaw.ai/web/control-ui#blank-control-ui-page) when
 // tests navigate back-to-back rapidly against the same gateway process.
-// The UI itself offers a "Try again" button for exactly this case; retry
-// via reload (observed more reliable than the in-page button) up to twice.
-// Password must be re-supplied on each navigation (Control UI does not
-// persist gateway.auth.password across reloads).
+// Retry connect up to twice. Password must be re-entered each navigation
+// (Control UI does not persist gateway.auth.password across reloads).
 async function gotoControlUi(page: Page) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt === 0) {
-      await page.goto(controlUiPath('/'));
-    } else {
-      await page.goto(controlUiPath('/'));
+    try {
+      await connectControlUi(page, '/', 15_000);
+      return;
+    } catch {
+      // retry
     }
-    const messageInput = page.getByPlaceholder(/Message/);
-    const startFailed = page.getByText('Control UI did not start');
-    const result = await Promise.race([
-      messageInput.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'ok' as const),
-      startFailed.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'failed' as const),
-    ]).catch(() => 'timeout' as const);
-    if (result === 'ok') return;
   }
+  await connectControlUi(page, '/', 30_000);
 }
 
 test.describe('OpenClaw Control UI', () => {
@@ -48,9 +41,11 @@ test.describe('OpenClaw Control UI', () => {
     const messageInput = page.getByPlaceholder(/Message/);
     await expect(messageInput).toBeVisible();
     await messageInput.fill('test message');
-    await page.waitForTimeout(500);
-    const sendButton = page.getByRole('button', { name: /Send/ });
-    await expect(sendButton).toBeVisible();
+    // Parallel workers share the main session; an in-flight agent run shows
+    // "Stop generating" instead of "Send". Either proves the composer is live.
+    await expect(
+      page.getByRole('button', { name: /Send|Stop generating|Queue message/ }),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('E2E chat: model responds via MaaS', async ({ page }) => {
@@ -59,7 +54,8 @@ test.describe('OpenClaw Control UI', () => {
     const messageInput = page.getByPlaceholder(/Message/);
     await messageInput.waitFor({ state: 'visible' });
 
-    await page.waitForTimeout(2000);
+    // Wait out any in-flight run from a parallel worker on the shared session.
+    await page.getByRole('button', { name: /Stop generating/ }).waitFor({ state: 'hidden', timeout: 60_000 }).catch(() => {});
 
     await messageInput.fill('Respond with exactly one word: PONG');
     await page.getByRole('button', { name: /Send/ }).click();

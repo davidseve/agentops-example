@@ -1,0 +1,51 @@
+---
+description: >-
+  When Agent Sandbox / OpenShell / OpenClaw launch paths change, sync
+  docs/AGENT-SANDBOX-AND-OPENSHELL.md via the sync-agent-sandbox-doc skill.
+globs: >-
+  scripts/launch-openclaw.sh,
+  scripts/openshift-openshell-register-gateway.sh,
+  scripts/patch-mlflow-plugin.py,
+  deploy/helm/openshell/**,
+  deploy/helm/operators/**,
+  deploy/helm/openclaw-ui-proxy/**,
+  deploy/Makefile,
+  policies/**,
+  config/openclaw.json.tpl
+alwaysApply: false
+---
+
+# Agent Sandbox Guide Sync
+
+`docs/AGENT-SANDBOX-AND-OPENSHELL.md` is the **canonical architecture and
+procedure guide** for Agent Sandbox + OpenShell + OpenClaw in this project.
+It is separate from `docs/openshell-installation.md` (install commands) and
+from ADRs (decision rationale).
+
+## When this rule fires
+
+If you **add or modify** any file matched by this rule's globs in a way that
+changes behavior, versions, topology, policies, or validation steps for the
+sandbox stack, you MUST update `docs/AGENT-SANDBOX-AND-OPENSHELL.md` in the
+**same session**.
+
+## Required action
+
+1. Read and follow the **`sync-agent-sandbox-doc`** skill (`.cursor/skills/sync-agent-sandbox-doc/SKILL.md`).
+2. Update only the affected sections — do not rewrite unrelated chapters.
+3. Keep paragraph lines at **full width** (no ~80-column hard wrap), matching
+   other guides in `docs/`.
+4. If the change is architectural (new component, reversed decision, pinning
+   policy), also use the **`adr`** skill per `adr-alignment` rule.
+
+## Do not duplicate
+
+- **Install commands only** → `docs/openshell-installation.md` or
+  `openshell-cluster-install` skill
+- **Decision rationale** → `docs/adr/` + `docs/stack-decisions.md`
+- **Makefile target list** → `AGENTS.md` — link to the guide instead
+
+## Exceptions
+
+- Typo/formatting-only fixes with no procedural impact
+- Changes confined to `docs/AGENT-SANDBOX-AND-OPENSHELL.md` itself

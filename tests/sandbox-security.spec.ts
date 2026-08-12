@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { controlUiPath } from './helpers';
+import { connectControlUi } from './helpers';
 
 test.describe.configure({ timeout: 90_000 });
 
@@ -13,7 +13,7 @@ const REFUSAL_PATTERNS = [
 ];
 
 async function askAgentViaUI(page: Page, prompt: string): Promise<string> {
-  await page.goto(controlUiPath('/'));
+  await connectControlUi(page, '/');
 
   const input = page.getByPlaceholder(/Message/);
   await input.waitFor({ state: 'visible' });

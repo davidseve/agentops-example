@@ -25,6 +25,8 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 NAMESPACE="${NAMESPACE:-openshell}"
 SANDBOX_NAME="${SANDBOX_NAME:-openclaw-gw}"
 GATEWAY_NAME="${GATEWAY_NAME:-ocp}"
+OPENSHELL_RELEASE_NAME="${OPENSHELL_RELEASE_NAME:-openshell}"
+SANDBOX_SA_NAME="${SANDBOX_SA_NAME:-${OPENSHELL_RELEASE_NAME}-sandbox}"
 APPS_DOMAIN="${APPS_DOMAIN:-}"
 RHOAI_NS="${RHOAI_NS:-redhat-ods-applications}"
 POLICY_FILE="${POLICY_FILE:-${PROJECT_DIR}/policies/openclaw-sandbox.yaml}"
@@ -48,6 +50,8 @@ command -v oc >/dev/null 2>&1 || { error "oc is required"; exit 1; }
 if [[ -z "$APPS_DOMAIN" ]]; then
   APPS_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')
 fi
+UI_HOST="${SANDBOX_NAME}--openclaw-ui.${APPS_DOMAIN}"
+MLFLOW_TOKEN_SECRET="${SANDBOX_SA_NAME}-mlflow-token"
 
 # ─── Ensure local CLI points at this project's gateway ────────────────────────
 step "Ensuring OpenShell CLI gateway '${GATEWAY_NAME}'"
@@ -58,7 +62,7 @@ NAMESPACE="${NAMESPACE}" GATEWAY_NAME="${GATEWAY_NAME}" \
 step "Reading MLflow wiring"
 MLFLOW_TOKEN="${MLFLOW_TOKEN:-}"
 if [[ -z "$MLFLOW_TOKEN" ]]; then
-  MLFLOW_TOKEN=$(oc -n "$NAMESPACE" get secret openshell-sandbox-mlflow-token \
+  MLFLOW_TOKEN=$(oc -n "$NAMESPACE" get secret "${MLFLOW_TOKEN_SECRET}" \
     -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null || true)
 fi
 if [[ -z "$MLFLOW_TOKEN" ]]; then
@@ -67,9 +71,11 @@ if [[ -z "$MLFLOW_TOKEN" ]]; then
 fi
 info "MLflow SA token read from Secret"
 
-MLFLOW_EXPERIMENT_ID="${MLFLOW_EXPERIMENT_ID:-1}"
 MLFLOW_SVC_URL="https://mlflow.${RHOAI_NS}.svc:8443"
-info "MLflow tracking URI: ${MLFLOW_SVC_URL} (experiment=${MLFLOW_EXPERIMENT_ID})"
+MLFLOW_EXPERIMENT_NAME="${MLFLOW_EXPERIMENT_NAME:-openclaw-tracing}"
+# Placeholder until sandbox exists and we can resolve by name (per-workspace ids differ).
+MLFLOW_EXPERIMENT_ID="${MLFLOW_EXPERIMENT_ID:-__RESOLVE__}"
+info "MLflow tracking URI: ${MLFLOW_SVC_URL} (experiment id resolved after sandbox is ready)"
 
 # ─── Render config ────────────────────────────────────────────────────────────
 step "Rendering openclaw.json"
@@ -77,6 +83,7 @@ CONFIG_RENDERED="${PROJECT_DIR}/.rendered/openclaw.json"
 mkdir -p "$(dirname "$CONFIG_RENDERED")"
 sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
     -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
+    -e "s|__UI_HOST__|${UI_HOST}|g" \
     -e "s|__MLFLOW_EXPERIMENT_ID__|${MLFLOW_EXPERIMENT_ID}|g" \
     -e "s|__OPENCLAW_GATEWAY_PASSWORD__|${OPENCLAW_GATEWAY_PASSWORD}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
@@ -147,6 +154,29 @@ info "Sandbox pod: $SANDBOX_POD"
 SANDBOX_UID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -u sandbox 2>/dev/null || echo "1000820000")
 SANDBOX_GID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -g sandbox 2>/dev/null || echo "1000820000")
 info "Sandbox UID:GID = ${SANDBOX_UID}:${SANDBOX_GID}"
+
+# ─── Resolve MLflow experiment id (per-workspace on shared MLflow) ────────────
+if [[ "$MLFLOW_EXPERIMENT_ID" == "__RESOLVE__" ]]; then
+  step "Resolving MLflow experiment '${MLFLOW_EXPERIMENT_NAME}' in workspace ${NAMESPACE}"
+  EXP_JSON=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- \
+    bash -c "curl -sk '${MLFLOW_SVC_URL}/api/2.0/mlflow/experiments/get-by-name?experiment_name=${MLFLOW_EXPERIMENT_NAME}' \
+      -H 'Authorization: Bearer ${MLFLOW_TOKEN}' \
+      -H 'X-MLFLOW-WORKSPACE: ${NAMESPACE}'" 2>/dev/null || true)
+  MLFLOW_EXPERIMENT_ID=$(echo "$EXP_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('experiment',{}).get('experiment_id',''))" 2>/dev/null || true)
+  if [[ -z "$MLFLOW_EXPERIMENT_ID" ]]; then
+    warn "Could not resolve experiment by name; defaulting to 1 (override with MLFLOW_EXPERIMENT_ID)"
+    MLFLOW_EXPERIMENT_ID=1
+  else
+    pass "Resolved experiment ${MLFLOW_EXPERIMENT_NAME} → id=${MLFLOW_EXPERIMENT_ID}"
+  fi
+fi
+# Re-render so experimentId is concrete before upload.
+sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
+    -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
+    -e "s|__UI_HOST__|${UI_HOST}|g" \
+    -e "s|__MLFLOW_EXPERIMENT_ID__|${MLFLOW_EXPERIMENT_ID}|g" \
+    -e "s|__OPENCLAW_GATEWAY_PASSWORD__|${OPENCLAW_GATEWAY_PASSWORD}|g" \
+    "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
 
 # ─── Step 1: Kill stale gateway processes ─────────────────────────────────────
 step "Cleaning stale gateway processes"
@@ -264,7 +294,7 @@ pass "Workspace directories ready"
 # ─── Step 8: Expose service via relay ────────────────────────────────────────
 step "Registering service route in OpenShell relay"
 openshell service expose "$SANDBOX_NAME" 18789 openclaw-ui 2>&1 || true
-pass "Service openclaw-ui exposed → https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/"
+pass "Service openclaw-ui exposed → https://${UI_HOST}/"
 
 # ─── Step 9: Start gateway ────────────────────────────────────────────────────
 step "Starting OpenClaw gateway"
@@ -311,9 +341,9 @@ fi
 # ─── Summary ──────────────────────────────────────────────────────────────────
 step "OpenClaw launch complete"
 echo ""
-info "Gateway UI (nginx mTLS bridge): https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/"
+info "Gateway UI (nginx mTLS bridge): https://${UI_HOST}/"
 info "Auth: enter OPENCLAW_GATEWAY_PASSWORD (from secrets/secrets.env) in Control UI settings"
-info "      or open: https://openclaw-gw--openclaw-ui.${APPS_DOMAIN}/?password=<password>"
+info "      or open: https://${UI_HOST}/?password=<password>"
 info "Tracing:  mlflow-openclaw → ${MLFLOW_SVC_URL} (workspace=${NAMESPACE}, experiment=${MLFLOW_EXPERIMENT_ID})"
 info "Plugins:  memory-core, mlflow-openclaw"
 info ""

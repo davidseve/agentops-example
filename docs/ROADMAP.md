@@ -26,9 +26,11 @@
 - [x] Gen AI Studio: llamastackoperator sequencing before dashboard (ADR-0008)
 - [x] MLflow chart: OpenClaw integration RBAC + experiment Job (gated, Phase 5 activates)
 - [ ] Validate MLflow tracing + prompt registry capabilities
-- [ ] Document MaaS options available in demo.redhat.com
+- [x] Document MaaS options available in demo.redhat.com
 - [ ] Map each demo feature to Red Hat product/component (study guide)
-- [ ] Document initial pinned versions manifest (operator CSVs, image tags/digests)
+- [x] Document initial pinned versions manifest (operator CSVs, image tags/digests)
+
+
 
 ## Phase 1.5 - OpenShell + OpenClaw Integration
 
@@ -42,6 +44,9 @@
 - [x] Wire MLflow tracing from OpenClaw plugin (ADR-0010)
 - [ ] Secrets management strategy
 - [x] Validate traces visible in RHOAI Dashboard Gen AI Studio — confirmed via Playwright (`tests/mlflow-ui.spec.ts`), including full Request/Response content from a live E2E chat
+- [ ] Migrate OpenShell gateway backend from StatefulSet + SQLite to Deployment + external PostgreSQL — see [Deferred § OpenShell gateway backend](#openshell-gateway-backend-postgresql--deployment-instead-of-statefulset--sqlite)
+
+
 
 ## Phase 2 - Architecture and Agent Design
 
@@ -51,19 +56,23 @@
 - [ ] Define guardrails policies (topic control, jailbreak prevention, data protection)
 - [ ] Design the demo narrative and attack scenarios
 
+
+
 ## Phase 3 - Implementation
 
-- [ ] Implement agent configuration with OpenClaw harness
+- [x] Implement agent configuration with OpenClaw harness
 - [ ] Configure NeMo Guardrails (rails, actions, policies)
-- [ ] Configure MLflow tracing integration
-- [ ] Deploy and validate on RHOAI 3.x cluster
-- [ ] Implement attack scenarios for the security demo
+- [x] Configure MLflow tracing integration
+- [x] Deploy and validate on RHOAI 3.x cluster
+- [ ] Implement attack scenarios for the security demo — including the progressive network-policy unlock narrative, see [Deferred § Progressive network-policy unlock](#progressive-network-policy-unlock-for-the-security-attack-demo)
 - [ ] (Nice-to-have) EvalHub + GARC red teaming setup
 - [ ] (Nice-to-have) Cost tracking dashboard
 
+
+
 ## Phase 4 - Packaging and Polish
 
-- [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: [`deploy/helm/openshell/`](../deploy/helm/openshell/) + `make -C deploy deploy-openshell`
+- [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: `[deploy/helm/openshell/](../deploy/helm/openshell/)` + `make -C deploy deploy-openshell`
 - [x] Refactor OpenShell wrapper chart (`0.3.0`): absorb namespace + SCC RoleBinding into Helm; Agent Sandbox via OLM only (OSC 1.13); retire kustomize + SCC script + raw `v0.5.1` manifest — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
 - [ ] Write step-by-step demo script with timing marks (10-13 min)
 - [x] Create health-check script (`tests/health-check.sh`)
@@ -73,7 +82,72 @@
 - [ ] Rehearsal runs (minimum 3x full run-throughs)
 - [ ] Final polish and edge-case handling
 
+
+
 ## Deferred
+
+
+
+### OpenShell gateway backend: PostgreSQL + Deployment (instead of StatefulSet + SQLite)
+
+Found while comparing this project against a related OpenShell/OpenCode reference demo
+([r3v5/agent-ops, `opencode-vertex-tracing`](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing) —
+same underlying `ghcr.io/nvidia/openshell` product). That demo runs the OpenShell gateway
+as a stateless `Deployment` backed by an external PostgreSQL 16 instance
+(`server.externalDbSecret`), instead of the chart's default `StatefulSet` + per-pod SQLite
+PVC we currently use ([`deploy/helm/openshell/values.yaml`](../deploy/helm/openshell/values.yaml)
+— `workload.kind: statefulset`, no `externalDbSecret`).
+
+We already run a shared PostgreSQL 16 instance for platform services
+([`deploy/helm/database`](../deploy/helm/database/), currently backing `mlflow` and `evalhub`
+via `database.extraDatabases`), so this is a low-effort change that reuses existing
+infrastructure rather than adding a new one — and it's more coherent with the "Production-Ready"
+message in the [README](../README.md).
+
+- [ ] Add `openshell` to `database.extraDatabases` in [`deploy/helm/database/values.yaml`](../deploy/helm/database/values.yaml)
+- [ ] Create the `pg-credentials`-style Secret (connection URI) that the OpenShell chart's
+      `server.externalDbSecret` expects, sourced from the shared `database` release
+- [ ] Set `openshell.workload.kind: deployment` and `openshell.server.externalDbSecret: <secret-name>`
+      in [`deploy/helm/openshell/values.yaml`](../deploy/helm/openshell/values.yaml) /
+      `values-openshift.yaml`
+- [ ] Verify `deploy-database` runs (and is waited on) before `deploy-openshell` in
+      [`deploy/Makefile`](../deploy/Makefile) — same ordering constraint class as
+      [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)'s "OpenShell after RHOAI/MLflow"
+- [ ] Re-run `make -C deploy test-openshell` (or equivalent validation) against a Deployment-backed
+      gateway — confirm sandbox create/exec, mTLS registration, and MLflow tracing still work with
+      multiple gateway pods possible (even at `replicaCount: 1` to start)
+- [ ] Update [ADR-0003](adr/0003-openshell-deployment-on-openshift.md) with the new decision
+      (or write a new ADR if this changes replica/HA assumptions) and drop the now-inaccurate
+      "SQLite, PVC per pod" framing from this project's docs
+- [ ] Cross-link this change in [docs/stack-decisions.md](stack-decisions.md) and the
+      `openshell-cluster-install` skill
+
+### Progressive network-policy unlock for the Security Attack demo
+
+Also found while comparing against the `opencode-vertex-tracing` reference demo (see above).
+That demo's narrative starts from a fully default-deny sandbox, shows a tool call fail live,
+then unlocks endpoints one at a time with `openshell policy update <sandbox> --add-endpoint
+<host>:443 --binary <path> --wait` — a strong "zero-trust, progressively opened" visual for a
+live audience.
+
+Today, [`scripts/launch-openclaw.sh`](../scripts/launch-openclaw.sh) applies the full
+[`policies/openclaw-sandbox.yaml`](../policies/openclaw-sandbox.yaml) at `sandbox create
+--policy ...` time — MaaS and MLflow egress are both already open before the demo starts, so
+we lose the "default-deny → live unlock" moment that [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)'s
+"Demo Impact" section and `AGENTS.md`'s "Security Attack" narrative block both call for.
+
+- [ ] Add a minimal (or empty) default policy for the `openclaw-demo` sandbox creation step,
+      instead of the full `openclaw-sandbox.yaml`
+- [ ] Script (or document as manual demo steps) the live `openshell policy update
+      <SANDBOX_NAME> --add-endpoint <host>:443 --binary <path> --wait` calls for, in order:
+      MaaS inference, then MLflow tracing — mirroring the two `network_policies` blocks
+      already defined in `policies/openclaw-sandbox.yaml` (`maas_inference`, `mlflow_direct`)
+- [ ] Verify the expected failure mode first (agent chat / MaaS call fails cleanly with the
+      egress not yet granted) before recording or presenting
+- [ ] Update the demo script / narrative docs (Phase 4's step-by-step demo script, once written)
+      with the exact `openshell policy update` commands and expected before/after behavior
+- [ ] Keep `policies/openclaw-sandbox.yaml` as the "final state" reference / fallback for
+      non-interactive (e.g. CI, `make validate-*`) runs that need full connectivity immediately
 
 ### Multi-user browser identity / OCP SSO
 
@@ -88,9 +162,12 @@ architectures A/B/C, and the "is OS-1 fixed yet?" checklist) lives in
 - [ ] If multi-user identity is required: follow ADR-0011 target B / OC-3 (do not revive `ose-oauth-proxy` until its WebSocket Host-header bug is fixed)
 - [ ] If OpenShell chart gates `client_ca_path` when `clientCaSecretName` is empty (ADR-0011 trigger OS-1): move to target A — direct Route, delete `openclaw-ui-proxy`
 
+
+
 ## Open Questions
 
 - demo.redhat.com catalog: which RHOAI demos exist that we can reuse as base?
 - MaaS endpoints available: which models, rate limits, auth method?
 - What is the agent use case?
 - Can CRC also drop the raw `agent-sandbox-v0.5.1` manifest and use OLM-only Agent Sandbox? Tracked as an open Phase 2 item in the reference project (`open-claw-in-openshell/ROADMAP.md`) — this repo has no CRC deploy path.
+

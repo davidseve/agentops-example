@@ -124,6 +124,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `openshell-local-cleanup` | Uninstall local OpenShell stack on macOS/Linux |
 | `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy deploy-openshell` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
+| `sync-agent-sandbox-doc` | Keep [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) in sync when sandbox/openshell/launch paths change |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
 | `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/); required before reversing Accepted decisions |
 | `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure |

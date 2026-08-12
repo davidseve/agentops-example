@@ -8,9 +8,10 @@
 # nginx is required because the OpenShell relay enforces client certificates
 # when a client CA is configured and no OIDC issuer is set. The browser cannot
 # present those certs; nginx does.
-{{- $openshellSvc := lookup "v1" "Service" .Values.namespace "openshell" }}
+{{- $svcName := .Values.openshellServiceName | default "openshell" }}
+{{- $openshellSvc := lookup "v1" "Service" .Values.namespace $svcName }}
 {{- if not $openshellSvc }}
-{{- fail (printf "Service 'openshell' not found in namespace '%s' — deploy OpenShell first" .Values.namespace) }}
+{{- fail (printf "Service '%s' not found in namespace '%s' — deploy OpenShell first (set openshellServiceName to the Helm release name)" $svcName .Values.namespace) }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment

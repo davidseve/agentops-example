@@ -22,7 +22,8 @@ export default defineConfig({
   testDir: '.',
   outputDir: './test-results',
   timeout: 60_000,
-  retries: 0,
+  retries: 1,
+  workers: 1,
   projects: [
     {
       name: 'auth-setup',

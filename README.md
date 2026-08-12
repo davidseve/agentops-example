@@ -20,6 +20,12 @@ Customer Agent (any framework) ─── BYOA
         └── OpenShift + RHOAI 3.x ───── Infrastructure
 ```
 
+## Understanding the Platform
+
+**Start here** if you want to understand how agent isolation actually works in this demo: [Agent Sandbox and OpenShell — How It Works](docs/AGENT-SANDBOX-AND-OPENSHELL.md).
+
+That guide walks through the full stack — Agent Sandbox Operator, OpenShell gateway, sandbox policies (Landlock, network namespaces), and how OpenClaw runs inside an isolated sandbox rather than as a plain Kubernetes Deployment. It complements the install guides (`cluster-bootstrap.md`, `openshell-installation.md`) with architecture and the `launch-openclaw.sh` procedure.
+
 ## Version Pinning
 
 All operators and components use **explicit pinned versions**. We upgrade deliberately and test before bumping to avoid surprises from upstream releases. See [AGENTS.md](AGENTS.md) for the full version pinning policy.
@@ -40,6 +46,7 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 |---|---|
 | Bootstrap RHOAI platform on OpenShift | [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | Install OpenShell (local or cluster) | [docs/openshell-installation.md](docs/openshell-installation.md) |
+| Agent Sandbox + OpenShell architecture (OpenClaw in sandbox) | [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) |
 | Browser UI (nginx mTLS bridge + password) | `APPS_DOMAIN=<domain> make -C deploy deploy-openclaw-ui-proxy` then `./scripts/launch-openclaw.sh` — see [ADR-0011](docs/adr/0011-ui-auth-openshift-oauth-proxy.md) |
 
 ## Project Structure
@@ -52,7 +59,8 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 │   ├── stack-decisions.md # Architecture decisions (executive summary)
 │   ├── adr/               # Architecture Decision Records
 │   ├── cluster-bootstrap.md   # RHOAI platform deploy on OpenShift
-│   └── openshell-installation.md  # OpenShell install (local + cluster)
+│   ├── openshell-installation.md  # OpenShell install (local + cluster)
+│   └── AGENT-SANDBOX-AND-OPENSHELL.md  # Sandbox architecture + launch flow
 ├── deploy/                # Deployment manifests (Helm, Kustomize)
 │   ├── Makefile           # Cluster deploy targets (deploy-all, deploy-openshell, …)
 │   └── helm/              # RHOAI platform + OpenShell wrapper charts
@@ -67,6 +75,7 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap and task tracking
 - [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)
+- [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) - Agent Sandbox, OpenShell, and OpenClaw launch architecture
 - [docs/stack-decisions.md](docs/stack-decisions.md) - Architecture decisions executive summary
 - [docs/adr/](docs/adr/) - Full Architecture Decision Records
 

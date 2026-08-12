@@ -10,7 +10,10 @@ metadata:
 spec:
   to:
     kind: Service
-    name: openshell
+    # Must match the subchart Service (.Release.Name), not a literal
+    # "openshell" — required when coexisting with another OpenShell release
+    # (e.g. open-claw-in-openshell already owns namespace/release "openshell").
+    name: {{ include "agentops-openshell.fullname" . }}
   port:
     targetPort: {{ .Values.route.targetPort }}
   tls:
