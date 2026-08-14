@@ -45,8 +45,6 @@
 - [x] Validate traces visible in RHOAI Dashboard Gen AI Studio — confirmed via Playwright (`tests/mlflow-ui.spec.ts`), including full Request/Response content from a live E2E chat
 - [x] TrustyAI + kserve set to `Managed` on the shared DataScienceCluster ahead of need (EvalHub red-teaming, Phase 3 guardrails, future model serving) — both confirmed `Ready: True` end-to-end (2026-08-14), applied via a one-off `oc apply`/`oc patch` against the live cluster. `values.yaml` was updated so `kserve.managementState: Managed` (alongside the already-`Managed` `trustyai`/`mlflowoperator`) reflects the real desired state declaratively for any future `make deploy-platform` from-scratch install. One operational note from getting it to `Ready`: after flipping `kserve` from `Removed → Managed`, the `TrustyAI` component CR's own controller only re-evaluated its `InferenceServices CRD does not exist` precondition failure once (at the moment `kserve`'s CRDs were still being installed) and then sat requeue-backed-off; annotating the parent `DataScienceCluster` didn't re-trigger it, but annotating the child `trustyai.components.platform.opendatahub.io/default-trustyai` CR directly did force an immediate re-reconcile, after which it went `Ready: True` in ~20s. One-off unblock, not automated (CRDs won't disappear again once installed).
 - [x] Removed all shared-cluster/"coexisting project" special-casing from `deploy/Makefile` end-to-end (2026-08-14). This went through a few iterations the same day: first per-field `oc patch` reconciliation, then a git-tracked `oc apply` manifest (`manifests/dsc-shared-overrides.yaml`), both trying to make this project's `trustyai`/`kserve`/`mlflowoperator` desired state survive a shared `rhoai-platform` Helm release owned by the coexisting `open-claw-in-openshell` project. All of it was removed once the real workflow was clarified: `make cluster-cleanup` (full teardown) before switching which project's stack is deployed on a given cluster — not indefinite side-by-side coexistence with divergent component sets. With that workflow, every `deploy-*` target's "skip if release already exists" branch (`deploy-operators`, `deploy-database`, `deploy-mlflow`, `deploy-evalhub`, and `deploy-platform`/`deploy-platform-fresh`, the latter two now merged into one target) was also unnecessary complexity: plain `helm upgrade --install` is already idempotent, so every one of those targets now just runs it unconditionally, no "already deployed" check at all. Also simplified: `wait-evalhub-crd` no longer treats a missing CRD as an expected "TrustyAI Removed on a shared DSC" outcome to silently skip (this project's own `deploy-platform` always sets `trustyai: Managed`, so the CRD reliably appears — same plain registration-race wait as `wait-mlflow-crd`/`wait-dashboard-crd`). Coexistence-flavored comments were also cleaned up in `values.yaml` (openclaw-ui-proxy, openshell route), `scripts/openshift-openshell-register-gateway.sh`, and [ADR-0008](adr/0008-rhoai-dsc-component-selection.md) (which was additionally stale — still listed `kserve` as `Removed`). Net effect: this project's deploy scripts no longer reference or reason about `open-claw-in-openshell` (or any other coexisting project) anywhere; if you want two independent stacks live on the same cluster at once, that's back to being a manual, unsolved concern, not something this Makefile tries to paper over.
-- [ ] Migrate OpenShell gateway backend from StatefulSet + SQLite to Deployment + external PostgreSQL — see [Deferred § OpenShell gateway backend](#openshell-gateway-backend-postgresql--deployment-instead-of-statefulset--sqlite)
-
 
 
 ## Phase 2 - Architecture and Agent Design
@@ -89,43 +87,10 @@
 
 
 
-### OpenShell gateway backend: PostgreSQL + Deployment (instead of StatefulSet + SQLite)
-
-Found while comparing this project against a related OpenShell/OpenCode reference demo
-([r3v5/agent-ops, `opencode-vertex-tracing`](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing) —
-same underlying `ghcr.io/nvidia/openshell` product). That demo runs the OpenShell gateway
-as a stateless `Deployment` backed by an external PostgreSQL 16 instance
-(`server.externalDbSecret`), instead of the chart's default `StatefulSet` + per-pod SQLite
-PVC we currently use ([`deploy/helm/openshell/values.yaml`](../deploy/helm/openshell/values.yaml)
-— `workload.kind: statefulset`, no `externalDbSecret`).
-
-We already run a shared PostgreSQL 16 instance for platform services
-([`deploy/helm/database`](../deploy/helm/database/), currently backing `mlflow` and `evalhub`
-via `database.extraDatabases`), so this is a low-effort change that reuses existing
-infrastructure rather than adding a new one — and it's more coherent with the "Production-Ready"
-message in the [README](../README.md).
-
-- [ ] Add `openshell` to `database.extraDatabases` in [`deploy/helm/database/values.yaml`](../deploy/helm/database/values.yaml)
-- [ ] Create the `pg-credentials`-style Secret (connection URI) that the OpenShell chart's
-      `server.externalDbSecret` expects, sourced from the shared `database` release
-- [ ] Set `openshell.workload.kind: deployment` and `openshell.server.externalDbSecret: <secret-name>`
-      in [`deploy/helm/openshell/values.yaml`](../deploy/helm/openshell/values.yaml) /
-      `values-openshift.yaml`
-- [ ] Verify `deploy-database` runs (and is waited on) before `deploy-openshell` in
-      [`deploy/Makefile`](../deploy/Makefile) — same ordering constraint class as
-      [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)'s "OpenShell after RHOAI/MLflow"
-- [ ] Re-run `make -C deploy test-openshell` (or equivalent validation) against a Deployment-backed
-      gateway — confirm sandbox create/exec, mTLS registration, and MLflow tracing still work with
-      multiple gateway pods possible (even at `replicaCount: 1` to start)
-- [ ] Update [ADR-0003](adr/0003-openshell-deployment-on-openshift.md) with the new decision
-      (or write a new ADR if this changes replica/HA assumptions) and drop the now-inaccurate
-      "SQLite, PVC per pod" framing from this project's docs
-- [ ] Cross-link this change in [docs/stack-decisions.md](stack-decisions.md) and the
-      `openshell-cluster-install` skill
-
 ### Progressive network-policy unlock for the Security Attack demo
 
-Also found while comparing against the `opencode-vertex-tracing` reference demo (see above).
+Found while comparing this project against a related OpenShell/OpenCode reference demo
+([r3v5/agent-ops, `opencode-vertex-tracing`](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing)).
 That demo's narrative starts from a fully default-deny sandbox, shows a tool call fail live,
 then unlocks endpoints one at a time with `openshell policy update <sandbox> --add-endpoint
 <host>:443 --binary <path> --wait` — a strong "zero-trust, progressively opened" visual for a
@@ -149,20 +114,6 @@ we lose the "default-deny → live unlock" moment that [ADR-0003](adr/0003-opens
       with the exact `openshell policy update` commands and expected before/after behavior
 - [ ] Keep `policies/openclaw-sandbox.yaml` as the "final state" reference / fallback for
       non-interactive (e.g. CI, `make validate-*`) runs that need full connectivity immediately
-
-### Multi-user browser identity / OCP SSO
-
-Per-user OCP identity was dropped when ADR-0011 switched from oauth-proxy +
-`trusted-proxy` to nginx + OpenClaw password (2026-08-06). Revisit if the
-demo needs per-user audit trails or SSO.
-
-The full improvement playbook (OpenShell/OpenClaw upstream triggers, target
-architectures A/B/C, and the "is OS-1 fixed yet?" checklist) lives in
-[ADR-0011 — Future improvement map](adr/0011-ui-auth-openshift-oauth-proxy.md#future-improvement-map-revisit-when-upstream-changes).
-
-- [ ] If multi-user identity is required: follow ADR-0011 target B / OC-3 (do not revive `ose-oauth-proxy` until its WebSocket Host-header bug is fixed)
-- [ ] If OpenShell chart gates `client_ca_path` when `clientCaSecretName` is empty (ADR-0011 trigger OS-1): move to target A — direct Route, delete `openclaw-ui-proxy`
-
 
 
 ## Open Questions
