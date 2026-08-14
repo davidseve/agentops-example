@@ -13,19 +13,9 @@ process:
   run_as_group: sandbox
 
 network_policies:
-  maas_inference:
-    name: red-hat-maas-litellm
-    endpoints:
-      - host: "maas-rhdp.apps.maas.redhatworkshops.io"
-        port: 443
-        protocol: rest
-        enforcement: enforce
-        access: read-write
-        request_body_credential_rewrite: true
-    binaries:
-      - { path: /usr/bin/node }
-      - { path: /usr/local/bin/node }
-      - { path: /usr/bin/curl }
+  # LLM inference: handled by OpenShell's inference router (inference.local).
+  # No explicit network policy needed — inference.local traffic is internal
+  # to the OpenShell proxy. Provider credentials injected at the gateway layer.
 
   mlflow_direct:
     name: rhoai-mlflow-direct-traces

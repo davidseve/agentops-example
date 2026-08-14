@@ -27,17 +27,17 @@ The reference project discovered (live on AWS OCP) that:
 | dashboard | UI for MLflow traces and experiment management |
 | mlflowoperator | Agent tracing backend (sole backend — no standalone MLflow) |
 | trustyai | NeMo Guardrails deployment path (EvalHub for red teaming) |
+| kserve | Required for TrustyAI's eval/lmeval readiness — `TrustyAIReady` blocks on the `InferenceServices` CRD until `kserve` is `Managed` (found 2026-08-14, see ROADMAP.md). Not otherwise consumed directly by this project yet. |
 
 ### Disabled components (Removed)
 
-llamastackoperator, kserve, modelsAsService, aipipelines, feastoperator,
+llamastackoperator, modelsAsService, aipipelines, feastoperator,
 kueue, modelregistry, ray, trainer, trainingoperator, sparkoperator,
 workbenches — no use case in this demo.
 
-Gen AI Studio (`genAiStudio`), MaaS (`modelAsService`), `llamastackoperator`,
-and `kserve` are disabled because this project only uses MLflow + EvalHub.
-The reference project (`open-claw-in-openshell`) enables them independently
-if it deploys on the same shared cluster.
+Gen AI Studio (`genAiStudio`), MaaS (`modelAsService`), and
+`llamastackoperator` are disabled because this project only uses
+MLflow + EvalHub.
 
 ### Deployment ordering fixes
 

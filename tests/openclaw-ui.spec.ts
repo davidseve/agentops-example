@@ -27,7 +27,7 @@ test.describe('OpenClaw Control UI', () => {
     await gotoControlUi(page);
     await expect(page).toHaveTitle('OpenClaw Control');
     await expect(page.getByPlaceholder(/Message/)).toBeVisible();
-    await expect(page.getByText(/gpt-oss|GPT-OSS|maas/).first()).toHaveCount(1, { timeout: 10000 });
+    await expect(page.getByText(/Router|Sonnet|router|inference/).first()).toHaveCount(1, { timeout: 10000 });
   });
 
   test('sidebar navigation is present', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('OpenClaw Control UI', () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test('E2E chat: model responds via MaaS', async ({ page }) => {
+  test('E2E chat: model responds via inference router', async ({ page }) => {
     await gotoControlUi(page);
 
     const messageInput = page.getByPlaceholder(/Message/);
@@ -74,7 +74,7 @@ test.describe('OpenClaw Control UI', () => {
   test('chat completions HTTP API is disabled', async ({ request }) => {
     const resp = await request.post('/v1/chat/completions', {
       data: {
-        model: 'gpt-oss-120b',
+        model: 'router',
         messages: [{ role: 'user', content: 'ping' }],
       },
     });

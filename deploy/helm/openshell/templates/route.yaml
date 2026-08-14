@@ -11,8 +11,7 @@ spec:
   to:
     kind: Service
     # Must match the subchart Service (.Release.Name), not a literal
-    # "openshell" — required when coexisting with another OpenShell release
-    # (e.g. open-claw-in-openshell already owns namespace/release "openshell").
+    # "openshell" -- keeps this working under any release name.
     name: {{ include "agentops-openshell.fullname" . }}
   port:
     targetPort: {{ .Values.route.targetPort }}

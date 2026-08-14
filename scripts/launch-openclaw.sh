@@ -78,20 +78,46 @@ MLFLOW_EXPERIMENT_ID="${MLFLOW_EXPERIMENT_ID:-__RESOLVE__}"
 info "MLflow tracking URI: ${MLFLOW_SVC_URL} (experiment id resolved after sandbox is ready)"
 
 # ─── Render config ────────────────────────────────────────────────────────────
+# NOTE: config/openclaw.json.tpl uses apiKey: "unused" and
+# baseUrl: https://inference.local/v1 with model: router. LLM credentials
+# are handled by OpenShell's inference router — the real API key lives in
+# the gateway's provider record, never in the sandbox environment.
 step "Rendering openclaw.json"
 CONFIG_RENDERED="${PROJECT_DIR}/.rendered/openclaw.json"
 mkdir -p "$(dirname "$CONFIG_RENDERED")"
-sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
-    -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
+sed -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
     -e "s|__UI_HOST__|${UI_HOST}|g" \
     -e "s|__MLFLOW_EXPERIMENT_ID__|${MLFLOW_EXPERIMENT_ID}|g" \
     -e "s|__OPENCLAW_GATEWAY_PASSWORD__|${OPENCLAW_GATEWAY_PASSWORD}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
 pass "Rendered config (password auth, mlflow-openclaw plugin, experiment=${MLFLOW_EXPERIMENT_ID})"
 
+# ─── Enable providers_v2 and configure inference route ────────────────────────
+step "Configuring inference router (providers_v2 + MaaS provider)"
+INFERENCE_MODEL="${INFERENCE_MODEL:-claude-sonnet-4-6}"
+MAAS_BASE_URL="${MAAS_BASE_URL:-https://maas-rhdp.apps.maas.redhatworkshops.io/v1}"
+PROVIDER_NAME="${PROVIDER_NAME:-maas-litellm}"
+
+openshell settings set --global --key providers_v2_enabled --value true --yes 2>/dev/null || true
+info "providers_v2_enabled = true"
+
+if openshell provider list 2>/dev/null | grep -q "$PROVIDER_NAME"; then
+  info "Provider '$PROVIDER_NAME' already exists"
+else
+  openshell provider create \
+    --name "$PROVIDER_NAME" \
+    --type openai \
+    --credential "OPENAI_API_KEY=${MAAS_API_KEY}" \
+    --config "OPENAI_BASE_URL=${MAAS_BASE_URL}"
+  info "Provider '$PROVIDER_NAME' created (type=openai, base=${MAAS_BASE_URL})"
+fi
+
+openshell inference set --provider "$PROVIDER_NAME" --model "$INFERENCE_MODEL" --no-verify 2>/dev/null \
+  && info "Inference route: $PROVIDER_NAME / $INFERENCE_MODEL" \
+  || warn "Inference route configuration failed"
+
 # ─── Create sandbox if missing ────────────────────────────────────────────────
-# MaaS credentials are baked into openclaw.json (not an OpenShell provider),
-# so create does not need --provider. --from openclaw uses the stock image.
+# inference.local handles LLM routing — sandbox create does not need --provider.
 SANDBOX_POD="${SANDBOX_NAME}"
 step "Ensuring sandbox '${SANDBOX_NAME}'"
 if openshell sandbox list 2>/dev/null | awk -v n="$SANDBOX_NAME" 'index($0, n) { found=1 } END { exit !found }'; then
@@ -99,11 +125,21 @@ if openshell sandbox list 2>/dev/null | awk -v n="$SANDBOX_NAME" 'index($0, n) {
 else
   [[ -f "$POLICY_FILE" ]] || { error "Policy file not found: $POLICY_FILE"; exit 1; }
   info "Creating sandbox (policy=$(basename "$POLICY_FILE"))..."
+  # NOTE: no --upload here. policies/openclaw-sandbox.yaml lists /sandbox
+  # itself under filesystem_policy.read_only (only /sandbox/workspace is
+  # read_write), so `--upload ...:/sandbox/.openclaw/config.json` is DOA —
+  # the CLI's tar-over-ssh extraction always fails with "Permission denied"
+  # under this policy, every single run (confirmed live 2026-08-14, and in
+  # every prior launch log back to 2026-08-10). It's cosmetic-only: Step 3
+  # below (`oc cp` to /sandbox/workspace/.openclaw/openclaw.json, which IS
+  # writable) is the real and only config path OpenClaw reads (HOME is set
+  # to /sandbox/workspace for the gateway process). Sandbox creation still
+  # succeeds fine without it — dropping the flag just removes a scary but
+  # meaningless red error from every deploy log.
   openshell sandbox create \
     --from openclaw \
     --name "$SANDBOX_NAME" \
     --policy "$POLICY_FILE" \
-    --upload "${CONFIG_RENDERED}:/sandbox/.openclaw/config.json" \
     --no-tty &
   CREATE_PID=$!
 
@@ -171,17 +207,47 @@ if [[ "$MLFLOW_EXPERIMENT_ID" == "__RESOLVE__" ]]; then
   fi
 fi
 # Re-render so experimentId is concrete before upload.
-sed -e "s|__MAAS_API_KEY__|${MAAS_API_KEY}|g" \
-    -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
+sed -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
     -e "s|__UI_HOST__|${UI_HOST}|g" \
     -e "s|__MLFLOW_EXPERIMENT_ID__|${MLFLOW_EXPERIMENT_ID}|g" \
     -e "s|__OPENCLAW_GATEWAY_PASSWORD__|${OPENCLAW_GATEWAY_PASSWORD}|g" \
     "${PROJECT_DIR}/config/openclaw.json.tpl" > "$CONFIG_RENDERED"
 
 # ─── Step 1: Kill stale gateway processes ─────────────────────────────────────
+# MUST kill via `openshell sandbox exec`, NOT `oc exec -c agent` — the gateway
+# is started with `openshell sandbox exec` (Step 9), which runs in a
+# different PID namespace than plain `oc exec`. Killing via `oc exec` makes
+# `pgrep -f "openclaw|node"` find nothing there, so the kill silently no-ops
+# while the real gateway process keeps running untouched — every subsequent
+# "restart" then just starts a second gateway on top of the first (or fails
+# to bind :18789), still serving whatever stale config/env it started with.
+# Verify the process list is empty afterwards — don't trust exit code alone.
 step "Cleaning stale gateway processes"
-oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c \
-  'for p in $(pgrep -f "openclaw|node" 2>/dev/null); do kill -9 $p 2>/dev/null; done; sleep 2; rm -f /sandbox/workspace/.openclaw/state/*.lock /tmp/openclaw*/*.lock' 2>/dev/null || true
+kill_stale_openclaw_gateway() {
+  openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 -- bash -c '
+    for p in $(pgrep -f "openclaw gateway" 2>/dev/null); do
+      kill -9 "$p" 2>/dev/null
+    done
+    sleep 2
+    rm -f /sandbox/workspace/.openclaw/state/*.lock /tmp/openclaw*/*.lock 2>/dev/null
+    pgrep -af "openclaw gateway" 2>/dev/null
+    true
+  ' 2>&1
+  return 0
+}
+STALE_CHECK="$(kill_stale_openclaw_gateway)"
+if echo "$STALE_CHECK" | grep -q "openclaw gateway"; then
+  warn "Stale gateway process(es) survived first kill attempt — retrying:"
+  echo "$STALE_CHECK" | while IFS= read -r line; do info "  $line"; done
+  STALE_CHECK="$(kill_stale_openclaw_gateway)"
+fi
+if echo "$STALE_CHECK" | grep -q "openclaw gateway"; then
+  error "Could not kill stale OpenClaw gateway process(es) after 2 attempts — refusing to start a second gateway on top of a live one:"
+  echo "$STALE_CHECK" | while IFS= read -r line; do error "  $line"; done
+  error "Fix: openshell sandbox connect ${SANDBOX_POD}, then manually 'kill -9 <pid>' for each, then re-run this script."
+  exit 1
+fi
+info "Confirmed no stale gateway processes remain"
 # Our template is the single source of truth (declarative, GitOps-style) —
 # stale openclaw.json.bak* files from prior runs have no `meta.lastTouchedVersion`
 # match with our fresh upload, which trips OpenClaw's "missing-meta-vs-last-good"
@@ -297,6 +363,9 @@ openshell service expose "$SANDBOX_NAME" 18789 openclaw-ui 2>&1 || true
 pass "Service openclaw-ui exposed → https://${UI_HOST}/"
 
 # ─── Step 9: Start gateway ────────────────────────────────────────────────────
+# No LITELLM_API_KEY injection: inference uses the inference router
+# (inference.local), which injects credentials from the gateway's provider
+# record. The sandbox process never sees the real API key.
 step "Starting OpenClaw gateway"
 openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 \
   --env "HOME=/sandbox/workspace" \

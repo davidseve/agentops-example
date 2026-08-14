@@ -43,7 +43,7 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 │  OpenShell (sandbox)   │ MCP Gateway (nice-to-have)         │
 ├─────────────────────────────────────────────────────────────┤
 │  INFERENCE LAYER                                            │
-│  MaaS Externo (model serving)                               │
+│  OpenShell inference.local → MaaS (model serving)           │
 ├─────────────────────────────────────────────────────────────┤
 │  INFRASTRUCTURE                                             │
 │  OpenShift + RHOAI 3.x (demo.redhat.com / RHPDS)            │
@@ -99,7 +99,7 @@ This maps demo features to specific Red Hat products/components:
 | Prompt Registry | RHOAI - MLflow | MLflow Prompt Registry |
 | Guardrails | NeMo Guardrails (NVIDIA partnership) | Deployed via TrustyAI operator on OCP |
 | Agent Sandboxing | OpenShell | Sandboxed execution environment |
-| Model Serving | MaaS (external) | External model endpoint |
+| Model Serving | MaaS via OpenShell inference router | inference.local → MaaS external endpoint |
 | Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
 | Cost Governance | MaaS Dashboard | Token billing/showback (nice-to-have) |
 

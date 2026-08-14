@@ -1,32 +1,14 @@
 {
   "models": {
     "providers": {
-      "maas": {
-        "baseUrl": "https://maas-rhdp.apps.maas.redhatworkshops.io/v1",
-        "apiKey": "__MAAS_API_KEY__",
+      "inference": {
+        "baseUrl": "https://inference.local/v1",
+        "apiKey": "unused",
         "api": "openai-completions",
         "models": [
           {
-            "id": "gpt-oss-120b",
-            "name": "GPT-OSS 120B",
-            "reasoning": true,
-            "input": ["text"],
-            "contextWindow": 32768,
-            "maxTokens": 8192,
-            "compat": { "supportsStore": false }
-          },
-          {
-            "id": "llama-scout-17b",
-            "name": "Llama Scout 17B",
-            "reasoning": false,
-            "input": ["text"],
-            "contextWindow": 400000,
-            "maxTokens": 8192,
-            "compat": { "supportsStore": false }
-          },
-          {
-            "id": "claude-sonnet-4-6",
-            "name": "Claude Sonnet 4.6",
+            "id": "router",
+            "name": "Router",
             "reasoning": true,
             "input": ["text", "image"],
             "contextWindow": 200000,
@@ -40,13 +22,11 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "maas/claude-sonnet-4-6",
-        "fallbacks": ["maas/gpt-oss-120b", "maas/llama-scout-17b"]
+        "primary": "inference/router",
+        "fallbacks": []
       },
       "models": {
-        "maas/gpt-oss-120b": { "alias": "GPT-OSS-fallback" },
-        "maas/llama-scout-17b": { "alias": "Scout-fallback" },
-        "maas/claude-sonnet-4-6": { "alias": "Sonnet" }
+        "inference/router": { "alias": "Router" }
       },
       "workspace": "/sandbox/workspace"
     }

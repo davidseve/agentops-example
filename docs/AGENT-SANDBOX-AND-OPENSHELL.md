@@ -334,7 +334,7 @@ openshift-openshell-register-gateway.sh
 
 Ensures the local `openshell` CLI points at this cluster's gateway with valid mTLS certificates.
 
-#### Step 1 — Create Sandbox (if missing)
+#### Create Sandbox (if missing)
 
 ```bash
 openshell sandbox create \
@@ -346,13 +346,28 @@ openshell sandbox create \
 
 Creates the `Sandbox` CR → operator creates pod → supervisor starts → gateway reports `Ready`.  Idempotent: skipped if the sandbox already exists.
 
+#### Step 1 — Clean Stale Gateway Processes via `openshell sandbox exec` (sandbox context)
+
+```bash
+openshell sandbox exec -n openclaw-gw --no-tty --timeout 15 \
+  -- bash -c 'pgrep -f "openclaw gateway" | xargs -r kill -9; ...'
+```
+
+This step **must** run via `openshell sandbox exec`, not `oc exec -c agent` — the
+gateway itself is started with `openshell sandbox exec` (Step 9), which runs
+in a different PID namespace than plain `oc exec`. Killing via `oc exec`
+makes `pgrep -f "openclaw gateway"` find nothing there, so the kill
+silently no-ops while the real gateway process keeps running untouched, on
+whatever stale config/env it started with. `launch-openclaw.sh` verifies
+the process list is actually empty afterward (retrying once, then failing
+loudly) instead of trusting `kill`'s exit code alone.
+
 #### Steps 2–7 — Setup via `oc exec -c agent` (admin context)
 
-These steps run **inside the container as root** to prepare the environment. They use `oc exec -c agent` because they need root privileges and operate on the container filesystem, not inside the sandbox netns.
+These steps run **inside the container as root** to prepare the environment. They use `oc exec -c agent` because they need root privileges and operate on the container filesystem (chown, npm install, file staging) — not process lifecycle, which is namespace-scoped (see Step 1 above).
 
 | Step | What it does | Why |
 |------|-------------|-----|
-| Clean stale processes | `kill` old `openclaw`/`node` + remove `.lock` and `.bak` files | Prevent zombie gateways and config restore from stale backups |
 | Install OpenClaw | `npm install -g openclaw@2026.6.34` | Pin to a tested version ([ADR-0006](adr/0006-explicit-version-pinning.md)) |
 | Upload config | `oc cp openclaw.json` + `chown` to sandbox UID | OpenClaw rejects config not owned by the sandbox user |
 | Install MLflow plugin | `npm install @mlflow/mlflow-openclaw@0.2.0-rc.0` | Traces with full Request/Response content to RHOAI MLflow |
@@ -389,6 +404,10 @@ This is the critical switch from admin (`oc exec`) to **sandbox execution**:
 - Filesystem access is restricted by Landlock.
 - `nohup` + `&` keeps the process alive after the exec session ends.
 - `OTEL_*_EXPORTER=none` disables generic OTEL; tracing goes through the `mlflow-openclaw` plugin instead.
+- No `LITELLM_API_KEY` injection: LLM inference uses OpenShell's inference
+  router (`inference.local`). The real API key lives in the gateway's
+  provider record and is injected by the inference router at the gateway
+  layer — the sandbox process never sees it.
 
 #### Step 10 — Health Check + Plugin Verification
 
@@ -538,7 +557,7 @@ The sandbox policy controls what the agent can do at runtime:
 | `process` | User/group the agent runs as | `run_as_user: sandbox` |
 | `network_policies` | Allowed egress endpoints | Explicit host + port + protocol per policy |
 
-**Default deny:** any endpoint not listed in `network_policies` is blocked. In our policy, only `maas-rhdp.apps.maas.redhatworkshops.io:443` (MaaS inference) and `mlflow.redhat-ods-applications.svc:8443` (MLflow tracing) are allowed.  GitHub, PyPI, and everything else is denied.
+**Default deny:** any endpoint not listed in `network_policies` is blocked. LLM inference is handled by OpenShell's inference router (`inference.local`) — no explicit network policy needed. Only `mlflow.redhat-ods-applications.svc:8443` (MLflow tracing) is explicitly allowed.  GitHub, PyPI, and everything else is denied.
 
 ---
 
@@ -560,7 +579,7 @@ make -C deploy validate-security
 ### What `validate-security` Checks
 
 1. **Blocked endpoint:** `curl https://github.com` from inside the sandbox returns `000` (timeout) or `403` — proving the policy blocks it.
-2. **Allowed endpoint:** `curl https://maas-rhdp.apps.maas.redhatworkshops.io/v1/models` returns `200` or `401` — proving the MaaS endpoint is reachable.
+2. **Inference router:** `curl https://inference.local/v1/models` returns `200` — proving the inference route is working.
 
 ### Playwright E2E Tests
 

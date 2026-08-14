@@ -30,7 +30,7 @@ for the happy path — the Makefile handles synchronization.
 | Step | Make target | Waits before proceeding |
 |------|-------------|-------------------------|
 | 1 | `wait-operators` → `deploy-platform` | CSV Succeeded (auto-approves Manual InstallPlan), operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, `datascienceclusters` CRD |
-| 1b | (inside `deploy-platform-fresh`) | Dashboard CRD / adopt-dashboard-config (after DSC enables Dashboard) |
+| 1b | (inside `deploy-platform`) | Dashboard CRD / adopt-dashboard-config (after DSC enables Dashboard) |
 | 2 | `deploy-database` | — |
 | 3 | `wait-mlflow-crd` → `deploy-mlflow` | `mlflows.mlflow.opendatahub.io` CRD |
 | 4 | `wait-evalhub-crd` → `deploy-evalhub` | `evalhubs.trustyai.opendatahub.io` CRD |

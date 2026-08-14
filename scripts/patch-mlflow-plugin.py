@@ -50,6 +50,40 @@ if 'definePluginEntry' in content:
 else:
     print('index.ts already patched')
 
+# Inference router model resolution: when using inference.local, OpenClaw's
+# evt.model is "router" (the config model ID). The real upstream model name
+# (e.g. "claude-sonnet-4-6") appears in lastAssistant.responseModel. This
+# patch makes llm_output prefer responseModel, so MLflow traces show the
+# real model name.
+with open(SVC, 'r') as f:
+    content = f.read()
+
+RESPONSE_MODEL_MARKER = 'responseModel'
+if RESPONSE_MODEL_MARKER in content and 'resolvedModel' in content:
+    print('service.ts model-resolution already patched')
+else:
+    old_model_assign = 'trace.model = evt.model;'
+    if old_model_assign in content:
+        new_model_assign = (
+            'trace.model = evt.model;\n'
+            '      // Prefer the real model name from the API response (inference router\n'
+            '      // resolves "router" to the actual model).\n'
+            '      const resolvedModel = (evt as any).lastAssistant?.responseModel;\n'
+            '      if (resolvedModel && resolvedModel !== evt.model) {\n'
+            '        trace.model = resolvedModel;\n'
+            '      }'
+        )
+        parts = content.split(old_model_assign, 2)
+        if len(parts) >= 3:
+            content = parts[0] + old_model_assign + parts[1] + new_model_assign + parts[2]
+        else:
+            content = content.replace(old_model_assign, new_model_assign, 1)
+        with open(SVC, 'w') as f:
+            f.write(content)
+        print('service.ts patched (model resolution for inference router)')
+    else:
+        print('service.ts: trace.model assignment not found (skipping model-resolution patch)')
+
 # Backport of mlflow/mlflow#23927 for pinned @mlflow/core@0.2.0.
 # createOssAuth()'s headersProvider builds Content-Type/Authorization but
 # never X-MLFLOW-WORKSPACE — RHOAI-managed MLflow rejects every request

@@ -5,12 +5,10 @@ appsDomain: ""
 namespace: openshell
 
 # Sandbox name used in the public Control UI hostname
-# ({sandboxName}--openclaw-ui.<appsDomain>). Override when coexisting with
-# another OpenClaw stack that already owns openclaw-gw--openclaw-ui.
+# ({sandboxName}--openclaw-ui.<appsDomain>).
 sandboxName: openclaw-gw
 
 # OpenShell gateway Service name (= Helm release name of deploy/helm/openshell).
-# Default "openshell"; set to the coexisting release name when not using defaults.
 openshellServiceName: openshell
 
 # UBI nginx image (OpenShift-compatible, non-root)

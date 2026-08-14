@@ -3,15 +3,12 @@
 #
 # Idempotent: skips remove+add when this GATEWAY_NAME is already registered
 # and `openshell status` succeeds after an explicit select. Always selects
-# GATEWAY_NAME before status checks — required when another project's
-# gateway alias is active on the same machine (shared-cluster coexistence).
+# GATEWAY_NAME before status checks — `openshell status` only reports on
+# whichever alias is currently selected, and a different alias may be
+# selected locally from a previous run/gateway.
 #
 # Called automatically by: make -C deploy deploy-openshell
 # Standalone:              GATEWAY_NAME=ocp ./scripts/openshift-openshell-register-gateway.sh
-#
-# Pattern adapted from open-claw-in-openshell/scripts/deploy-openshell.sh
-# (constraints around gateway add invalidating client.p12, and status
-# reporting on the *active* alias only).
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-openshell}"
@@ -45,7 +42,8 @@ gateway_listed() {
 }
 
 # openshell status only reports on the *currently selected* alias — select
-# ours first so a healthy peer project gateway cannot fake "already connected".
+# ours first so a different, healthy alias selected locally cannot fake
+# "already connected".
 GATEWAY_ALREADY_REGISTERED=false
 if gateway_listed; then
   GATEWAY_ALREADY_REGISTERED=true

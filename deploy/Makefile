@@ -60,11 +60,9 @@ OPENSHELL_RELEASE ?= openshell
 OPENCLAW_UI_PROXY_RELEASE := openclaw-ui-proxy
 
 OPENSHELL_NAMESPACE ?= openshell
-# Local CLI gateway alias (coexistence-safe; override if another project
-# already owns "ocp" on this machine — see ADR-0002 addendum).
+# Local CLI gateway alias.
 GATEWAY_NAME ?= ocp
 # Sandbox + public UI hostname prefix ({SANDBOX_NAME}--openclaw-ui.<domain>).
-# Override when another stack already owns openclaw-gw--openclaw-ui.
 SANDBOX_NAME ?= openclaw-gw
 # ServiceAccount created by the OpenShell subchart: <release>-sandbox.
 SANDBOX_SA_NAME ?= $(OPENSHELL_RELEASE)-sandbox
@@ -76,7 +74,7 @@ JWT_SECRET_NAME ?= $(OPENSHELL_RELEASE)-jwt-keys
 # pulling the OpenShell OCI chart dependency on Podman-based hosts.
 DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 
-.PHONY: deploy-operators wait-operators deploy-platform deploy-platform-fresh ensure-mlflowoperator-managed deploy-database
+.PHONY: deploy-operators wait-operators deploy-platform deploy-database
 .PHONY: wait-dashboard-crd adopt-dashboard-config
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
@@ -88,21 +86,9 @@ DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 .PHONY: validate validate-cleanup validate-smoke deploy-all-quiet
 
 # --- Deploy targets (ordered) ---
-#
-# Cluster coexistence (see ADR-0002's addendum, docs/adr/0002-ocp-with-rhoai-as-platform.md):
-# RHOAI, its DataScienceCluster, the Postgres backend, and MLflow itself are
-# cluster-wide/shared resources. Another, independent OpenShell/OpenClaw
-# deployment project may install them under the exact same Helm release
-# names on this same cluster. If that already happened, skip re-installing
-# here and reuse the shared instance instead of a redundant/values-resetting
-# `helm upgrade`.
 
 deploy-operators:
-	@if $(HELM) status $(OPERATORS_RELEASE) >/dev/null 2>&1; then \
-		echo "Release '$(OPERATORS_RELEASE)' already deployed (shared cluster resource) — skipping install."; \
-	else \
-		$(HELM) upgrade --install $(OPERATORS_RELEASE) $(OPERATORS_CHART) $(HELM_OPTS); \
-	fi
+	$(HELM) upgrade --install $(OPERATORS_RELEASE) $(OPERATORS_CHART) $(HELM_OPTS)
 
 wait-operators: deploy-operators
 	@echo "Waiting for RHOAI operator CSV..."
@@ -153,28 +139,6 @@ wait-operators: deploy-operators
 
 # OdhDashboardConfig CRD appears only after DSC enables Dashboard — wait only for DSC CRD.
 deploy-platform: wait-operators
-	@if $(HELM) status $(PLATFORM_RELEASE) >/dev/null 2>&1; then \
-		echo "Release '$(PLATFORM_RELEASE)' already deployed (shared cluster resource) — skipping helm upgrade, reconciling mlflowoperator only."; \
-		$(MAKE) ensure-mlflowoperator-managed; \
-	else \
-		$(MAKE) deploy-platform-fresh; \
-	fi
-
-# Minimal, non-destructive reconciliation for a DataScienceCluster this
-# project doesn't own the Helm release for: only touches
-# spec.components.mlflowoperator, not a full `helm upgrade` with this
-# project's own values (which could flip a component the other project
-# configured).
-ensure-mlflowoperator-managed:
-	@CURRENT=$$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}' 2>/dev/null || true); \
-	if [ "$$CURRENT" = "Managed" ]; then \
-		echo "mlflowoperator already Managed on the shared DataScienceCluster."; \
-	else \
-		echo "Patching shared DataScienceCluster: mlflowoperator -> Managed (was '$$CURRENT')..."; \
-		oc patch datasciencecluster default-dsc --type merge -p '{"spec":{"components":{"mlflowoperator":{"managementState":"Managed"}}}}'; \
-	fi
-
-deploy-platform-fresh:
 	@$(MAKE) adopt-dashboard-config
 	$(HELM) upgrade --install $(PLATFORM_RELEASE) $(PLATFORM_CHART) $(HELM_OPTS) --reset-values
 	@$(MAKE) wait-dashboard-crd
@@ -202,11 +166,7 @@ adopt-dashboard-config:
 	fi
 
 deploy-database:
-	@if $(HELM) status $(DATABASE_RELEASE) >/dev/null 2>&1; then \
-		echo "Release '$(DATABASE_RELEASE)' already deployed (shared cluster resource) — skipping install."; \
-	else \
-		$(HELM) upgrade --install $(DATABASE_RELEASE) $(DATABASE_CHART) $(HELM_OPTS); \
-	fi
+	$(HELM) upgrade --install $(DATABASE_RELEASE) $(DATABASE_CHART) $(HELM_OPTS)
 
 wait-mlflow-crd:
 	@echo "Waiting for MLflow CRD..."
@@ -215,35 +175,19 @@ wait-mlflow-crd:
 	done
 
 deploy-mlflow: deploy-database wait-mlflow-crd
-	@if $(HELM) status $(MLFLOW_RELEASE) >/dev/null 2>&1; then \
-		echo "Release '$(MLFLOW_RELEASE)' already deployed (shared cluster resource) — skipping install, reusing shared MLflow instance."; \
-	else \
-		$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) $(HELM_OPTS); \
-	fi
+	$(HELM) upgrade --install $(MLFLOW_RELEASE) $(MLFLOW_CHART) $(HELM_OPTS)
 
+# EvalHub is provisioned by TrustyAI (this project's own values.yaml sets
+# trustyai: Managed in deploy-platform), so the CRD always shows up — just
+# a registration race like wait-mlflow-crd/wait-dashboard-crd above.
 wait-evalhub-crd:
 	@echo "Waiting for EvalHub CRD..."
-	@# When coexisting with another project that owns DataScienceCluster and
-	# left TrustyAI Removed (e.g. open-claw-in-openshell), the EvalHub CRD
-	# never appears — do not hang forever. EvalHub is optional for OpenShell
-	# coexistence; skip after a bounded wait.
-	@i=0; until oc get crd evalhubs.trustyai.opendatahub.io >/dev/null 2>&1; do \
-		i=$$((i+1)); \
-		if [ $$i -ge 18 ]; then \
-			echo "WARN: EvalHub CRD not available after 3m (TrustyAI likely Removed on shared DSC) — skipping EvalHub"; \
-			exit 0; \
-		fi; \
+	@until oc get crd evalhubs.trustyai.opendatahub.io >/dev/null 2>&1; do \
 		echo "  EvalHub CRD not ready yet..."; sleep 10; \
 	done
 
 deploy-evalhub: deploy-database wait-evalhub-crd
-	@if ! oc get crd evalhubs.trustyai.opendatahub.io >/dev/null 2>&1; then \
-		echo "Skipping EvalHub install (CRD absent — shared DSC has TrustyAI Removed)."; \
-	elif $(HELM) status $(EVALHUB_RELEASE) >/dev/null 2>&1; then \
-		echo "Release '$(EVALHUB_RELEASE)' already deployed — skipping."; \
-	else \
-		$(HELM) upgrade --install $(EVALHUB_RELEASE) $(EVALHUB_CHART) $(HELM_OPTS); \
-	fi
+	$(HELM) upgrade --install $(EVALHUB_RELEASE) $(EVALHUB_CHART) $(HELM_OPTS)
 
 deploy-all: deploy-platform deploy-database deploy-mlflow deploy-evalhub
 	@echo "All RHOAI components deployed."
@@ -327,9 +271,10 @@ deploy-openshell: helm-env
 # created by deploy-openshell above, so it can't run as part of
 # deploy-mlflow/deploy-all (constraint #10, ADR-0003).
 # Run automatically as the last step of deploy-openshell.
-# --reuse-values is required when coexisting: without it this upgrade would
-# reset the shared rhoai-mlflow release to this chart's defaults and disrupt
-# another project's MLflow install on the same cluster.
+# --reuse-values: this is a narrow, --set-only follow-up upgrade (just flips
+# openclawIntegration.*); without --reuse-values it would silently reset any
+# other values the initial `deploy-mlflow` call was given (e.g. a
+# non-default postgresql.password via HELM_OPTS) back to chart defaults.
 deploy-mlflow-openclaw-integration:
 	@echo "Waiting for $(SANDBOX_SA_NAME) ServiceAccount..."
 	@i=0; while ! oc -n $(OPENSHELL_NAMESPACE) get sa $(SANDBOX_SA_NAME) &>/dev/null; do \
@@ -386,7 +331,7 @@ validate-smoke: validate-openshell validate-security
 # --- OpenShell + openclaw-ui-proxy teardown ---
 # Reverse of deploy-openshell/deploy-openclaw-ui-proxy. Order: ui-proxy (depends on
 # openshell Service) -> openshell (single release: namespace extras + gateway)
-# -> namespace. Agent Sandbox Operator (OLM) is shared cluster infra — tear it
+# -> namespace. Agent Sandbox Operator (OLM) is cluster-scoped infra — tear it
 # down via cleanup-orphans / undeploy-all, not here.
 undeploy-openshell:
 	-$(HELM) uninstall $(OPENCLAW_UI_PROXY_RELEASE) -n $(OPENSHELL_NAMESPACE)
@@ -420,7 +365,7 @@ validate-openclaw:
 		--env "HOME=/sandbox/workspace" \
 		-- bash -c 'curl -sf http://127.0.0.1:18789/health' >/dev/null
 	@echo "OK: Gateway process alive"
-	@echo "=== CLI: openclaw agent → MaaS → Response ==="
+	@echo "=== CLI: openclaw agent → inference.local → Response ==="
 	@# NOTE: this bare `openclaw agent` CLI invocation cannot present the device
 	@# identity the running gateway process expects over its WebSocket, so it
 	@# silently falls back to an "embedded" in-process agent run (not routed
@@ -440,7 +385,7 @@ validate-openclaw:
 		-- bash -c 'openclaw agent --agent main --message "Reply with exactly: TRACE_OK" --json --timeout 60 2>/dev/null'); \
 	REPLY=$$(echo "$$RESULT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('payloads',[{}])[0].get('text',''))" 2>/dev/null); \
 	if [ -n "$$REPLY" ]; then \
-		echo "OK: MaaS round-trip succeeded (reply: $$REPLY)"; \
+		echo "OK: inference.local round-trip succeeded (reply: $$REPLY)"; \
 	else \
 		echo "WARN: bare CLI agent failed (often missing operator.write / embedded fallback) — gateway health OK; use test-ui + validate-traces for the real path"; \
 		echo "$$RESULT" | tail -3; \
@@ -477,12 +422,12 @@ validate-security:
 		echo "FAIL: github.com reachable (HTTP $$RESULT) — policy not enforcing"; exit 1; \
 	fi
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
-		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://maas-rhdp.apps.maas.redhatworkshops.io/v1/models 2>/dev/null; echo'); \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://inference.local/v1/models 2>/dev/null; echo'); \
 	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
-	if [ "$$RESULT" = "200" ] || [ "$$RESULT" = "401" ]; then \
-		echo "OK: MaaS endpoint reachable (HTTP $$RESULT)"; \
+	if [ "$$RESULT" = "200" ]; then \
+		echo "OK: inference.local reachable (HTTP $$RESULT)"; \
 	else \
-		echo "FAIL: MaaS endpoint not reachable (HTTP $$RESULT)"; exit 1; \
+		echo "FAIL: inference.local not reachable (HTTP $$RESULT)"; exit 1; \
 	fi
 
 # --- Playwright E2E Tests ---
@@ -585,9 +530,6 @@ validate:
 		helm status "$$rel" >/dev/null 2>&1 || { echo "FAIL: release $$rel not deployed"; exit 1; }; \
 	done
 	@echo "OK: all 5 expected rhoai-* releases deployed"
-	@echo "    (not asserting an exact total 'rhoai-*' count: a coexisting project"
-	@echo "     on this shared cluster may have its own extra releases sharing"
-	@echo "     the same prefix -- see ADR-0002 addendum)"
 	@echo "=== RHOAI operator ==="
 	@oc get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}{"\n"}' | grep -q Succeeded
 	@oc wait --for=condition=Ready pod -l name=rhods-operator -n redhat-ods-operator --timeout=60s >/dev/null
@@ -627,10 +569,7 @@ validate-cleanup:
 		fi; \
 	done; \
 	if [ "$$LEFTOVER_RHOAI" = "false" ]; then \
-		echo "OK: this project's rhoai-* releases are gone"; \
-		echo "    (not asserting zero total 'rhoai-*' releases: a coexisting"; \
-		echo "     project's own releases sharing the same prefix may still be"; \
-		echo "     up -- see ADR-0002 addendum)"; \
+		echo "OK: all rhoai-* releases are gone"; \
 	else \
 		exit 1; \
 	fi
