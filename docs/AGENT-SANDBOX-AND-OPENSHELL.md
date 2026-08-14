@@ -613,6 +613,15 @@ openshell sandbox exec -n openclaw-gw -- curl -sf http://127.0.0.1:18789/health
 
 ### Full Deployment Sequence
 
+**One-shot (recommended):**
+
+```bash
+./scripts/cluster-lifecycle.sh preflight
+./scripts/cluster-lifecycle.sh full
+```
+
+**Manual steps (troubleshooting only):**
+
 ```bash
 # 1. Platform + operators (includes Agent Sandbox)
 cd deploy && make deploy-all
@@ -620,14 +629,14 @@ cd deploy && make deploy-all
 # 2. OpenShell gateway
 make deploy-openshell APPS_DOMAIN=apps.your-cluster.example.com
 
-# 3. Launch OpenClaw inside sandbox
-./scripts/launch-openclaw.sh
-
-# 4. Browser UI proxy
+# 3. Browser UI proxy
 APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 
+# 4. Launch OpenClaw inside sandbox
+./scripts/launch-openclaw.sh
+
 # 5. Validate
-make validate-openclaw validate-security validate-traces
+./scripts/cluster-lifecycle.sh verify
 ```
 
 ### Key Commands

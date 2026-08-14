@@ -17,11 +17,21 @@ Deploy all platform components to a fresh OpenShift cluster for the AgentOps dem
 
 ## Deploy
 
+**Recommended (full stack + verify):**
+
 ```bash
-cd deploy && make deploy-all
+./scripts/cluster-lifecycle.sh preflight   # once per cluster
+./scripts/cluster-lifecycle.sh full        # deploy + verify (one-shot)
 ```
 
-`make deploy-all` is the single entry point. It installs charts in order and **blocks
+**Platform only (RHOAI layer):**
+
+```bash
+cd deploy && make deploy-all
+# or token-efficient: make deploy-all-quiet
+```
+
+`make deploy-all` is the single entry point for the RHOAI layer. It installs charts in order and **blocks
 between steps** until OpenShift dependencies are ready. Do not run raw `helm` commands
 for the happy path — the Makefile handles synchronization.
 
@@ -151,10 +161,11 @@ you will skip the required waits.
 
 Follow global skill **`long-running-scripts`**.
 
-- Deploy: `make deploy-all-quiet` (writes `.agent-status/deploy-all.json`) or `make deploy-all` with one long Shell call
+- **Full stack:** `./scripts/cluster-lifecycle.sh full` (writes `.agent-status/cluster-lifecycle-full.json`)
+- **Platform only:** `make deploy-all-quiet` (writes `.agent-status/deploy-all.json`) or one long `make deploy-all`
 - **No polling** during `oc wait` / operator reconciliation
-- Quick check after partial deploy: `make validate-smoke`
-- Full check: `make validate` once at the end
+- Quick check: `./scripts/cluster-lifecycle.sh verify --smoke` or `make validate-smoke`
+- Full check: `./scripts/cluster-lifecycle.sh verify` or `make validate` once at the end
 
 ## Notes
 

@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# common.sh — shared helpers for cluster-lifecycle.sh and verify.sh
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DEPLOY_DIR="${PROJECT_DIR}/deploy"
+
+NAMESPACE="${NAMESPACE:-openshell}"
+SANDBOX_NAME="${SANDBOX_NAME:-openclaw-gw}"
+GATEWAY_NAME="${GATEWAY_NAME:-ocp}"
+OPENSHELL_RELEASE_NAME="${OPENSHELL_RELEASE_NAME:-openshell}"
+SANDBOX_SA_NAME="${SANDBOX_SA_NAME:-${OPENSHELL_RELEASE_NAME}-sandbox}"
+APPS_DOMAIN="${APPS_DOMAIN:-}"
+
+SECRETS_FILE="${SECRETS_FILE:-${PROJECT_DIR}/secrets/secrets.env}"
+
+PASS_COUNT=0
+FAIL_COUNT=0
+WARN_COUNT=0
+
+CURRENT_LAYER="unclassified"
+declare -A LAYER_STATUS
+declare -A LAYER_PASS
+declare -A LAYER_FAIL
+declare -A LAYER_WARN
+declare -a LAYER_ORDER
+
+condition() {
+  local kind="$1" layer="$2"
+  if [[ -z "${LAYER_STATUS[$layer]+x}" ]]; then
+    LAYER_STATUS["$layer"]="True"
+    LAYER_PASS["$layer"]=0
+    LAYER_FAIL["$layer"]=0
+    LAYER_WARN["$layer"]=0
+    LAYER_ORDER+=("$layer")
+  fi
+  case "$kind" in
+    fail)
+      LAYER_STATUS["$layer"]="False"
+      LAYER_FAIL["$layer"]=$((LAYER_FAIL[$layer] + 1))
+      ;;
+    pass)
+      LAYER_PASS["$layer"]=$((LAYER_PASS[$layer] + 1))
+      ;;
+    warn)
+      LAYER_WARN["$layer"]=$((LAYER_WARN[$layer] + 1))
+      ;;
+  esac
+}
+
+emit_conditions_json() {
+  local out="$1"
+  {
+    echo "{"
+    echo "  \"generatedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+    echo "  \"summary\": {\"pass\": ${PASS_COUNT}, \"fail\": ${FAIL_COUNT}, \"warn\": ${WARN_COUNT}},"
+    echo "  \"conditions\": ["
+    local i=0 n=${#LAYER_ORDER[@]}
+    for layer in "${LAYER_ORDER[@]}"; do
+      i=$((i + 1))
+      local escaped_layer=${layer//\"/\\\"}
+      printf '    {"type": "%s", "status": "%s", "pass": %d, "fail": %d, "warn": %d}' \
+        "$escaped_layer" "${LAYER_STATUS[$layer]}" "${LAYER_PASS[$layer]}" "${LAYER_FAIL[$layer]}" "${LAYER_WARN[$layer]}"
+      [[ $i -lt $n ]] && echo "," || echo ""
+    done
+    echo "  ]"
+    echo "}"
+  } >"$out"
+  info "Structured conditions written to $out"
+}
+
+step()  { echo "==> $*"; CURRENT_LAYER="$*"; }
+info()  { echo "    $*"; }
+warn()  { echo "    [WARN] $*"; WARN_COUNT=$((WARN_COUNT + 1)); condition warn "$CURRENT_LAYER"; }
+error() { echo "    [ERROR] $*" >&2; }
+pass()  { echo "    [PASS] $*"; PASS_COUNT=$((PASS_COUNT + 1)); condition pass "$CURRENT_LAYER"; }
+fail()  { echo "    [FAIL] $*"; FAIL_COUNT=$((FAIL_COUNT + 1)); condition fail "$CURRENT_LAYER"; }
+
+detect_apps_domain() {
+  if [[ -n "$APPS_DOMAIN" ]]; then
+    info "APPS_DOMAIN already set: $APPS_DOMAIN"
+  else
+    APPS_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null || true)
+    if [[ -z "$APPS_DOMAIN" ]]; then
+      error "Could not detect apps domain from cluster. Set APPS_DOMAIN manually."
+      return 1
+    fi
+    info "Detected APPS_DOMAIN: $APPS_DOMAIN"
+  fi
+  export APPS_DOMAIN
+}
+
+load_secrets() {
+  if [[ ! -f "$SECRETS_FILE" ]]; then
+    error "Missing secrets file: $SECRETS_FILE"
+    error "Copy secrets/secrets.template.env to secrets/secrets.env and fill in values."
+    return 1
+  fi
+  set -a
+  # shellcheck source=/dev/null
+  source "$SECRETS_FILE"
+  set +a
+  if [[ -z "${MAAS_API_KEY:-}" ]]; then
+    error "MAAS_API_KEY not set in $SECRETS_FILE"
+    return 1
+  fi
+  if [[ -z "${OPENCLAW_GATEWAY_PASSWORD:-}" ]]; then
+    error "OPENCLAW_GATEWAY_PASSWORD not set in $SECRETS_FILE"
+    return 1
+  fi
+  info "Secrets loaded from $SECRETS_FILE"
+}
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" &>/dev/null; then
+    error "Required command not found: $cmd"
+    return 1
+  fi
+  info "$cmd: $(command -v "$cmd")"
+}
+
+export_playwright_env() {
+  detect_apps_domain || return 1
+  export OPENCLAW_BASE_URL="https://${SANDBOX_NAME}--openclaw-ui.${APPS_DOMAIN}"
+  export MLFLOW_BASE_URL="https://rh-ai.${APPS_DOMAIN}/mlflow"
+  export MLFLOW_WORKSPACE="$NAMESPACE"
+  if oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" &>/dev/null; then
+    export MLFLOW_AUTH_TOKEN
+    MLFLOW_AUTH_TOKEN="$(oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" \
+      -o jsonpath='{.data.token}' | base64 -d)"
+  else
+    warn "Secret ${SANDBOX_SA_NAME}-mlflow-token not found — MLflow API tests may fail"
+  fi
+  info "OPENCLAW_BASE_URL=$OPENCLAW_BASE_URL"
+  info "MLFLOW_BASE_URL=$MLFLOW_BASE_URL"
+  info "MLFLOW_WORKSPACE=$MLFLOW_WORKSPACE"
+}
+
+ensure_playwright_deps() {
+  local tests_dir="${PROJECT_DIR}/tests"
+  if [[ ! -d "$tests_dir/node_modules" ]]; then
+    step "Installing Playwright test dependencies"
+    (cd "$tests_dir" && npm install)
+  fi
+  if [[ ! -d "$HOME/.cache/ms-playwright" ]] && [[ ! -d "${tests_dir}/node_modules/playwright-core/.local-browsers" ]]; then
+    step "Installing Playwright chromium"
+    (cd "$tests_dir" && npx playwright install chromium)
+  else
+    info "Playwright dependencies present"
+  fi
+}

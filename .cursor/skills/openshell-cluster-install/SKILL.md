@@ -23,7 +23,8 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 
 | User intent | Action |
 |---|---|
-| Deploy OpenShell on OpenShift | `APPS_DOMAIN=<domain> make -C deploy deploy-openshell` |
+| Deploy **full stack** (RHOAI + OpenShell + OpenClaw) | `./scripts/cluster-lifecycle.sh full` |
+| Deploy OpenShell on OpenShift only | `APPS_DOMAIN=<domain> make -C deploy deploy-openshell` |
 | First-time cluster setup | `make -C deploy deploy-operators` then deploy (must come after RHOAI — ADR-0003) |
 | Re-register local CLI gateway + mTLS | `make -C deploy openshell-register-gateway` (default alias `ocp`) |
 | Refresh local mTLS certs only | `GATEWAY_NAME=<name> make -C deploy openshell-sync-mtls` |
@@ -33,6 +34,10 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 | Remove everything | `make -C deploy undeploy-openshell` |
 
 ## Workflow
+
+**One-shot (recommended):** `./scripts/cluster-lifecycle.sh preflight` then `./scripts/cluster-lifecycle.sh full`.
+
+Manual steps below are for partial deploy or troubleshooting only.
 
 1. **Verify cluster context** — correct OpenShift cluster/project (`configuration_contexts_list` or `oc config current-context`).
 2. **Prerequisites (once per cluster, and must come first)** — RHOAI + Agent Sandbox Operator are installed via OLM as part of the operators chart, and OpenShell's MLflow RBAC integration depends on RHOAI namespaces/ClusterRoles existing first:
@@ -134,9 +139,10 @@ make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
 
 Follow global skill **`long-running-scripts`**. For this repo:
 
-- Deploy: `make -C deploy deploy-openshell` — one Shell call, no polling; read `.agent-status/*.json` if wrapped
-- Quick check: `make -C deploy validate-smoke` (not full Playwright/E2E)
-- Full validation: `make -C deploy validate-openshell` + E2E only when deploy is complete
+- **Full stack:** `./scripts/cluster-lifecycle.sh full` — one Shell call; read `.agent-status/cluster-lifecycle-full.json`
+- **OpenShell only:** `make -C deploy deploy-openshell` — one Shell call, no polling
+- Quick check: `./scripts/cluster-lifecycle.sh verify --smoke`
+- Full validation: `./scripts/cluster-lifecycle.sh verify`
 
 ## Related
 

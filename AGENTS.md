@@ -160,6 +160,9 @@ agentops-example/
 │   ├── health-check.sh        # Pre-demo health verification
 │   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
 └── scripts/
+    ├── cluster-lifecycle.sh           # deploy / verify / full / teardown / status / preflight
+    ├── verify.sh                      # Layered validation (Makefile + Playwright); .verify-status.json
+    ├── common.sh                      # Shared helpers (APPS_DOMAIN, secrets, logging)
     ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
     ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
     ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
