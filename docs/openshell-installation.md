@@ -65,7 +65,7 @@ Three ways to install or remove the local OpenShell stack, from easiest to most 
 | **Cursor skills (local)** | Workstation setup via agent | `openshell-local-install` | `openshell-local-cleanup` |
 | **Cursor skills (cluster)** | OpenShift deploy via agent | `openshell-cluster-install` | `openshell-cluster-cleanup` |
 | **Project scripts** | Terminal / CI (local) | `scripts/install-openshell.sh` | `scripts/uninstall-openshell.sh` |
-| **Deploy Makefile** | Terminal / CI (cluster) | `make -C deploy openshell-install` | `make -C deploy openshell-uninstall` |
+| **Deploy Makefile** | Terminal / CI (cluster) | `make -C deploy deploy-openshell` | `make -C deploy undeploy-openshell` |
 | **Manual steps** | Custom setups | [Official NVIDIA script](#macos-manual-official-script) | Package manager + manual cleanup |
 
 ### Install via Cursor skills
@@ -451,33 +451,26 @@ Provider setup: [Manage Providers](https://docs.nvidia.com/openshell/latest/how-
 
 ## OpenShift / RHOAI cluster deployment
 
-> **This section describes an older single-chart flow kept for reference.** The
-> actually-deployed flow (validated via a from-scratch redeploy 2026-08-05) is
-> `make -C deploy deploy-openshell` — a single Helm release from
-> `deploy/helm/openshell/`, which declares the upstream OCI chart as a real
-> Helm subchart dependency (see its `Chart.yaml`) rather than the two-chart
-> setup described below. See [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
-> for the accurate, up-to-date architecture and its full history. The pinned
-> chart version below (`0.0.80`) is also stale; the real, enforced pin is
-> `0.0.83`, declared in `deploy/helm/openshell/Chart.yaml`'s
-> `dependencies[].version` + committed `Chart.lock` — see
-> [ADR-0006](adr/0006-explicit-version-pinning.md).
+Deploy the OpenShell gateway on OpenShift as a **single Helm release** (`openshell`, namespace `openshell`). The wrapper chart [`deploy/helm/openshell/`](../deploy/helm/openshell/) declares the upstream OCI chart as a real Helm subchart dependency (pinned `0.0.83` in `Chart.yaml` / `Chart.lock`). For the full Agent Sandbox + OpenShell + OpenClaw architecture and launch flow, see [Agent Sandbox and OpenShell — How It Works](AGENT-SANDBOX-AND-OPENSHELL.md). For RHOAI platform bootstrap (prerequisite), see [cluster-bootstrap.md](cluster-bootstrap.md).
 
-Deploy the OpenShell gateway on OpenShift with the official Helm chart (OCI). This path is **validated** on RHOAI demo clusters (OpenShift 4.x, chart `0.0.80`).
-
-> **Experimental**: the Kubernetes/OpenShift deployment path is under active development upstream. Pin chart and image versions deliberately.
+> **Experimental**: the Kubernetes/OpenShift deployment path is under active development upstream. Pin chart and image versions deliberately ([ADR-0006](adr/0006-explicit-version-pinning.md)).
 
 ### Architecture on OpenShift
 
 ```
-openshell CLI  ──HTTPS──►  openshell-gateway (StatefulSet)
-                                │
-                                ▼
-                     Agent Sandbox controller
-                                │
-                                ▼
-                     Sandbox pods (privileged SCC)
+openshell CLI  ──HTTPS/mTLS──►  Route (openshell-gw)
+                                    │
+                                    ▼
+                         openshell-gateway (StatefulSet)
+                                    │
+                                    ▼
+              Red Hat Agent Sandbox Operator (OLM)
+                                    │
+                                    ▼
+                         Sandbox pods (privileged SCC)
 ```
+
+OpenClaw runs inside a sandbox (not a plain Deployment). Browser access to the Control UI goes through `openclaw-ui-proxy` (nginx mTLS bridge) — see [ADR-0011](adr/0011-openclaw-ui-auth-nginx-bridge-password.md).
 
 ### Prerequisites
 
@@ -485,54 +478,53 @@ openshell CLI  ──HTTPS──►  openshell-gateway (StatefulSet)
 |---|---|
 | OpenShift 4.x with `oc` configured | Cluster admin or sufficient RBAC in target namespace |
 | Helm 3.x | For OCI chart install from GHCR |
-| [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/) | Installed via OLM with `make deploy-operators` or `make deploy-all` |
-| Pinned chart version | `0.0.80` (see [Version pinning](#version-pinning-cluster)) |
+| RHOAI platform deployed | `make -C deploy deploy-all` (or `deploy-operators` + `deploy-platform` minimum) |
+| [Red Hat build of Agent Sandbox Operator](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/) (OSC 1.13) | OLM Subscription via `deploy-operators` — channel `preview-0.9`, CSV `agent-sandbox-operator.v0.9.0` |
+| `APPS_DOMAIN` | Cluster apps domain (e.g. `apps.ocp.example.com`) — required for `deploy-openshell` and UI proxy |
+| Local OpenShell CLI | For `openshell-register-gateway` (run automatically by `deploy-openshell`) — see [local install](#install) |
 
-The Agent Sandbox Operator is deployed as an OLM Subscription alongside RHOAI through the `deploy/helm/operators/` chart:
+Install operators (once per cluster):
 
 ```bash
-make -C deploy deploy-operators   # installs RHOAI + Agent Sandbox operators
+make -C deploy deploy-all
+# or minimum: make -C deploy deploy-operators
 ```
 
-Verify:
+Verify Agent Sandbox Operator:
 
 ```bash
 oc get csv -n agent-sandbox-system
-oc get pods -n agent-sandbox-system
+oc get crd sandboxes.agents.x-k8s.io
 ```
 
-### Step 1 — Install the Helm chart
+### Step 1 — Deploy OpenShell
 
-The wrapper chart (`deploy/helm/openshell/`, version `0.2.0`) manages the full release lifecycle: namespace creation, upstream gateway subchart (`0.0.80`), and privileged SCC RoleBinding for the sandbox service account.
-
-**Recommended (project wrapper chart):**
+**Recommended:**
 
 ```bash
-make -C deploy deploy-operators    # RHOAI + Agent Sandbox operators (once per cluster)
-make -C deploy openshell-install
+APPS_DOMAIN=apps.ocp.example.com make -C deploy deploy-openshell
 ```
 
-Chart location: [`deploy/helm/openshell/`](../deploy/helm/openshell/). Pins upstream `0.0.80` and applies OpenShift values from `values-openshift.yaml` (namespace creation, SCC binding, SCC-compatible security context).
+This target:
 
-**Manual install (upstream OCI chart directly):**
+1. Waits for the `sandboxes.agents.x-k8s.io` CRD (from the OLM operator).
+2. Runs `helm dependency build` (resolves upstream chart per `Chart.lock`).
+3. Installs one Helm release with `values-openshift.yaml` (SCC RoleBinding, Route, gateway StatefulSet).
+4. Labels the namespace for the RHOAI Dashboard (`opendatahub.io/dashboard=true`).
+5. Waits for rollout and PKI secrets.
+6. Enables MLflow RBAC for OpenClaw tracing (`deploy-mlflow-openclaw-integration`).
+7. Registers the gateway with your local CLI and syncs mTLS certs (`openshell-register-gateway`, alias `ocp` by default).
+
+Chart location: [`deploy/helm/openshell/`](../deploy/helm/openshell/). Architecture and history: [ADR-0003](adr/0003-openshell-deployment-on-openshift.md).
+
+**Full demo stack (platform + OpenShell + UI + OpenClaw):**
 
 ```bash
-helm install openshell oci://ghcr.io/nvidia/openshell/helm-chart \
-  --version 0.0.80 \
-  --namespace openshell \
-  --set server.disableTls=false \
-  --set podSecurityContext.fsGroup=null \
-  --set securityContext.runAsUser=null
+./scripts/cluster-lifecycle.sh full
+# or from repo root: make demo
 ```
 
-| Value | Setting | Reason |
-|---|---|---|
-| `server.disableTls` | `false` | Gateway listens on HTTPS; certgen creates TLS secrets |
-| `podSecurityContext.fsGroup` | `null` | Let OpenShift SCC assign fsGroup |
-| `securityContext.runAsUser` | `null` | Let OpenShift SCC assign UID |
-| `pkiInitJob.enabled` | **default `true`** | Do **not** disable — see [Secret bootstrap](#secret-bootstrap) |
-
-On macOS with Podman (no Docker Desktop), Helm may fail pulling OCI charts with `docker-credential-desktop not found`. Work around:
+On macOS with Podman (no Docker Desktop), Helm may fail pulling OCI charts with `docker-credential-desktop not found`. The Makefile sets `DOCKER_CONFIG` automatically; for manual `helm` commands:
 
 ```bash
 mkdir -p /tmp/helm-nodocker && printf '{}' > /tmp/helm-nodocker/config.json
@@ -541,15 +533,37 @@ export DOCKER_CONFIG=/tmp/helm-nodocker
 
 Or remove `"credsStore": "desktop"` from `~/.docker/config.json` if you do not use Docker Desktop.
 
+### Step 2 — Deploy browser UI proxy (OpenClaw Control UI)
+
+Required for browser access to the OpenClaw gateway inside the sandbox:
+
+```bash
+APPS_DOMAIN=apps.ocp.example.com make -C deploy deploy-openclaw-ui-proxy
+```
+
+Then launch OpenClaw (creates sandbox if missing). Requires `secrets/secrets.env` with `MAAS_API_KEY` and `OPENCLAW_GATEWAY_PASSWORD`:
+
+```bash
+./scripts/launch-openclaw.sh
+```
+
+Control UI: `https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/` (enter gateway password or use `/?password=...`).
+
+Or use the combined agent target:
+
+```bash
+APPS_DOMAIN=apps.ocp.example.com make -C deploy deploy-agent
+```
+
 ### Secret bootstrap
 
 By default, a pre-install Helm hook Job runs `openshell-gateway generate-certs` and creates:
 
 | Secret | Purpose |
 |---|---|
-| `openshell-jwt-keys` | Ed25519 signing key for sandbox JWTs (`signing.pem`, `public.pem`, `kid`) |
+| `openshell-jwt-keys` | Ed25519 signing key for sandbox JWTs |
 | `openshell-server-tls` | Gateway server certificate |
-| `openshell-client-tls` | Client mTLS certificate for sandboxes |
+| `openshell-client-tls` | Client mTLS certificate for CLI and sandboxes |
 
 This works on OpenShift **without** disabling `pkiInitJob`. The certgen Job security context is compatible with the `restricted` SCC ([NVIDIA/OpenShell#2089](https://github.com/NVIDIA/OpenShell/issues/2089)).
 
@@ -561,86 +575,69 @@ MountVolume.SetUp failed for volume "sandbox-jwt" : secret "openshell-jwt-keys" 
 
 Upstream reference: [Helm README — Secret bootstrap](https://github.com/NVIDIA/OpenShell/blob/main/deploy/helm/openshell/README.md#secret-bootstrap).
 
-### Step 2 — Verify deployment
-
-Wait for the certgen hook and gateway:
+### Step 3 — Verify deployment
 
 ```bash
-oc -n openshell get jobs,pods,secret | grep -E 'NAME|openshell'
+make -C deploy validate-openshell
+openshell status   # expect: Connected (gateway alias ocp by default)
+oc -n openshell get rolebinding | grep privileged
 oc -n openshell rollout status statefulset/openshell
 ```
 
-Expected secrets: `openshell-jwt-keys`, `openshell-server-tls`, `openshell-client-tls`.
+Expected secrets: `openshell-jwt-keys`, `openshell-server-tls`, `openshell-client-tls`. Expected RoleBinding: `openshell-sandbox-privileged-scc` on SA `openshell-sandbox`. Expected gateway logs: `TLS enabled — listening on encrypted HTTPS`.
 
-Expected gateway logs:
+Full agent validation:
+
+```bash
+make -C deploy validate-openclaw
+make -C deploy validate-traces
+```
+
+### Connect from your workstation (CLI)
+
+`deploy-openshell` runs `openshell-register-gateway` automatically. The gateway is reached via the cluster Route (`openshell-gw`), not port-forward. mTLS client certs are synced to:
 
 ```text
-TLS enabled — listening on encrypted HTTPS
-gateway-minted sandbox JWT enabled
+~/.config/openshell/gateways/<GATEWAY_NAME>/mtls/{ca.crt,tls.crt,tls.key}
 ```
 
-Verify the SCC RoleBinding (created by Helm post-install hook):
+Default `GATEWAY_NAME` is `ocp`. Re-register or refresh certs:
 
 ```bash
-oc -n openshell get rolebinding | grep privileged
-```
-
-### Step 3 — Connect from your workstation
-
-`make openshell-install` (and `openshell-upgrade`) automatically sync the cluster mTLS client bundle from secret `openshell-client-tls` into:
-
-```text
-~/.config/openshell/gateways/openshift/mtls/{ca.crt,tls.crt,tls.key}
-```
-
-This matches the upstream [Kubernetes setup — Install the TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup) flow. Re-run sync anytime with:
-
-```bash
-make -C deploy openshell-sync-mtls
-```
-
-Port-forward the gateway service:
-
-```bash
-oc -n openshell port-forward svc/openshell 8080:8080
-```
-
-Register with the local CLI (requires [local OpenShell install](#install)):
-
-```bash
-openshell gateway add https://127.0.0.1:8080 --local --name openshift
-# `gateway add --local` may overwrite the mTLS dir with Podman/Docker package certs — re-sync:
-make -C deploy openshell-sync-mtls
+make -C deploy openshell-register-gateway
+# or mTLS only:
+GATEWAY_NAME=ocp make -C deploy openshell-sync-mtls
 openshell status
 ```
 
-Expected: `Status: Connected`, `Version: 0.0.80`.
+Expected: `Status: Connected`.
 
 ### Version pinning (cluster)
 
 | Artifact | Pinned value |
 |---|---|
-| Wrapper chart | `agentops-openshell:0.2.0` (`deploy/helm/openshell/`) |
-| Upstream Helm chart | `oci://ghcr.io/nvidia/openshell/helm-chart:0.0.80` |
-| Gateway image | `ghcr.io/nvidia/openshell/gateway:0.0.80` (from chart `appVersion`) |
-| Supervisor image | `ghcr.io/nvidia/openshell/supervisor:0.0.80` |
-| Agent Sandbox Operator | `stable` channel, OLM (`deploy/helm/operators/values.yaml`) |
+| Wrapper chart | `agentops-openshell:0.3.0` (`deploy/helm/openshell/`) |
+| Upstream OCI chart | `oci://ghcr.io/nvidia/openshell` chart `helm-chart:0.0.83` — `Chart.yaml` `dependencies[].version` + `Chart.lock` |
+| Agent Sandbox Operator | channel `preview-0.9`, CSV `agent-sandbox-operator.v0.9.0` (`deploy/helm/operators/values.yaml`) |
+| UI proxy chart | `openclaw-ui-proxy:0.1.0` (`deploy/helm/openclaw-ui-proxy/`) |
 
-Bump versions deliberately and re-test on the target cluster before updating manifests.
+Bump versions deliberately and re-test on the target cluster before updating manifests ([ADR-0006](adr/0006-explicit-version-pinning.md)).
 
 ### Uninstall (cluster)
 
-```bash
-make -C deploy openshell-uninstall
-```
-
-Or with Helm directly:
+Remove OpenShell and the UI proxy (does **not** remove the Agent Sandbox Operator or RHOAI):
 
 ```bash
-helm uninstall openshell -n openshell
+make -C deploy undeploy-openshell
 ```
 
-PVCs created by the StatefulSet are retained by default. To remove all namespace resources:
+Full platform + OpenShell teardown:
+
+```bash
+make -C deploy undeploy-everything
+```
+
+PVCs created by the StatefulSet may be retained. To force namespace removal:
 
 ```bash
 oc delete ns openshell
@@ -650,12 +647,14 @@ oc delete ns openshell
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `secret "openshell-jwt-keys" not found` | `pkiInitJob.enabled=false` without manual JWT secret | Reinstall with default `pkiInitJob` or pre-create the secret via `openshell-gateway generate-certs --jwt-only` |
-| `docker-credential-desktop not found` (Helm OCI pull) | Stale Docker Desktop config on macOS/Podman host | Set `DOCKER_CONFIG` to an empty config or remove `credsStore: desktop` from `~/.docker/config.json` |
-| certgen Job `Failed` | RBAC or image pull issues | `oc -n openshell logs job/openshell-certgen`; verify gateway image is pullable |
-| Sandbox pods `Failed` | Missing `privileged` SCC on `openshell-sandbox` | Re-run `make -C deploy openshell-install` (Helm hook re-applies the RoleBinding), or manually: `oc adm policy add-scc-to-user privileged -z openshell-sandbox -n openshell` |
-| Gateway `Connection refused` over HTTP | TLS is enabled (`disableTls=false`) | Use `https://` when registering the gateway |
-| `invalid peer certificate: BadSignature` | Local CLI mTLS CA does not match cluster `openshell-client-tls` (stale after redeploy, or overwritten by `gateway add --local`) | `make -C deploy openshell-sync-mtls`, then `openshell status` |
+| `secret "openshell-jwt-keys" not found` | `pkiInitJob.enabled=false` without manual JWT secret | Reinstall with default `pkiInitJob` or pre-create the secret |
+| `docker-credential-desktop not found` (Helm OCI pull) | Stale Docker Desktop config on macOS/Podman host | Makefile sets `DOCKER_CONFIG`; or fix `~/.docker/config.json` |
+| `FAIL: CRD sandboxes.agents.x-k8s.io not available` | Agent Sandbox Operator not ready | `make -C deploy deploy-operators`; wait for CSV `Succeeded` |
+| certgen Job `Failed` | RBAC or image pull issues | `oc -n openshell logs job/openshell-certgen` |
+| Sandbox pods `Failed` | Missing `privileged` SCC on `openshell-sandbox` | Re-run `make -C deploy deploy-openshell` |
+| `invalid peer certificate: BadSignature` | Stale local mTLS bundle | `make -C deploy openshell-register-gateway` |
+| `certificate not valid for name "openshell-gw-openshell.<domain>"` | Server cert missing Route SAN | `undeploy-openshell` then redeploy (certgen does not rotate existing certs on upgrade) |
+| Control UI password rejected | Stale config or wrong password | Re-run `launch-openclaw.sh`; use `OPENCLAW_GATEWAY_PASSWORD` from `secrets/secrets.env` |
 
 ### Observability
 
@@ -665,19 +664,18 @@ Sandbox activity is logged in OCSF format inside each sandbox pod at `/var/log/`
 openshell logs <sandbox-name> --tail --source sandbox
 ```
 
-See [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging) for shorthand format and JSON export.
+See [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging). MLflow traces: [ADR-0010](adr/0010-mlflow-tracing-otel.md).
 
 ## Related demo docs
 
-- [`.cursor/skills/openshell-local-install/`](../.cursor/skills/openshell-local-install/SKILL.md) — local install
-- [`.cursor/skills/openshell-local-cleanup/`](../.cursor/skills/openshell-local-cleanup/SKILL.md) — local uninstall
-- [`.cursor/skills/openshell-cluster-install/`](../.cursor/skills/openshell-cluster-install/SKILL.md) — OpenShift deploy
+- [docs/AGENT-SANDBOX-AND-OPENSHELL.md](AGENT-SANDBOX-AND-OPENSHELL.md) — canonical architecture and `launch-openclaw.sh` procedure
+- [`.cursor/skills/openshell-cluster-install/`](../.cursor/skills/openshell-cluster-install/SKILL.md) — OpenShift deploy (agent skill)
 - [`.cursor/skills/openshell-cluster-cleanup/`](../.cursor/skills/openshell-cluster-cleanup/SKILL.md) — OpenShift uninstall
-- [`deploy/helm/openshell/`](../deploy/helm/openshell/) — wrapper chart for OpenShift cluster deploy
-- [`deploy/Makefile`](../deploy/Makefile) — `make -C deploy openshell-install`
-- [AGENTS.md](../AGENTS.md) — platform stack and OpenShell role in the demo
-- [Cluster Bootstrap Guide](cluster-bootstrap.md) — RHOAI platform deploy (prerequisite for OpenShell on cluster)
-- [ROADMAP.md](ROADMAP.md) — Phase 1 validation tasks
+- [`deploy/helm/openshell/`](../deploy/helm/openshell/) — wrapper chart
+- [`deploy/Makefile`](../deploy/Makefile) — `deploy-openshell`, `deploy-openclaw-ui-proxy`, `validate-openshell`
+- [AGENTS.md](../AGENTS.md) — platform stack
+- [Cluster Bootstrap Guide](cluster-bootstrap.md) — RHOAI platform deploy (prerequisite)
+- [ROADMAP.md](ROADMAP.md) — Phase 1.5 OpenShell + OpenClaw integration
 
 ## References
 
@@ -685,11 +683,7 @@ See [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging) f
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift)
 - [Red Hat build of Agent Sandbox — Install](https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_agent_sandbox/)
 - [Kubernetes Setup (Agent Sandbox)](https://docs.nvidia.com/openshell/kubernetes/setup)
-- [Kubernetes Setup — TLS client bundle](https://docs.nvidia.com/openshell/kubernetes/setup) (copy `openshell-client-tls` for CLI port-forward access)
 - [Helm chart — Secret bootstrap](https://github.com/NVIDIA/OpenShell/blob/main/deploy/helm/openshell/README.md#secret-bootstrap)
-- [OpenShell#2089](https://github.com/NVIDIA/OpenShell/issues/2089) — certgen hook on OpenShift without `pkiInitJob.enabled=false`
-- [Sandbox Compute Drivers](https://docs.nvidia.com/openshell/latest/reference/sandbox-compute-drivers)
+- [OpenShell#2089](https://github.com/NVIDIA/OpenShell/issues/2089) — certgen hook on OpenShift
 - [Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging)
-- [Support Matrix](https://docs.nvidia.com/openshell/reference/support-matrix)
 - [OpenShell GitHub](https://github.com/NVIDIA/OpenShell)
-- [Quickstart](https://docs.nvidia.com/openshell/latest/getting-started/quickstart)

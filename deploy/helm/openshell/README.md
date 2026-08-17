@@ -98,9 +98,7 @@ shared Agent Sandbox Operator (OLM) — use `make cleanup-orphans` / `undeploy-a
 
 ## Documentation
 
-- [docs/openshell-installation.md](../../../docs/openshell-installation.md) — still
-  describes an older single-chart flow in places; treat `deploy/Makefile`'s
-  `deploy-openshell` target as the source of truth for what's actually deployed.
+- [docs/openshell-installation.md](../../../docs/openshell-installation.md) — OpenShift cluster deploy procedure
 - [ADR-0003](../../../docs/adr/0003-openshell-deployment-on-openshift.md) — full decision
   record, including the history of the two abandoned designs and a list of real chart bugs
   found and fixed on 2026-08-05 during a from-scratch redeploy test.

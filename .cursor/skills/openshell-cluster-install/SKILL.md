@@ -148,7 +148,7 @@ Follow global skill **`long-running-scripts`**. For this repo:
 
 - Cluster cleanup: `openshell-cluster-cleanup` skill, or `make -C deploy undeploy-openshell`
 - Local CLI install: `openshell-local-install` skill
-- Guide: [docs/openshell-installation.md](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment) (partially stale — see the banner at the top of that section)
+- Guide: [docs/openshell-installation.md](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment)
 - Architecture: [docs/AGENT-SANDBOX-AND-OPENSHELL.md](../../../docs/AGENT-SANDBOX-AND-OPENSHELL.md) — Agent Sandbox + OpenShell + OpenClaw launch flow (keep in sync via `sync-agent-sandbox-doc` skill)
 - Chart: [deploy/helm/openshell/README.md](../../../deploy/helm/openshell/README.md)
 - UI proxy: [deploy/helm/openclaw-ui-proxy/](../../../deploy/helm/openclaw-ui-proxy/)
