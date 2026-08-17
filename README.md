@@ -40,14 +40,20 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 
 ## Quick Start
 
-> **Note**: Implementation in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for current status.
+```bash
+# Full demo (from repo root)
+make demo
+
+# Platform only
+make deploy-all && make validate
+```
 
 | Step | Guide |
 |---|---|
 | Bootstrap RHOAI platform on OpenShift | [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | Install OpenShell (local or cluster) | [docs/openshell-installation.md](docs/openshell-installation.md) |
 | Agent Sandbox + OpenShell architecture (OpenClaw in sandbox) | [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) |
-| Browser UI (nginx mTLS bridge + password) | `APPS_DOMAIN=<domain> make -C deploy deploy-openclaw-ui-proxy` then `./scripts/launch-openclaw.sh` — see [ADR-0011](docs/adr/0011-ui-auth-openshift-oauth-proxy.md) |
+| Browser UI (nginx mTLS bridge + password) | `make deploy-agent` or `make demo` — see [ADR-0011](docs/adr/0011-ui-auth-openshift-oauth-proxy.md) |
 
 ## Project Structure
 

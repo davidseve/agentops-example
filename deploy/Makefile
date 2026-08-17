@@ -1,18 +1,31 @@
 # deploy/Makefile - AgentOps demo deploy targets
 #
-# RHOAI (full platform):
-#   make deploy-all    (full stack)
-#   make validate      (post-deploy health checks)
-#   make undeploy-all  (teardown: RHOAI stack only)
+# Run from repo root (recommended):  make demo
+# Or explicitly:                    make -C deploy demo
+# Do NOT run `make -C deploy` while your cwd is already deploy/ — that looks for deploy/deploy/.
 #
-# OpenShell + OpenClaw:
-#   make deploy-openshell HELM_OPTS='--set global.appsDomain=<domain>'
+# Full demo (deploy + verify):
+#   make demo                              (APPS_DOMAIN auto-detected from cluster ingress)
+#   APPS_DOMAIN=apps.ocp.example.com make demo
+#
+# RHOAI platform only:
+#   make deploy-all                        (five rhoai-* Helm releases)
+#   make validate                          (post-deploy health checks)
+#   make undeploy-all                      (teardown: RHOAI stack only)
+#
+# OpenShell + OpenClaw (after deploy-all + validate):
+#   make deploy-agent                      (openshell + ui-proxy + launch-openclaw)
+#   make launch-openclaw                   (sandbox runtime only)
+#   make validate-full                     (all layers: Makefile + Playwright + traces)
+#
+# Granular OpenShell targets:
+#   make deploy-openshell APPS_DOMAIN=<domain>
 #   make deploy-openclaw-ui-proxy APPS_DOMAIN=<domain>
-#   make undeploy-openshell   (teardown: OpenShell + openclaw-ui-proxy + Agent Sandbox)
+#   make undeploy-openshell                (teardown: OpenShell + openclaw-ui-proxy)
 #
-# Full reset (everything this Makefile can deploy, in one shot):
-#   make undeploy-everything  (OpenShell/ui-proxy -> RHOAI apps -> DSCI -> operators -> orphans)
-#   make validate-cleanup     (confirm the cluster is actually clean before redeploying)
+# Full reset:
+#   make undeploy-everything               (OpenShell/ui-proxy -> RHOAI -> operators -> orphans)
+#   make validate-cleanup                  (confirm cluster is clean before redeploying)
 #
 # deploy-openshell installs OpenShell as a single Helm release: this repo's
 # wrapper chart (deploy/helm/openshell) declares the upstream OCI chart as a
@@ -74,6 +87,14 @@ JWT_SECRET_NAME ?= $(OPENSHELL_RELEASE)-jwt-keys
 # pulling the OpenShell OCI chart dependency on Podman-based hosts.
 DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 
+# Auto-detect from OpenShift ingress when unset (same as scripts/common.sh).
+APPS_DOMAIN ?= $(shell oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null)
+
+# verify.sh profiles (full | smoke); SKIP_E2E=1 skips Playwright + validate-traces.
+VERIFY_PROFILE ?=
+SKIP_E2E ?=
+
+.PHONY: help demo deploy-agent launch-openclaw validate-full deploy-demo deploy-and-verify
 .PHONY: deploy-operators wait-operators deploy-platform deploy-database
 .PHONY: wait-dashboard-crd adopt-dashboard-config
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
@@ -84,6 +105,70 @@ DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 .PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
 .PHONY: openshell-sync-mtls openshell-register-gateway
 .PHONY: validate validate-cleanup validate-smoke deploy-all-quiet
+
+# --- Top-level demo targets ---
+
+help:
+	@echo "AgentOps demo — run from repo root: make demo"
+	@echo ""
+	@echo "Full stack:"
+	@echo "  make demo                 Deploy RHOAI + OpenShell + OpenClaw, then verify"
+	@echo "  make deploy-demo            Deploy only (no verify)"
+	@echo "  make validate-full          Verify only (after deploy-demo)"
+	@echo ""
+	@echo "Layers:"
+	@echo "  make deploy-all             RHOAI platform (Helm)"
+	@echo "  make validate               RHOAI health check"
+	@echo "  make deploy-agent           OpenShell + UI proxy + launch-openclaw"
+	@echo "  make launch-openclaw        Sandbox runtime (requires deploy-openshell)"
+	@echo ""
+	@echo "Teardown:"
+	@echo "  make undeploy-everything    Full reset"
+	@echo "  make validate-cleanup       Confirm cluster is clean"
+	@echo ""
+	@echo "Variables: APPS_DOMAIN (auto-detected), VERIFY_PROFILE=smoke, SKIP_E2E=1"
+
+require-apps-domain:
+	@if [ -z "$(APPS_DOMAIN)" ]; then \
+		echo "ERROR: APPS_DOMAIN required. Usage:"; \
+		echo "  APPS_DOMAIN=apps.ocp.example.com make $@"; \
+		echo "  or log into a cluster where oc can read ingress.config cluster domain"; \
+		exit 1; \
+	fi
+	@echo "Using APPS_DOMAIN=$(APPS_DOMAIN)"
+
+launch-openclaw:
+	@test -f $(ROOT_DIR)/secrets/secrets.env || { \
+		echo "ERROR: $(ROOT_DIR)/secrets/secrets.env required"; exit 1; }
+	@command -v openshell >/dev/null 2>&1 || { \
+		echo "ERROR: openshell CLI required on PATH"; exit 1; }
+	NAMESPACE=$(OPENSHELL_NAMESPACE) SANDBOX_NAME=$(SANDBOX_NAME) GATEWAY_NAME=$(GATEWAY_NAME) \
+		OPENSHELL_RELEASE_NAME=$(OPENSHELL_RELEASE) SANDBOX_SA_NAME=$(SANDBOX_SA_NAME) \
+		APPS_DOMAIN=$(APPS_DOMAIN) \
+		$(ROOT_DIR)/scripts/launch-openclaw.sh
+
+# OpenShell Helm + UI proxy + sandbox runtime (requires RHOAI platform first).
+deploy-agent: require-apps-domain deploy-openshell deploy-openclaw-ui-proxy launch-openclaw
+	@echo "Agent stack deployed."
+	@echo "Control UI: https://$(SANDBOX_NAME)--openclaw-ui.$(APPS_DOMAIN)/"
+	@echo "Next: make validate-full"
+
+deploy-demo: deploy-all deploy-agent
+	@echo "Full demo stack deployed (RHOAI + OpenShell + OpenClaw)."
+
+validate-full:
+	@VERIFY_PROFILE=$(VERIFY_PROFILE) SKIP_E2E=$(SKIP_E2E) \
+		$(ROOT_DIR)/scripts/verify.sh \
+		$(if $(filter smoke,$(VERIFY_PROFILE)),--smoke,) \
+		$(if $(filter 1,$(SKIP_E2E)),--skip-e2e,)
+
+# One-shot: deploy everything, then run the full verification suite.
+demo: deploy-demo validate-full
+	@echo ""
+	@echo "Demo deployed and verified."
+	@echo "Control UI: https://$(SANDBOX_NAME)--openclaw-ui.$(APPS_DOMAIN)/"
+
+deploy-and-verify: demo
 
 # --- Deploy targets (ordered) ---
 
@@ -191,7 +276,8 @@ deploy-evalhub: deploy-database wait-evalhub-crd
 
 deploy-all: deploy-platform deploy-database deploy-mlflow deploy-evalhub
 	@echo "All RHOAI components deployed."
-	@echo "Next: make deploy-openshell HELM_OPTS='--set global.appsDomain=<your-apps-domain>'"
+	@echo "Next: make validate && make deploy-agent"
+	@echo "  (or full stack: make demo)"
 
 # Agent token-efficient: quiet logs + .agent-status/deploy-all.json (long-running-scripts skill)
 deploy-all-quiet:
@@ -264,8 +350,8 @@ deploy-openshell: helm-env
 	@$(MAKE) deploy-mlflow-openclaw-integration
 	@$(MAKE) openshell-register-gateway
 	@echo "OpenShell deployed successfully."
-	@echo "Next: NAMESPACE=$(OPENSHELL_NAMESPACE) SANDBOX_NAME=$(SANDBOX_NAME) GATEWAY_NAME=$(GATEWAY_NAME) ./scripts/launch-openclaw.sh"
-	@echo "      APPS_DOMAIN=<domain> SANDBOX_NAME=$(SANDBOX_NAME) make deploy-openclaw-ui-proxy  (browser UI via nginx mTLS bridge)"
+	@echo "Next: make deploy-agent  (ui-proxy + launch-openclaw)"
+	@echo "  or: make deploy-openclaw-ui-proxy && make launch-openclaw"
 
 # MLflow's openclawIntegration RBAC needs the sandbox ServiceAccount, which is
 # created by deploy-openshell above, so it can't run as part of
