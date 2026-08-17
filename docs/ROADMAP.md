@@ -23,10 +23,9 @@
 - [x] OGX: confirmed GA
 - [x] InstallPlan approval: Manual policy with auto-approve in Makefile (ADR-0008)
 - [x] Dashboard race fixes: wait-dashboard-crd, adopt-dashboard-config (ADR-0008)
-- [x] Gen AI Studio: llamastackoperator sequencing before dashboard (ADR-0008)
 - [x] MLflow chart: OpenClaw integration RBAC + experiment Job (gated, Phase 5 activates)
 - [x] Document MaaS options available in demo.redhat.com
-- [ ] Map each demo feature to Red Hat product/component (study guide)
+- [ ] Map each demo feature to Red Hat product/component (study guide / `docs/architecture.md`) — partial mapping in [AGENTS.md](../AGENTS.md) § Technology-to-Product Mapping
 - [x] Document initial pinned versions manifest (operator CSVs, image tags/digests)
 
 
