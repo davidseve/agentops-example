@@ -155,4 +155,4 @@ Follow global skill **`long-running-scripts`**. For this repo:
 - Sync / register: [scripts/openshift-openshell-register-gateway.sh](../../../scripts/openshift-openshell-register-gateway.sh), [scripts/openshift-openshell-sync-mtls.sh](../../../scripts/openshift-openshell-sync-mtls.sh)
 - Launch: [scripts/launch-openclaw.sh](../../../scripts/launch-openclaw.sh)
 - ADR: [ADR-0003](../../../docs/adr/0003-openshell-deployment-on-openshift.md) — includes the full history of this chart's architecture and a list of bugs found and fixed on 2026-08-05
-- Auth ADR: [ADR-0011](../../../docs/adr/0011-ui-auth-openshift-oauth-proxy.md)
+- Auth ADR: [ADR-0011](../../../docs/adr/0011-openclaw-ui-auth-nginx-bridge-password.md)

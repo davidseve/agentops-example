@@ -664,6 +664,6 @@ APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 | OpenShell deployment on OpenShift (this project) | [ADR-0003](adr/0003-openshell-deployment-on-openshift.md) |
 | Privileged SCC rationale | ADR-0006 (reference project: `open-claw-in-openshell/docs/adrs/ADR-0006-scc-privileged-sandbox.md`) |
 | Version pinning policy | [ADR-0006](adr/0006-explicit-version-pinning.md) |
-| UI authentication (mTLS + password) | [ADR-0011](adr/0011-ui-auth-openshift-oauth-proxy.md) |
+| UI authentication (mTLS + password) | [ADR-0011](adr/0011-openclaw-ui-auth-nginx-bridge-password.md) |
 | MLflow tracing via plugin | [ADR-0010](adr/0010-mlflow-tracing-otel.md) |
 | OpenShell CLI reference | `openshell --help` (always authoritative) |

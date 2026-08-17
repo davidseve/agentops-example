@@ -114,6 +114,20 @@ the project's "no scripts, no manual steps" goal:
 With both fixes, `make deploy-openshell` alone is now sufficient to wire up
 OpenClaw's MLflow tracing end-to-end — no manual `--set` flags needed.
 
+## Inference path (updated 2026-08-14)
+
+LLM calls from OpenClaw no longer reach MaaS directly from the sandbox. The
+agent uses OpenShell's **inference router** (`https://inference.local/v1`,
+`model: router` in `config/openclaw.json.tpl`). The real API key is registered
+only on the OpenShell gateway (`providers_v2` in `scripts/launch-openclaw.sh`);
+the sandbox process uses `apiKey: "unused"` and never sees the credential.
+
+This ADR covers **tracing only** — the inference router is an OpenShell gateway
+concern, not part of the MLflow transport path. Traces still flow via the
+`mlflow-openclaw` plugin to `mlflow.redhat-ods-applications.svc:8443` as
+described above. MLflow trace metadata may show `model: router` rather than the
+resolved upstream model name — a known upstream gap, not a tracing regression.
+
 ## Consequences
 
 - Traces appear in Gen AI Studio with **full Request/Response content**

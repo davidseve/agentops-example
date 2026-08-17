@@ -14,7 +14,7 @@ For the full decision log with options considered, trade-offs, and references, s
 
 - **OCP with RHOAI as base platform** — [ADR-0002](adr/0002-ocp-with-rhoai-as-platform.md): The demo runs on OpenShift Container Platform with Red Hat OpenShift AI (RHOAI) 3.x as the AI add-on, providing operator-managed MLflow, TrustyAI, and model serving through the DataScienceCluster CRD.
 
-- **RHOAI DataScienceCluster component selection** — [ADR-0008](adr/0008-rhoai-dsc-component-selection.md): Only the components the demo actually uses (dashboard, llamastackoperator, mlflowoperator, trustyai, kserve, modelsAsService) are enabled, with explicit deployment-ordering fixes (CRD waits, Helm-ownership adoption) for known RHOAI Dashboard/Gen AI Studio races.
+- **RHOAI DataScienceCluster component selection** — [ADR-0008](adr/0008-rhoai-dsc-component-selection.md): The demo enables `dashboard`, `mlflowoperator`, `trustyai`, and `kserve` (required for TrustyAI readiness). Deployment ordering fixes (Dashboard CRD wait, Helm-ownership adoption for `odh-dashboard-config`) are implemented in `deploy/Makefile`.
 
 ## Platform Layer
 
@@ -26,4 +26,4 @@ For the full decision log with options considered, trade-offs, and references, s
 
 - **MLflow tracing via mlflow-openclaw plugin** — [ADR-0010](adr/0010-mlflow-tracing-otel.md): OpenClaw traces reach RHOAI's MLflow through the `mlflow-openclaw` plugin (patched for SDK compatibility), not the generic `diagnostics-otel` exporter — the latter produced traces with `null` Request/Response content, while the plugin hooks OpenClaw's own lifecycle events for full content.
 
-- **OpenClaw UI authentication via nginx mTLS bridge + password** — [ADR-0011](adr/0011-ui-auth-openshift-oauth-proxy.md): The Control UI is reached through an nginx reverse proxy that presents mTLS client certificates to the OpenShell relay. OpenClaw `gateway.auth.mode: password` protects the WebSocket (shared `OPENCLAW_GATEWAY_PASSWORD`). Per-user OCP SSO via oauth-proxy was dropped — not a current requirement.
+- **OpenClaw UI authentication via nginx mTLS bridge + password** — [ADR-0011](adr/0011-openclaw-ui-auth-nginx-bridge-password.md): The Control UI is reached through an nginx reverse proxy that presents mTLS client certificates to the OpenShell relay. OpenClaw `gateway.auth.mode: password` protects the WebSocket (shared `OPENCLAW_GATEWAY_PASSWORD`). Per-user OCP SSO via oauth-proxy was dropped — not a current requirement.

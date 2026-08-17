@@ -1,5 +1,7 @@
 # ADR-0011: OpenClaw UI Authentication via nginx mTLS Bridge + Password
 
+> **File rename (2026-08-17):** formerly `0011-ui-auth-openshift-oauth-proxy.md`. The slug reflected an abandoned oauth-proxy approach; the accepted decision is nginx mTLS bridge + OpenClaw password auth.
+
 **Status**: Accepted (updated 2026-08-06)  
 **Date**: 2026-08-04  
 **Layer**: Agent  

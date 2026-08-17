@@ -31,7 +31,7 @@ All AI agents must follow the [adr-alignment rule](../../.cursor/rules/adr-align
 | [0008](0008-rhoai-dsc-component-selection.md) | RHOAI DataScienceCluster component selection | Accepted | Infrastructure | 2026-08-03 |
 | 0009 | *(retired — duplicated ADR-0003; content merged into it)* | Superseded | — | — |
 | [0010](0010-mlflow-tracing-otel.md) | MLflow tracing via mlflow-openclaw plugin | Accepted | Agent | 2026-08-04 |
-| [0011](0011-ui-auth-openshift-oauth-proxy.md) | OpenClaw UI authentication via nginx mTLS bridge + password | Accepted | Agent | 2026-08-04 |
+| [0011](0011-openclaw-ui-auth-nginx-bridge-password.md) | OpenClaw UI authentication via nginx mTLS bridge + password | Accepted | Agent | 2026-08-04 (renamed 2026-08-17) |
 
 **Note on 0005/0007**: both numbers were assigned to ADRs later deleted as obsolete
 (commit `6292be6`). Per the "never reused" convention above, these numbers stay

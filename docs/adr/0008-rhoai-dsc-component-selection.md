@@ -20,6 +20,9 @@ The reference project discovered (live on AWS OCP) that:
 
 ## Decision
 
+Enable only the components required for this demo. All others stay at
+`managementState: Removed` in [`deploy/helm/platform/values.yaml`](../../deploy/helm/platform/values.yaml).
+
 ### Enabled components (Managed)
 
 | Component | Rationale |
@@ -28,16 +31,6 @@ The reference project discovered (live on AWS OCP) that:
 | mlflowoperator | Agent tracing backend (sole backend — no standalone MLflow) |
 | trustyai | NeMo Guardrails deployment path (EvalHub for red teaming) |
 | kserve | Required for TrustyAI's eval/lmeval readiness — `TrustyAIReady` blocks on the `InferenceServices` CRD until `kserve` is `Managed` (found 2026-08-14, see ROADMAP.md). Not otherwise consumed directly by this project yet. |
-
-### Disabled components (Removed)
-
-llamastackoperator, modelsAsService, aipipelines, feastoperator,
-kueue, modelregistry, ray, trainer, trainingoperator, sparkoperator,
-workbenches — no use case in this demo.
-
-Gen AI Studio (`genAiStudio`), MaaS (`modelAsService`), and
-`llamastackoperator` are disabled because this project only uses
-MLflow + EvalHub.
 
 ### Deployment ordering fixes
 

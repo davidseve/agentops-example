@@ -70,8 +70,9 @@ Deploy OpenShell on OpenShift using the wrapper Helm chart (`deploy/helm/openshe
 4. Sets `server.auth.allowUnauthenticatedUsers: true` under `openshell:` in `values.yaml`,
    allowing CLI/gRPC access without a bearer token since that endpoint is mTLS-only (client
    cert required — "unauthenticated" here means no *additional* token, not no auth). This is
-   orthogonal to the OpenClaw Control UI's browser auth, which goes through a separate OAuth
-   proxy (see [ADR-0011](0011-ui-auth-openshift-oauth-proxy.md)).
+   orthogonal to the OpenClaw Control UI's browser auth, which goes through
+   `deploy/helm/openclaw-ui-proxy/` (nginx mTLS bridge + OpenClaw password auth — see
+   [ADR-0011](0011-openclaw-ui-auth-nginx-bridge-password.md)).
 
 Agent Sandbox controller — **sole source: Red Hat build of Agent Sandbox Operator (OLM)**:
 
@@ -115,7 +116,7 @@ This chart (and the Makefile targets around it) had never actually been exercise
 against a truly empty cluster before — every prior "successful" deployment
 silently relied on leftover state from an earlier manual or legacy run. A full
 teardown + redeploy test (`make undeploy-everything` then `make deploy-all
-deploy-openshell deploy-oauth2-proxy`) surfaced and fixed a chain of real bugs,
+deploy-openshell deploy-openclaw-ui-proxy`) surfaced and fixed a chain of real bugs,
 each masked by the others or by that leftover state:
 
 1. **Dead Helm dependency broke every render.** `Chart.yaml` declared the
@@ -174,7 +175,7 @@ each masked by the others or by that leftover state:
    exist in `openclaw agent --json`'s actual output shape, and mixed stderr
    into the JSON via `2>&1` — both fixed. Also documented that this CLI path
    runs OpenClaw's "embedded" fallback (no gateway device identity available
-   to a bare CLI invocation), so it only proves MaaS connectivity, not the
+   to a bare CLI invocation), so it only proves `inference.local` connectivity, not the
    gateway+MLflow-trace path the UI actually exercises — that needs
    `make test-ui` + `validate-traces`.
 
@@ -262,7 +263,7 @@ take effect, same as any other mTLS-affecting change.
 
 ## Validation
 
-Validated on OpenShift with chart `0.0.83`, TLS + certgen hook, SCC via Helm RoleBinding, and post-install mTLS client bundle sync to the local CLI (`scripts/openshift-openshell-sync-mtls.sh`). Full procedure documented in [openshell-installation.md](../openshell-installation.md#openshift--rhoai-cluster-deployment) (that doc still describes an older single-chart flow in places — see `deploy/Makefile`'s `deploy-openshell` target as the source of truth for what's actually live).
+Validated on OpenShift with chart `0.0.83`, TLS + certgen hook, SCC via Helm RoleBinding, and post-install mTLS client bundle sync to the local CLI (`scripts/openshift-openshell-sync-mtls.sh`). Canonical architecture and procedure: [AGENT-SANDBOX-AND-OPENSHELL.md](../AGENT-SANDBOX-AND-OPENSHELL.md). Deploy commands: `deploy/Makefile` targets `deploy-openshell` and `deploy-openclaw-ui-proxy`.
 
 Post-install verification:
 
@@ -280,7 +281,7 @@ The "Security Attack" demo segment uses OpenShell to show agent execution isolat
 ## Related Decisions
 
 - [ADR-0006: Explicit version pinning](0006-explicit-version-pinning.md) — chart version is pinned per this policy.
-- [ADR-0011: OpenClaw UI authentication](0011-ui-auth-openshift-oauth-proxy.md) — covers browser auth for the Control UI, separate from this ADR's mTLS-only CLI/gRPC auth.
+- [ADR-0011: OpenClaw UI authentication](0011-openclaw-ui-auth-nginx-bridge-password.md) — covers browser auth for the Control UI, separate from this ADR's mTLS-only CLI/gRPC auth.
 
 ## References
 
