@@ -24,6 +24,8 @@ For the full decision log with options considered, trade-offs, and references, s
 
 ## Agent Layer
 
+- **OpenClaw as demo agent harness** — This demo runs OpenClaw inside an OpenShell sandbox ([AGENT-SANDBOX-AND-OPENSHELL.md](AGENT-SANDBOX-AND-OPENSHELL.md), [ROADMAP.md](ROADMAP.md) Phase 1.5/2). The BYOA principle is unchanged: the platform stack works regardless of which agent framework a customer chooses.
+
 - **MLflow tracing via mlflow-openclaw plugin** — [ADR-0010](adr/0010-mlflow-tracing-otel.md): OpenClaw traces reach RHOAI's MLflow through the `mlflow-openclaw` plugin (patched for SDK compatibility), not the generic `diagnostics-otel` exporter — the latter produced traces with `null` Request/Response content, while the plugin hooks OpenClaw's own lifecycle events for full content.
 
 - **OpenClaw UI authentication via nginx mTLS bridge + password** — [ADR-0011](adr/0011-openclaw-ui-auth-nginx-bridge-password.md): The Control UI is reached through an nginx reverse proxy that presents mTLS client certificates to the OpenShell relay. OpenClaw `gateway.auth.mode: password` protects the WebSocket (shared `OPENCLAW_GATEWAY_PASSWORD`). Per-user OCP SSO via oauth-proxy was dropped — not a current requirement.

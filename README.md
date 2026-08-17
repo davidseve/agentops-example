@@ -34,7 +34,7 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 
 - **Security**: NeMo Guardrails block prompt injection, topic deviation, and data exfiltration
 - **Isolation**: OpenShell sandboxes agent execution with zero-trust principles
-- **Observability**: MLflow captures full agent execution traces via OpenTelemetry
+- **Observability**: MLflow captures full agent execution traces via the mlflow-openclaw plugin
 - **Prompt Management**: Versioned prompts in MLflow Prompt Registry enable A/B testing
 - **Platform Agnostic**: The agent framework is interchangeable - the platform works regardless
 

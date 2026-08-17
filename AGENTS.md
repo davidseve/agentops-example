@@ -33,10 +33,10 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  USER LAYER                                                  │
-│  UI (TBD) → interacts with the agent                        │
+│  OpenClaw Control UI (openclaw-ui-proxy)                    │
 ├─────────────────────────────────────────────────────────────┤
 │  AGENT LAYER (BYOA - customer chooses)                      │
-│  Agent Framework/Harness (TBD) + NeMo Guardrails            │
+│  OpenClaw harness (in sandbox) + NeMo Guardrails            │
 ├─────────────────────────────────────────────────────────────┤
 │  PLATFORM LAYER (Red Hat owns)                              │
 │  MLflow (tracing + prompt registry)                         │
@@ -58,26 +58,17 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 |---|---|---|
 | Infrastructure | OpenShift (demo.redhat.com/RHPDS) | Container platform |
 | AI Platform | RHOAI 3.x (pinned version) | ML/AI platform on OpenShift |
-| Model Serving | MaaS externo | LLM inference (external endpoint) |
-| LLM | TBD (best available with tool-calling) | Agent brain |
+| Model Serving | External MaaS via OpenShell inference router | LLM inference (`inference.local` → MaaS) |
+| LLM | External MaaS | Default model `claude-sonnet-4-6` (override via `INFERENCE_MODEL`); requires tool-calling |
 | Guardrails | NeMo Guardrails via TrustyAI | Deployed through TrustyAI operator on OCP |
 | Sandbox | OpenShell | Agent execution isolation, zero-trust sandboxing |
-| Observability | MLflow (tracing) | OpenTelemetry-based agent execution traces |
+| Observability | MLflow (tracing via mlflow-openclaw plugin) | Full Request/Response content in RHOAI MLflow — see [ADR-0010](docs/adr/0010-mlflow-tracing-otel.md) |
 | Prompt Management | MLflow (prompt registry) | Versioned prompts, A/B testing |
-| Agent | TBD framework or harness | See options below |
+| Agent | OpenClaw harness | Runs inside Agent Sandbox — see [AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) |
 
-### Agent Framework/Harness Options (not decided yet)
+### Agent harness (demo choice)
 
-Frameworks (code-level):
-- LangGraph
-- CrewAI
-- Google ADK
-- AWS Strands
-
-Agent Harnesses (pre-built agents):
-- OpenClaw
-- NemoClaw
-- Hermes
+This demo uses **OpenClaw** inside an OpenShell sandbox (validated in Phase 1.5/2 — see [ROADMAP.md](docs/ROADMAP.md)). The platform remains BYOA: customers can swap in LangGraph, CrewAI, or another harness without changing the RHOAI/OpenShell/MLflow stack underneath.
 
 ### NICE-TO-HAVE (if time permits)
 
@@ -95,9 +86,10 @@ This maps demo features to specific Red Hat products/components:
 |---|---|---|
 | Container Platform | OpenShift Container Platform | OCP 4.x |
 | AI Platform | Red Hat OpenShift AI | RHOAI 3.x Operator (pinned version) |
-| Agent Tracing | RHOAI - MLflow | MLflow + OpenTelemetry |
+| Agent Tracing | RHOAI - MLflow | MLflow via mlflow-openclaw plugin ([ADR-0010](docs/adr/0010-mlflow-tracing-otel.md)) |
 | Prompt Registry | RHOAI - MLflow | MLflow Prompt Registry |
 | Guardrails | NeMo Guardrails (NVIDIA partnership) | Deployed via TrustyAI operator on OCP |
+| Agent harness | OpenClaw (BYOA) | Runs in OpenShell sandbox via `launch-openclaw.sh` |
 | Agent Sandboxing | OpenShell | Sandboxed execution environment |
 | Model Serving | MaaS via OpenShell inference router | inference.local → MaaS external endpoint |
 | Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
@@ -203,9 +195,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 ## Open Questions
 
 - MaaS endpoints available in demo.redhat.com (models, rate limits, auth)
-- Which agent framework/harness to use
 - What the agent's actual use case will be
-- Initial pinned version manifest (CSV versions for all operators)
 
 ## References
 
