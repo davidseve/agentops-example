@@ -39,8 +39,24 @@ kubeconfig
 kubeconfig*
 **/kubeconfig*
 .docker/config.json
+secrets/secrets.env
+secrets/.*
+!secrets/.gitkeep
+!secrets/secrets.template.env
+
+# Rendered output (contains live credentials)
+.rendered/
 
 # Build artifacts
 dist/
 build/
 deploy/helm/**/charts/
+
+# Test artifacts
+tests/node_modules/
+tests/test-results/
+tests/playwright-report/
+
+# Agent long-running script output (token-efficient mode)
+.logs/
+.agent-status/

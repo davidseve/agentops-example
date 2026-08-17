@@ -20,6 +20,12 @@ Customer Agent (any framework) ─── BYOA
         └── OpenShift + RHOAI 3.x ───── Infrastructure
 ```
 
+## Understanding the Platform
+
+**Start here** if you want to understand how agent isolation actually works in this demo: [Agent Sandbox and OpenShell — How It Works](docs/AGENT-SANDBOX-AND-OPENSHELL.md).
+
+That guide walks through the full stack — Agent Sandbox Operator, OpenShell gateway, sandbox policies (Landlock, network namespaces), and how OpenClaw runs inside an isolated sandbox rather than as a plain Kubernetes Deployment. It complements the install guides (`cluster-bootstrap.md`, `openshell-installation.md`) with architecture and the `launch-openclaw.sh` procedure.
+
 ## Version Pinning
 
 All operators and components use **explicit pinned versions**. We upgrade deliberately and test before bumping to avoid surprises from upstream releases. See [AGENTS.md](AGENTS.md) for the full version pinning policy.
@@ -28,18 +34,26 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 
 - **Security**: NeMo Guardrails block prompt injection, topic deviation, and data exfiltration
 - **Isolation**: OpenShell sandboxes agent execution with zero-trust principles
-- **Observability**: MLflow captures full agent execution traces via OpenTelemetry
+- **Observability**: MLflow captures full agent execution traces via the mlflow-openclaw plugin
 - **Prompt Management**: Versioned prompts in MLflow Prompt Registry enable A/B testing
 - **Platform Agnostic**: The agent framework is interchangeable - the platform works regardless
 
 ## Quick Start
 
-> **Note**: Implementation in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for current status.
+```bash
+# Full demo (from repo root)
+make demo
+
+# Platform only
+make deploy-all && make validate
+```
 
 | Step | Guide |
 |---|---|
 | Bootstrap RHOAI platform on OpenShift | [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | Install OpenShell (local or cluster) | [docs/openshell-installation.md](docs/openshell-installation.md) |
+| Agent Sandbox + OpenShell architecture (OpenClaw in sandbox) | [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) |
+| Browser UI (nginx mTLS bridge + password) | `make deploy-agent` or `make demo` — see [ADR-0011](docs/adr/0011-openclaw-ui-auth-nginx-bridge-password.md) |
 
 ## Project Structure
 
@@ -51,9 +65,10 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 │   ├── stack-decisions.md # Architecture decisions (executive summary)
 │   ├── adr/               # Architecture Decision Records
 │   ├── cluster-bootstrap.md   # RHOAI platform deploy on OpenShift
-│   └── openshell-installation.md  # OpenShell install (local + cluster)
+│   ├── openshell-installation.md  # OpenShell install (local + cluster)
+│   └── AGENT-SANDBOX-AND-OPENSHELL.md  # Sandbox architecture + launch flow
 ├── deploy/                # Deployment manifests (Helm, Kustomize)
-│   ├── Makefile           # Cluster deploy targets (deploy-all, openshell-install, …)
+│   ├── Makefile           # Cluster deploy targets (deploy-all, deploy-openshell, …)
 │   └── helm/              # RHOAI platform + OpenShell wrapper charts
 ├── agent/                 # Agent source code, prompts, guardrails config
 ├── tests/                 # Health checks, red teaming
@@ -66,6 +81,7 @@ All operators and components use **explicit pinned versions**. We upgrade delibe
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap and task tracking
 - [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)
+- [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) - Agent Sandbox, OpenShell, and OpenClaw launch architecture
 - [docs/stack-decisions.md](docs/stack-decisions.md) - Architecture decisions executive summary
 - [docs/adr/](docs/adr/) - Full Architecture Decision Records
 

@@ -2,6 +2,8 @@ postgresql:
   host: maas-db.redhat-ods-applications.svc
   port: 5432
   user: maas
+  # Must match database chart's database.password. For production, pass via
+  # HELM_OPTS='--set-string postgresql.password=<value>' instead.
   password: maas-eval-password
   database: mlflow
 
@@ -15,3 +17,25 @@ mlflow:
     size: 10Gi
   route:
     enabled: true
+
+# OpenClaw/OpenShell integration: declarative RBAC + SA token + experiment
+# provisioning for wiring the mlflow-openclaw plugin's tracing transport.
+# Defaults to false because the openshell-sandbox SA (namespace `openshell`)
+# doesn't exist until OpenShell is deployed (Phase 2+) — the RoleBinding/Secret
+# would fail to apply otherwise. `make deploy-openshell` automatically re-runs
+# this chart with enabled=true as its last step (target
+# deploy-mlflow-openclaw-integration in deploy/Makefile) once the SA exists;
+# no manual re-run should normally be needed.
+openclawIntegration:
+  enabled: false
+  namespace: openshell
+  serviceAccountName: openshell-sandbox
+  # The mlflow-integration ClusterRole name is operator-generated (varies by
+  # build) and is auto-detected via Helm `lookup` in
+  # templates/openclaw-integration-rbac.yaml. Only set this to override
+  # detection (e.g. `helm template`/dry-run can't use `lookup`, or multiple
+  # ClusterRoles match): oc get clusterroles -o name | grep mlflow-integration
+  clusterRoleName: ""
+  experimentName: openclaw-tracing
+  mlflowNamespace: redhat-ods-applications
+  jobImage: "docker.io/curlimages/curl:8.10.1"

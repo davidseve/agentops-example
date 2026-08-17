@@ -1,13 +1,28 @@
-# Wrapper chart for the AgentOps demo. Pins the upstream NVIDIA OpenShell OCI chart
-# and applies OpenShift-validated defaults. Manages namespace and SCC declaratively.
+# Wrapper chart for the AgentOps demo. A single Helm release renders this
+# chart's own OpenShift extras (SCC RoleBinding, Route) *and* the upstream
+# OpenShell gateway as a real Helm subchart dependency (aliased `openshell`,
+# see dependencies below) — no ConfigMap round-trip, no second `helm install`.
+# The version pinned in `dependencies[].version` + Chart.lock IS the single
+# source of truth for the deployed OpenShell version (see
+# docs/adr/0006-explicit-version-pinning.md).
+#
+# History: this chart briefly (2026-08-05) used a two-release split with a
+# ConfigMap carrying rendered values between them, after an earlier, unused
+# `dependencies:` declaration was found to be dead weight (no template ever
+# rendered it) and was removed. That split introduced its own bugs (values
+# round-tripped through a live ConfigMap instead of staying in git, resources
+# split across two releases and two namespaces). Restored to a real, working
+# dependency the same day once the correct OCI `repository:` path was found
+# (it must be the *parent* of the chart, e.g. `oci://ghcr.io/nvidia/openshell`,
+# not `.../helm-chart` — Helm appends `name` itself when resolving OCI refs).
 apiVersion: v2
 name: agentops-openshell
 description: OpenShell gateway for the AgentOps demo on OpenShift / RHOAI
 type: application
-version: 0.2.0
-appVersion: "0.0.80"
+version: 0.3.0
+appVersion: "0.0.83"
 dependencies:
   - name: helm-chart
     alias: openshell
-    version: 0.0.80
-    repository: oci://ghcr.io/nvidia/openshell
+    version: "0.0.83"
+    repository: "oci://ghcr.io/nvidia/openshell"

@@ -60,6 +60,11 @@ Deploy NeMo Guardrails through the TrustyAI operator on OCP. This aligns with th
 
 The "Security Attack" demo segment (4-5 min) depends on NeMo Guardrails blocking prompt injection and data exfiltration attempts. Guardrails configuration (rails, policies) is defined in Phase 3.
 
+## Validation
+
+- **TrustyAI operator:** `trustyai: Managed` in the DataScienceCluster (`deploy/helm/platform/values.yaml`); `TrustyAIReady` confirmed during platform bootstrap.
+- **NeMo Guardrails rails/policies:** not yet deployed — Phase 3 implementation pending (see [ROADMAP.md](../ROADMAP.md)). The architectural decision (TrustyAI path, not standalone sidecar) remains Accepted.
+
 ## References
 
 - [TrustyAI on RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/serving_models/serving-large-models_serving-large-models#about-trustyai-operator)

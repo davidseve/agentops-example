@@ -23,6 +23,16 @@
 
 set -euo pipefail
 
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Token-efficient wrapper (see ~/.cursor/skills/long-running-scripts and ~/.claude/skills/long-running-scripts).
+if [[ -f "${SCRIPT_DIR}/lib/agent-run.sh" && "${INSTALL_OPENSHELL_AGENT_RUN:-}" != "1" ]]; then
+  # shellcheck source=scripts/lib/agent-run.sh
+  source "${SCRIPT_DIR}/lib/agent-run.sh"
+  agent_run "install-openshell" env INSTALL_OPENSHELL_AGENT_RUN=1 "$0" "$@"
+  exit $?
+fi
+
 readonly SCRIPT_NAME="install-openshell"
 readonly OPENSHELL_INSTALL_URL="https://raw.githubusercontent.com/NVIDIA/OpenShell/main/install.sh"
 readonly LOCAL_GATEWAY_URL="${LOCAL_GATEWAY_URL:-https://127.0.0.1:17670}"

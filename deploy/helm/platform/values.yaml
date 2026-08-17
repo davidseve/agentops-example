@@ -14,12 +14,15 @@ datasciencecluster:
           permitCodeExecution: deny
           permitOnline: allow
     kserve:
+      # Not consumed directly by this project yet, but needed for TrustyAI's
+      # eval/lmeval readiness (InferenceServices CRD) — see trustyai above
+      # and docs/ROADMAP.md.
       managementState: Managed
       rawDeploymentServiceConfig: Headed
       wva:
         managementState: Removed
     modelsAsService:
-      managementState: Managed
+      managementState: Removed
     aipipelines:
       managementState: Removed
     feastoperator:

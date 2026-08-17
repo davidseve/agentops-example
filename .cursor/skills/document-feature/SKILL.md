@@ -49,6 +49,7 @@ Documentation progress:
 | Feature kind | Primary location | Also update |
 |---|---|---|
 | Install / deploy procedure | `docs/<component>-installation.md` or `docs/<component>/` | `scripts/`, `deploy/` |
+| Agent Sandbox + OpenShell architecture / launch flow | `docs/AGENT-SANDBOX-AND-OPENSHELL.md` (use `sync-agent-sandbox-doc` skill) | `openshell-installation.md`, relevant ADRs |
 | Architecture decision | `docs/adr/NNNN-slug.md` (use `adr` skill) | `docs/adr/README.md`, `docs/stack-decisions.md`, `docs/architecture.md` when it exists |
 | Demo narrative step | `docs/demo-script.md` | — |
 | Agent-operable workflow | `.cursor/skills/<name>/SKILL.md` | `AGENTS.md` § Cursor Skills |

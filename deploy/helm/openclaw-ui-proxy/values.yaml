@@ -1,0 +1,15 @@
+# Apps domain passed at deploy time (--set appsDomain=...)
+appsDomain: ""
+
+# Namespace where OpenShell is deployed
+namespace: openshell
+
+# Sandbox name used in the public Control UI hostname
+# ({sandboxName}--openclaw-ui.<appsDomain>).
+sandboxName: openclaw-gw
+
+# OpenShell gateway Service name (= Helm release name of deploy/helm/openshell).
+openshellServiceName: openshell
+
+# UBI nginx image (OpenShift-compatible, non-root)
+image: registry.access.redhat.com/ubi9/nginx-124:latest

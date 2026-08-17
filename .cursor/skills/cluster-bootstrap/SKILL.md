@@ -17,11 +17,21 @@ Deploy all platform components to a fresh OpenShift cluster for the AgentOps dem
 
 ## Deploy
 
+**Recommended (full stack + verify):**
+
 ```bash
-cd deploy && make deploy-all
+./scripts/cluster-lifecycle.sh preflight   # once per cluster
+./scripts/cluster-lifecycle.sh full        # deploy + verify (one-shot)
 ```
 
-`make deploy-all` is the single entry point. It installs charts in order and **blocks
+**Platform only (RHOAI layer):**
+
+```bash
+cd deploy && make deploy-all
+# or token-efficient: make deploy-all-quiet
+```
+
+`make deploy-all` is the single entry point for the RHOAI layer. It installs charts in order and **blocks
 between steps** until OpenShift dependencies are ready. Do not run raw `helm` commands
 for the happy path — the Makefile handles synchronization.
 
@@ -29,7 +39,8 @@ for the happy path — the Makefile handles synchronization.
 
 | Step | Make target | Waits before proceeding |
 |------|-------------|-------------------------|
-| 1 | `wait-operators` → `deploy-platform` | CSV Succeeded, operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, `datascienceclusters` CRD |
+| 1 | `wait-operators` → `deploy-platform` | CSV Succeeded (auto-approves Manual InstallPlan), operator pods Ready, DSCI Ready, `redhat-ods-applications` namespace, `datascienceclusters` CRD |
+| 1b | (inside `deploy-platform`) | Dashboard CRD / adopt-dashboard-config (after DSC enables Dashboard) |
 | 2 | `deploy-database` | — |
 | 3 | `wait-mlflow-crd` → `deploy-mlflow` | `mlflows.mlflow.opendatahub.io` CRD |
 | 4 | `wait-evalhub-crd` → `deploy-evalhub` | `evalhubs.trustyai.opendatahub.io` CRD |
@@ -37,6 +48,15 @@ for the happy path — the Makefile handles synchronization.
 These waits are **required** for a reliable install. Without them, Helm fails with
 missing CRDs or unprocessed finalizers. The skill does not duplicate this logic —
 it relies on the Makefile.
+
+### Race condition handling (ADR-0008)
+
+The `deploy-platform` target handles three documented races:
+1. **LlamaStack before Dashboard**: On fresh clusters, applies DSC with dashboard=Removed first,
+   waits for LlamaStackOperatorReady, then re-applies with dashboard=Managed.
+2. **Dashboard CRD race**: Waits for `OdhDashboardConfig` CRD registration after enabling dashboard.
+3. **Helm ownership adoption**: The operator auto-creates `odh-dashboard-config` without Helm metadata.
+   The Makefile adopts it before the second `helm upgrade` attempt.
 
 ## Validate
 
@@ -89,12 +109,13 @@ MLflow, Dashboard) are all functional.
 ## Troubleshooting
 
 Only use these steps when `make deploy-all` or `make validate` fails. Do not run them
-as part of the normal flow — the Makefile waits already cover CSV, DSCI, and CRD
-synchronization.
+as part of the normal flow — the Makefile waits already cover CSV, DSCI, CRD
+synchronization, and Dashboard race conditions automatically.
 
 ### Platform: OdhDashboardConfig conflict
 
-If the operator auto-created `odh-dashboard-config` before Helm could manage it:
+Handled automatically by `make deploy-platform` (adopt-dashboard-config target).
+If it still fails after a partial/interrupted deploy:
 
 ```bash
 oc annotate odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
@@ -135,6 +156,16 @@ make validate
 
 Do **not** call bare `helm upgrade --install` without the corresponding `make` target —
 you will skip the required waits.
+
+## Token-efficient execution
+
+Follow global skill **`long-running-scripts`**.
+
+- **Full stack:** `./scripts/cluster-lifecycle.sh full` (writes `.agent-status/cluster-lifecycle-full.json`)
+- **Platform only:** `make deploy-all-quiet` (writes `.agent-status/deploy-all.json`) or one long `make deploy-all`
+- **No polling** during `oc wait` / operator reconciliation
+- Quick check: `./scripts/cluster-lifecycle.sh verify --smoke` or `make validate-smoke`
+- Full check: `./scripts/cluster-lifecycle.sh verify` or `make validate` once at the end
 
 ## Notes
 

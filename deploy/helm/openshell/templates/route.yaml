@@ -1,0 +1,20 @@
+{{- if .Values.route.enabled }}
+{{- if not .Values.global.appsDomain }}
+{{- fail "global.appsDomain is required (e.g., apps.ocp.sandbox701.opentlc.com)" }}
+{{- end }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.route.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  to:
+    kind: Service
+    # Must match the subchart Service (.Release.Name), not a literal
+    # "openshell" -- keeps this working under any release name.
+    name: {{ include "agentops-openshell.fullname" . }}
+  port:
+    targetPort: {{ .Values.route.targetPort }}
+  tls:
+    termination: {{ .Values.route.tlsTermination }}
+{{- end }}

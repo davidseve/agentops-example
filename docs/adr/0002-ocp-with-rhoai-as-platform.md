@@ -40,7 +40,7 @@ Red Hat OpenShift AI (RHOAI) is an add-on to OpenShift Container Platform (OCP) 
 
 Use OpenShift Container Platform as the base infrastructure with Red Hat OpenShift AI (RHOAI) 3.x as the AI platform add-on. OCP provides the enterprise Kubernetes foundation (security, networking, storage, operator lifecycle), and RHOAI adds the AI-specific layer (MLflow, TrustyAI, model serving) managed through the DataScienceCluster CRD.
 
-This is the foundation that every other ADR builds upon: OpenShell ([ADR-0003](0003-openshell-deployment-on-openshift.md)), guardrails ([ADR-0004](0004-nemo-guardrails-via-trustyai.md)), and version pinning ([ADR-0006](0006-explicit-version-pinning.md)) all depend on OCP + RHOAI being the target platform.
+This is the foundation that every other ADR builds upon: OpenShell ([ADR-0003](0003-openshell-deployment-on-openshift.md)), guardrails ([ADR-0004](0004-nemo-guardrails-via-trustyai.md)), version pinning ([ADR-0006](0006-explicit-version-pinning.md)), RHOAI component selection ([ADR-0008](0008-rhoai-dsc-component-selection.md)), MLflow tracing ([ADR-0010](0010-mlflow-tracing-otel.md)), and OpenClaw UI auth ([ADR-0011](0011-openclaw-ui-auth-nginx-bridge-password.md)) all depend on OCP + RHOAI being the target platform.
 
 ## Consequences
 
@@ -72,11 +72,16 @@ The "Setup" segment (1-2 min) begins by showing the deployed OCP cluster with RH
 
 Cluster bootstrap validated on demo.redhat.com. Full deploy, validate, and teardown procedure documented in [cluster-bootstrap.md](../cluster-bootstrap.md).
 
+**Operational note (2026-08-14):** shared-cluster coexistence guards for RHOAI/MLflow were removed from `deploy/Makefile`. The supported workflow when switching between independent stacks on the same cluster is a full teardown (`make -C deploy undeploy-everything` / cluster-cleanup) before deploying a different project's stack — not side-by-side coexistence with divergent DSC component sets. See [ROADMAP.md](../ROADMAP.md) Phase 1.5.
+
 ## Related Decisions
 
 - [ADR-0003: OpenShell on OpenShift](0003-openshell-deployment-on-openshift.md) — depends on OCP SCCs and Kubernetes driver
 - [ADR-0004: NeMo Guardrails via TrustyAI](0004-nemo-guardrails-via-trustyai.md) — depends on RHOAI TrustyAI operator
 - [ADR-0006: Explicit version pinning](0006-explicit-version-pinning.md) — RHOAI operator CSV is pinned
+- [ADR-0008: RHOAI DSC component selection](0008-rhoai-dsc-component-selection.md) — depends on RHOAI's DataScienceCluster CRD
+- [ADR-0010: MLflow tracing via mlflow-openclaw](0010-mlflow-tracing-otel.md) — depends on RHOAI's MLflow operator
+- [ADR-0011: OpenClaw UI auth](0011-openclaw-ui-auth-nginx-bridge-password.md) — browser UI via nginx mTLS bridge + OpenClaw password (OCP OAuth no longer used for the Control UI)
 
 ## References
 

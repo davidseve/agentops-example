@@ -140,7 +140,7 @@ description: >-
 | Local install validated | `scripts/install-openshell.sh`, `scripts/uninstall-openshell.sh` |
 | Guide written | `docs/openshell-installation.md` (local + OpenShift Helm sections) |
 | Skills | `openshell-local-install`, `openshell-local-cleanup`, `openshell-cluster-install`, `openshell-cluster-cleanup` |
-| Cluster path validated | Helm `0.0.80`, TLS + certgen hook, OpenShift SCC overrides |
+| Cluster path validated | Helm `0.0.83`, TLS + certgen hook, OpenShift SCC overrides |
 | Secret bootstrap documented | Links to upstream README; troubleshooting for `openshell-jwt-keys` |
 | ROADMAP | `Validate OpenShell deployment...` marked `[x]` |
 | AGENTS.md / README | Cross-links and References |

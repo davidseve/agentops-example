@@ -33,17 +33,17 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  USER LAYER                                                  │
-│  UI (TBD) → interacts with the agent                        │
+│  OpenClaw Control UI (openclaw-ui-proxy)                    │
 ├─────────────────────────────────────────────────────────────┤
 │  AGENT LAYER (BYOA - customer chooses)                      │
-│  Agent Framework/Harness (TBD) + NeMo Guardrails            │
+│  OpenClaw harness (in sandbox) + NeMo Guardrails            │
 ├─────────────────────────────────────────────────────────────┤
 │  PLATFORM LAYER (Red Hat owns)                              │
 │  MLflow (tracing + prompt registry)                         │
 │  OpenShell (sandbox)   │ MCP Gateway (nice-to-have)         │
 ├─────────────────────────────────────────────────────────────┤
 │  INFERENCE LAYER                                            │
-│  MaaS Externo (model serving)                               │
+│  OpenShell inference.local → MaaS (model serving)           │
 ├─────────────────────────────────────────────────────────────┤
 │  INFRASTRUCTURE                                             │
 │  OpenShift + RHOAI 3.x (demo.redhat.com / RHPDS)            │
@@ -58,26 +58,17 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 |---|---|---|
 | Infrastructure | OpenShift (demo.redhat.com/RHPDS) | Container platform |
 | AI Platform | RHOAI 3.x (pinned version) | ML/AI platform on OpenShift |
-| Model Serving | MaaS externo | LLM inference (external endpoint) |
-| LLM | TBD (best available with tool-calling) | Agent brain |
+| Model Serving | External MaaS via OpenShell inference router | LLM inference (`inference.local` → MaaS) |
+| LLM | External MaaS | Default model `claude-sonnet-4-6` (override via `INFERENCE_MODEL`); requires tool-calling |
 | Guardrails | NeMo Guardrails via TrustyAI | Deployed through TrustyAI operator on OCP |
 | Sandbox | OpenShell | Agent execution isolation, zero-trust sandboxing |
-| Observability | MLflow (tracing) | OpenTelemetry-based agent execution traces |
+| Observability | MLflow (tracing via mlflow-openclaw plugin) | Full Request/Response content in RHOAI MLflow — see [ADR-0010](docs/adr/0010-mlflow-tracing-otel.md) |
 | Prompt Management | MLflow (prompt registry) | Versioned prompts, A/B testing |
-| Agent | TBD framework or harness | See options below |
+| Agent | OpenClaw harness | Runs inside Agent Sandbox — see [AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) |
 
-### Agent Framework/Harness Options (not decided yet)
+### Agent harness (demo choice)
 
-Frameworks (code-level):
-- LangGraph
-- CrewAI
-- Google ADK
-- AWS Strands
-
-Agent Harnesses (pre-built agents):
-- OpenClaw
-- NemoClaw
-- Hermes
+This demo uses **OpenClaw** inside an OpenShell sandbox (validated in Phase 1.5/2 — see [ROADMAP.md](docs/ROADMAP.md)). The platform remains BYOA: customers can swap in LangGraph, CrewAI, or another harness without changing the RHOAI/OpenShell/MLflow stack underneath.
 
 ### NICE-TO-HAVE (if time permits)
 
@@ -95,11 +86,12 @@ This maps demo features to specific Red Hat products/components:
 |---|---|---|
 | Container Platform | OpenShift Container Platform | OCP 4.x |
 | AI Platform | Red Hat OpenShift AI | RHOAI 3.x Operator (pinned version) |
-| Agent Tracing | RHOAI - MLflow | MLflow + OpenTelemetry |
+| Agent Tracing | RHOAI - MLflow | MLflow via mlflow-openclaw plugin ([ADR-0010](docs/adr/0010-mlflow-tracing-otel.md)) |
 | Prompt Registry | RHOAI - MLflow | MLflow Prompt Registry |
 | Guardrails | NeMo Guardrails (NVIDIA partnership) | Deployed via TrustyAI operator on OCP |
+| Agent harness | OpenClaw (BYOA) | Runs in OpenShell sandbox via `launch-openclaw.sh` |
 | Agent Sandboxing | OpenShell | Sandboxed execution environment |
-| Model Serving | MaaS (external) | External model endpoint |
+| Model Serving | MaaS via OpenShell inference router | inference.local → MaaS external endpoint |
 | Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
 | Cost Governance | MaaS Dashboard | Token billing/showback (nice-to-have) |
 
@@ -122,8 +114,9 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `cluster-cleanup` | Remove RHOAI platform stack from OpenShift — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | `openshell-local-install` | Install OpenShell CLI + local gateway on macOS/Linux — see [openshell-installation.md](docs/openshell-installation.md) |
 | `openshell-local-cleanup` | Uninstall local OpenShell stack on macOS/Linux |
-| `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy openshell-install` |
+| `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy deploy-openshell` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
+| `sync-agent-sandbox-doc` | Keep [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) in sync when sandbox/openshell/launch paths change |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
 | `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/); required before reversing Accepted decisions |
 | `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure |
@@ -147,7 +140,7 @@ agentops-example/
 │   ├── architecture.md            # Detailed architecture (Phase 2)
 │   └── demo-script.md             # Step-by-step demo script (Phase 4)
 ├── deploy/
-│   ├── Makefile               # make deploy-all, validate, openshell-install, …
+│   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
 │   └── openshift/             # OpenShift-specific manifests (non-Helm)
@@ -159,9 +152,14 @@ agentops-example/
 │   ├── health-check.sh        # Pre-demo health verification
 │   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
 └── scripts/
+    ├── cluster-lifecycle.sh           # deploy / verify / full / teardown / status / preflight
+    ├── verify.sh                      # Layered validation (Makefile + Playwright); .verify-status.json
+    ├── common.sh                      # Shared helpers (APPS_DOMAIN, secrets, logging)
     ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
     ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
+    ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
     ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
+    ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
     ├── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
     ├── warm-up.sh             # Pre-warm model
     └── demo-reset.sh          # Reset demo state
@@ -186,6 +184,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **Target platform**: RHOAI 3.x on demo.redhat.com - everything must be deployable there
 - **Pinned versions**: All operators and components use explicit version pinning (see [ADR-0006](docs/adr/0006-explicit-version-pinning.md)). No automatic updates. Version bumps are deliberate and tested.
 - **No secrets in repo**: This is a public repo. Use environment variables, sealed secrets, or external secret management. Enforced by `.cursor/rules/no-secrets.mdc` and the `no-secrets` skill (scan before commit/PR).
+- **Browser UI auth**: OpenClaw `gateway.auth.mode: password` behind the nginx mTLS bridge (`deploy-openclaw-ui-proxy`). Do not reintroduce oauth-proxy / `trusted-proxy` without updating [ADR-0011](docs/adr/0011-openclaw-ui-auth-nginx-bridge-password.md).
 - **English**: All code, comments, docs, and demo content in English
 - **GitOps**: All configuration as code, no manual cluster changes
 - **Idempotent**: Deploy/teardown must be repeatable with a single command
@@ -196,9 +195,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 ## Open Questions
 
 - MaaS endpoints available in demo.redhat.com (models, rate limits, auth)
-- Which agent framework/harness to use
 - What the agent's actual use case will be
-- Initial pinned version manifest (CSV versions for all operators)
 
 ## References
 
