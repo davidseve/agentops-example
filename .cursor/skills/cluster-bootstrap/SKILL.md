@@ -102,9 +102,10 @@ for `make validate`.
 | MLflow | Available, Route accessible |
 | EvalHub | Ready |
 
-Note: DSC may show "Not Ready" because `modelsAsService` requires a Gateway we don't deploy.
-`make validate` treats this as a WARN, not a failure. Individual components (TrustyAI,
-MLflow, Dashboard) are all functional.
+`modelsAsService` stays **Removed** in the DataScienceCluster — this demo routes LLM
+inference through external MaaS via OpenShell (`inference.local`), not RHOAI's native
+MaaS gateway. `make validate` requires DataScienceCluster phase **Ready**; if it fails,
+wait 60s and re-run (components may still be reconciling).
 
 ## Troubleshooting
 
@@ -170,6 +171,6 @@ Follow global skill **`long-running-scripts`**.
 ## Notes
 
 - The RHOAI operator auto-creates DSCInitialization on startup (no COO needed)
-- TrustyAI requires `kserve` and `modelsAsService` to be Managed (CRD dependency)
+- TrustyAI requires `kserve: Managed` (`InferenceServices` CRD). `modelsAsService` stays `Removed` — external MaaS via OpenShell (see ADR-0008)
 - MLflow requires the database to be ready first (dependency in Makefile)
 - EvalHub is optional and can be skipped with `make deploy-mlflow` instead of `make deploy-all`
