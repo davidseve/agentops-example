@@ -221,9 +221,8 @@ The platform chart (`helm/platform`) manages these components as **Managed**:
 | `mlflowoperator` | MLflow operator |
 | `trustyai` | NeMo Guardrails path |
 | `kserve` | Model serving (TrustyAI dependency) |
-| `modelsAsService` | MaaS integration (gateway not deployed in this demo) |
 
-Components explicitly set to **Removed** to reduce cluster footprint: workbenches, model registry, Ray, trainer, feast, kueue, spark, AI pipelines.
+Components explicitly set to **Removed** to reduce cluster footprint: `modelsAsService` (demo uses external MaaS via OpenShell, not RHOAI's native MaaS gateway), workbenches, model registry, Ray, trainer, feast, kueue, spark, AI pipelines.
 
 > **Note**: `make validate` requires DataScienceCluster phase **Ready**. If validation fails on DSC phase, wait 60s and re-run — components may still be reconciling after the Helm install completes.
 

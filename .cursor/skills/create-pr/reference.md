@@ -18,13 +18,13 @@ Extracts and adapts the RHOAI installation from `rhoai-platform-ops`, keeping on
 | Chart | Purpose |
 |-------|---------|
 | `operators` | RHOAI 3.4 operator subscription, namespace, OperatorGroup |
-| `platform` | DataScienceCluster (MLflow, TrustyAI, KServe, MaaS) + Dashboard config |
+| `platform` | DataScienceCluster (MLflow, TrustyAI, KServe) + Dashboard config |
 | `database` | Shared PostgreSQL 16 with init scripts for `mlflow` and `evalhub` databases |
 | `mlflow` | MLflow CR, Route, DB secret, DNS fix workaround |
 | `evalhub` | EvalHub CR, DB secret, model-auth Job (prepared, optional) |
 
 Key findings during testing:
-- TrustyAI requires `kserve: Managed` AND `modelsAsService: Managed` in the DSC
+- TrustyAI requires `kserve: Managed` in the DSC (`InferenceServices` CRD). Early PR testing suggested `modelsAsService: Managed` was also required; later validation (2026-08-14) confirmed `TrustyAIReady` with `modelsAsService: Removed` — see ADR-0008
 - `OdhDashboardConfig` needs conditional rendering (`.Capabilities.APIVersions.Has`) due to CRD timing
 - `mlflow` field in Dashboard config is deprecated and must not be set
 
