@@ -18,6 +18,7 @@
 #
 # Usage: ./scripts/launch-openclaw.sh
 # Prereqs: OpenShell deployed (make -C deploy deploy-openshell), secrets/secrets.env
+#   (MAAS_API_KEY, OPENCLAW_GATEWAY_PASSWORD; optional INFERENCE_MODEL, MAAS_BASE_URL)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
