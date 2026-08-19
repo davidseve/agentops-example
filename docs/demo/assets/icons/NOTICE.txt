@@ -1,0 +1,34 @@
+Component marks vendored for the AgentOps demo diagram (offline playback).
+Not Red Hat trademarks except where noted. Use does not imply endorsement.
+
+OpenClaw mascot
+  openclaw.svg
+  https://github.com/openclaw/openclaw/blob/main/ui/public/favicon.svg
+
+NVIDIA OpenShell mark
+  openshell-mark.svg
+  https://github.com/NVIDIA/OpenShell/blob/main/docs/brand/assets/openshell-mark.svg
+
+NVIDIA symbol (NeMo Guardrails)
+  nvidia.svg
+  https://github.com/NVIDIA/OpenShell/blob/main/fern/assets/NVIDIA_symbol.svg
+
+Red Hat OpenShift / OpenShift AI technology icons
+  openshift.svg, openshift-ai.svg
+  https://github.com/RedHatInsights/frontend-assets/tree/master/src/technology-icons
+  Red Hat brand: https://www.redhat.com/en/about/brand/standards/icons/technology-icons
+
+Red Hat AI experience icon (LLM node)
+  ai-experience.svg
+  Same frontend-assets set (rh-ui-icon-ai-experience-fill.svg)
+
+MLflow icon
+  mlflow.svg
+  https://github.com/mlflow/mlflow/blob/master/assets/icon.svg
+
+Landlock logo (CC BY-SA 4.0, Mickaël Salaün)
+  landlock.svg
+  https://github.com/landlock-lsm/landlock-logo
+
+user.svg, sandbox.svg, globe.svg
+  Original marks for this demo (not vendor logos)
