@@ -123,9 +123,21 @@ require_cmd() {
 
 export_playwright_env() {
   detect_apps_domain || return 1
+  if [[ -f "$SECRETS_FILE" ]]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "$SECRETS_FILE"
+    set +a
+  fi
   export OPENCLAW_BASE_URL="https://${SANDBOX_NAME}--openclaw-ui.${APPS_DOMAIN}"
   export MLFLOW_BASE_URL="https://rh-ai.${APPS_DOMAIN}/mlflow"
   export MLFLOW_WORKSPACE="$NAMESPACE"
+  if [[ -n "${OCP_TEST_USERNAME:-}" ]]; then
+    export OCP_TEST_USERNAME
+  fi
+  if [[ -n "${OCP_TEST_PASSWORD:-}" ]]; then
+    export OCP_TEST_PASSWORD
+  fi
   if oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" &>/dev/null; then
     export MLFLOW_AUTH_TOKEN
     MLFLOW_AUTH_TOKEN="$(oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" \
@@ -136,6 +148,64 @@ export_playwright_env() {
   info "OPENCLAW_BASE_URL=$OPENCLAW_BASE_URL"
   info "MLFLOW_BASE_URL=$MLFLOW_BASE_URL"
   info "MLFLOW_WORKSPACE=$MLFLOW_WORKSPACE"
+  resolve_mlflow_experiment_id || warn "MLFLOW_EXPERIMENT_ID not resolved — mlflow-ui-tests may fail"
+}
+
+# Resolve openclaw-tracing experiment id for the target workspace (ids are per-workspace).
+resolve_mlflow_experiment_id() {
+  local experiment_name="${MLFLOW_EXPERIMENT_NAME:-openclaw-tracing}"
+  local workspace="${MLFLOW_WORKSPACE:-$NAMESPACE}"
+  local rhoai_ns="${RHOAI_NS:-redhat-ods-applications}"
+  local mlflow_url="https://mlflow.${rhoai_ns}.svc:8443"
+
+  if [[ -n "${MLFLOW_EXPERIMENT_ID:-}" && "${MLFLOW_EXPERIMENT_ID}" != "__RESOLVE__" ]]; then
+    info "MLFLOW_EXPERIMENT_ID=${MLFLOW_EXPERIMENT_ID}"
+    return 0
+  fi
+
+  if ! oc -n "$NAMESPACE" get pod "$SANDBOX_NAME" &>/dev/null; then
+    warn "Sandbox pod ${SANDBOX_NAME} not found in ${NAMESPACE}"
+    return 1
+  fi
+  if ! oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" &>/dev/null; then
+    warn "Secret ${SANDBOX_SA_NAME}-mlflow-token not found"
+    return 1
+  fi
+
+  local token exp_json exp_id
+  token="$(oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" \
+    -o jsonpath='{.data.token}' | base64 -d)"
+  exp_json="$(oc -n "$NAMESPACE" exec "$SANDBOX_NAME" -c agent -- \
+    bash -c "curl -sk '${mlflow_url}/api/2.0/mlflow/experiments/get-by-name?experiment_name=${experiment_name}' \
+      -H 'Authorization: Bearer ${token}' \
+      -H 'X-MLFLOW-WORKSPACE: ${workspace}'" 2>/dev/null || true)"
+  exp_id="$(echo "$exp_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('experiment',{}).get('experiment_id',''))" 2>/dev/null || true)"
+
+  if [[ -z "$exp_id" ]]; then
+    warn "Experiment '${experiment_name}' not found in workspace ${workspace}"
+    return 1
+  fi
+
+  export MLFLOW_EXPERIMENT_ID="$exp_id"
+  info "Resolved MLflow experiment ${experiment_name} → id=${MLFLOW_EXPERIMENT_ID}"
+  return 0
+}
+
+warn_playwright_mlflow_oauth_missing() {
+  local ocp_username="${OCP_TEST_USERNAME:-}"
+  local ocp_password="${OCP_TEST_PASSWORD:-}"
+  if [[ -f "$SECRETS_FILE" ]]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "$SECRETS_FILE"
+    set +a
+    ocp_username="${OCP_TEST_USERNAME:-}"
+    ocp_password="${OCP_TEST_PASSWORD:-}"
+  fi
+  if [[ -z "$ocp_username" || -z "$ocp_password" ]]; then
+    warn "OCP_TEST_USERNAME and OCP_TEST_PASSWORD must be set in secrets/secrets.env for mlflow-ui-tests"
+    warn "Use the OpenShift web login credentials for the MLflow UI route"
+  fi
 }
 
 ensure_playwright_deps() {
