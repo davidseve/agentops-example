@@ -1,20 +1,12 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { requireMlflowExperimentId, selectMlflowWorkspace } from './mlflow-helpers';
 
-const WORKSPACE = process.env.MLFLOW_WORKSPACE || 'openshell';
-const EXPERIMENT_ID = process.env.MLFLOW_EXPERIMENT_ID || '1';
-
-async function selectWorkspace(page: Page) {
-  await page.goto('./');
-  const workspace = page.getByText(WORKSPACE, { exact: true });
-  await expect(workspace).toBeVisible({ timeout: 15_000 });
-  await workspace.click();
-  await page.waitForTimeout(1500);
-}
+const EXPERIMENT_ID = requireMlflowExperimentId();
 
 test.describe('RHOAI MLflow UI', () => {
 
   test.beforeEach(async ({ page }) => {
-    await selectWorkspace(page);
+    await selectMlflowWorkspace(page);
   });
 
   test('loads with openclaw-tracing experiment', async ({ page }) => {

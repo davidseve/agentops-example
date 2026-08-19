@@ -18,16 +18,21 @@ if (process.env.MLFLOW_WORKSPACE) {
 const STORAGE_STATE = path.join(__dirname, 'test-results', '.auth', 'state.json');
 const MLFLOW_STORAGE_STATE = path.join(__dirname, 'test-results', '.auth', 'mlflow-state.json');
 
+// Chat-heavy suites share OpenClaw Main Session — keep workers: 1 unless overridden.
+// PLAYWRIGHT_WORKERS=2 can overlap auth-setup with mlflow-auth-setup (different hosts).
+const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? 1);
+
 export default defineConfig({
   testDir: '.',
   outputDir: './test-results',
   timeout: 60_000,
   retries: 1,
-  workers: 1,
+  workers,
   projects: [
     {
       name: 'auth-setup',
-      testMatch: /auth\.setup\.ts/,
+      // Must not match mlflow-auth.setup.ts (substring "auth.setup.ts").
+      testMatch: /(?:^|\/)auth\.setup\.ts$/,
       use: { baseURL },
     },
     {

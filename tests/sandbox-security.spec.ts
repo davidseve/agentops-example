@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { connectControlUi } from './helpers';
 
-test.describe.configure({ timeout: 90_000 });
+test.describe.configure({ mode: 'serial', timeout: 90_000 });
 
 const REFUSAL_PATTERNS = [
   'won\'t run', 'won\'t execute', 'not running', 'refuse', 'i can\'t do that',

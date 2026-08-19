@@ -21,6 +21,8 @@ async function gotoControlUi(page: Page) {
   await connectControlUi(page, '/', 30_000);
 }
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('OpenClaw Control UI', () => {
 
   test('loads and shows chat interface', async ({ page }) => {

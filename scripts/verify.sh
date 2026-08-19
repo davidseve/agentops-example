@@ -100,6 +100,7 @@ if [[ "$VERIFY_PROFILE" == "full" && "$SKIP_E2E" != "1" ]]; then
   step "Layer 5: Playwright E2E (Control UI + security + MLflow UI)"
   ensure_playwright_deps
   export_playwright_env || warn "Playwright env incomplete — E2E may fail"
+  warn_playwright_mlflow_oauth_missing
 
   if run_make test-e2e; then
     pass "make test-e2e"

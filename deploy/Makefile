@@ -479,22 +479,24 @@ validate-openclaw:
 
 validate-traces:
 	@echo "=== MLflow Trace Validation ==="
-	@MLFLOW_TOKEN=$$(oc -n $(OPENSHELL_NAMESPACE) get secret $(SANDBOX_SA_NAME)-mlflow-token -o jsonpath='{.data.token}' | base64 -d); \
-	EXPERIMENT_ID=$${MLFLOW_EXPERIMENT_ID:-1}; \
-	TRACES=$$(oc -n $(OPENSHELL_NAMESPACE) exec $(SANDBOX_NAME) -c agent -- \
-		bash -c "curl -sk 'https://mlflow.redhat-ods-applications.svc:8443/api/2.0/mlflow/traces?experiment_ids=$${EXPERIMENT_ID}&max_results=1' \
-		-H 'Authorization: Bearer $${MLFLOW_TOKEN}' \
-		-H 'X-MLFLOW-WORKSPACE: $(OPENSHELL_NAMESPACE)'" 2>/dev/null); \
-	COUNT=$$(echo "$$TRACES" | python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d.get('traces',[])))" 2>/dev/null); \
-	if [ "$$COUNT" -gt 0 ] 2>/dev/null; then \
-		echo "OK: MLflow has traces in experiment openclaw-tracing (id=$$EXPERIMENT_ID, found $$COUNT)"; \
-	else \
-		echo "FAIL: No traces found in MLflow experiment openclaw-tracing (id=$$EXPERIMENT_ID)"; \
-		echo "  Response: $$TRACES"; \
-		echo "  Ensure gateway is running with NODE_TLS_REJECT_UNAUTHORIZED=0"; \
-		echo "  and plugins.entries.mlflow-openclaw.config.experimentId matches this workspace"; \
-		exit 1; \
-	fi
+	@bash -ec 'source $(ROOT_DIR)/scripts/common.sh; \
+		[[ -f $(ROOT_DIR)/secrets/secrets.env ]] && set -a && source $(ROOT_DIR)/secrets/secrets.env && set +a; \
+		resolve_mlflow_experiment_id || { echo "FAIL: could not resolve MLflow experiment id"; exit 1; }; \
+		MLFLOW_TOKEN=$$(oc -n $(OPENSHELL_NAMESPACE) get secret $(SANDBOX_SA_NAME)-mlflow-token -o jsonpath='"'"'{.data.token}'"'"' | base64 -d); \
+		TRACES=$$(oc -n $(OPENSHELL_NAMESPACE) exec $(SANDBOX_NAME) -c agent -- \
+			bash -c "curl -sk '"'"'https://mlflow.redhat-ods-applications.svc:8443/api/2.0/mlflow/traces?experiment_ids=$${MLFLOW_EXPERIMENT_ID}&max_results=1'"'"' \
+			-H '"'"'Authorization: Bearer $${MLFLOW_TOKEN}'"'"' \
+			-H '"'"'X-MLFLOW-WORKSPACE: $(OPENSHELL_NAMESPACE)'"'"'" 2>/dev/null); \
+		COUNT=$$(echo "$$TRACES" | python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d.get('"'"'traces'"'"',[])))" 2>/dev/null); \
+		if [ "$$COUNT" -gt 0 ] 2>/dev/null; then \
+			echo "OK: MLflow has traces in experiment openclaw-tracing (id=$$MLFLOW_EXPERIMENT_ID, found $$COUNT)"; \
+		else \
+			echo "FAIL: No traces found in MLflow experiment openclaw-tracing (id=$$MLFLOW_EXPERIMENT_ID)"; \
+			echo "  Response: $$TRACES"; \
+			echo "  Ensure gateway is running with NODE_TLS_REJECT_UNAUTHORIZED=0"; \
+			echo "  and plugins.entries.mlflow-openclaw.config.experimentId matches this workspace"; \
+			exit 1; \
+		fi'
 
 validate-security:
 	@echo "=== Sandbox Policy Enforcement ==="
@@ -523,21 +525,22 @@ validate-security:
 #
 # Prereqs: cd tests && npm install && npx playwright install chromium
 # Env vars: OPENCLAW_BASE_URL, MLFLOW_BASE_URL, MLFLOW_AUTH_TOKEN, MLFLOW_WORKSPACE
+#           MLFLOW_EXPERIMENT_ID (auto-resolved by scripts/run-playwright-tests.sh)
+#           OCP_TEST_USERNAME, OCP_TEST_PASSWORD (OpenShift OAuth for MLflow UI tests)
+#           PLAYWRIGHT_WORKERS (default 1; optional 2 for parallel auth setups)
+# APPS_DOMAIN is auto-detected when unset (same as verify.sh / scripts/common.sh).
 
 test-e2e:
-	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
-	cd $(ROOT_DIR)/tests && npx playwright test
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh
 
 test-ui:
-	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
-	cd $(ROOT_DIR)/tests && npx playwright test openclaw-ui.spec.ts
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh openclaw-ui.spec.ts
 
 test-security:
-	@set -a; [ -f $(ROOT_DIR)/secrets/secrets.env ] && . $(ROOT_DIR)/secrets/secrets.env; set +a; \
-	cd $(ROOT_DIR)/tests && npx playwright test sandbox-security.spec.ts
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh sandbox-security.spec.ts
 
 test-mlflow:
-	cd $(ROOT_DIR)/tests && npx playwright test mlflow-ui.spec.ts
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh mlflow-ui.spec.ts
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,

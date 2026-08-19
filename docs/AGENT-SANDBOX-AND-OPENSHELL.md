@@ -583,10 +583,75 @@ make -C deploy validate-security
 
 ### Playwright E2E Tests
 
+Prereqs in `secrets/secrets.env`:
+
+| Variable | Used by |
+|---|---|
+| `OPENCLAW_GATEWAY_PASSWORD` | OpenClaw Control UI auth |
+| `OCP_TEST_USERNAME` / `OCP_TEST_PASSWORD` | OpenShift OAuth credentials for MLflow UI (`mlflow-ui-tests`) |
+
+Copy `secrets/secrets.template.env` to `secrets/secrets.env` and set the **username and password** for the OpenShift web login used by the MLflow UI route (`https://rh-ai.<APPS_DOMAIN>/mlflow` — the same credentials you use in a browser).
+
+`verify.sh` warns before Playwright if either OAuth variable is missing.
+
 ```bash
+make -C deploy test-e2e           # full suite
 make -C deploy test-security    # sandbox-security.spec.ts
 make -C deploy test-ui          # openclaw-ui.spec.ts (browser → gateway → model → traces)
+make -C deploy test-mlflow      # mlflow-ui.spec.ts
 ```
+
+#### Parallel execution
+
+Playwright worker count is controlled by `PLAYWRIGHT_WORKERS` (default **1** in [`tests/playwright.config.ts`](../tests/playwright.config.ts)). The default is intentional: most E2E tests share the OpenClaw Control UI **Main Session** and the external MaaS inference quota.
+
+| Setting | When to use |
+|---|---|
+| `PLAYWRIGHT_WORKERS=1` (default) | Stable runs — demo verify, CI, debugging flakes |
+| `PLAYWRIGHT_WORKERS=2` | Slight speed-up when auth setups can overlap (see below) |
+| `PLAYWRIGHT_WORKERS=3+` | Not recommended — session contention and MaaS rate limits |
+
+```bash
+# Default (stable)
+make -C deploy test-e2e
+
+# Optional: overlap independent auth projects
+PLAYWRIGHT_WORKERS=2 make -C deploy test-e2e
+```
+
+**What can run in parallel**
+
+Playwright projects and their dependencies:
+
+```
+auth-setup ──┬── ui-tests ──────┬── mlflow-ui-tests
+             │                  │
+mlflow-auth-setup ─────────────┘
+             │
+             └── security-tests
+```
+
+| Project | Parallel-safe with | Why |
+|---|---|---|
+| `auth-setup` | `mlflow-auth-setup` | Different URLs and OAuth flows |
+| `ui-tests` | — | Serial within project; shares Main Session chat + MaaS |
+| `security-tests` | — | Serial within project; same Main Session as UI chat tests |
+| `mlflow-ui-tests` | `security-tests` (after `ui-tests`) | Different host (`rh-ai` MLflow UI vs OpenClaw gateway) |
+
+**Serial constraints in code**
+
+- [`tests/openclaw-ui.spec.ts`](../tests/openclaw-ui.spec.ts) — `mode: 'serial'` (chat prompts must not overlap on Main Session)
+- [`tests/sandbox-security.spec.ts`](../tests/sandbox-security.spec.ts) — `mode: 'serial'` (same session; prompts go through the agent LLM)
+
+**Expected speed-up**
+
+Increasing workers saves roughly **30–60 seconds** (mostly overlapping OAuth setup and MLflow UI vs security). The bottleneck remains serial agent-chat tests in `security-tests` (~5–6 min). For a large reduction, each security test would need an isolated Control UI session (not implemented).
+
+**If tests flake with `PLAYWRIGHT_WORKERS>1`**
+
+- Drop back to `PLAYWRIGHT_WORKERS=1`
+- Watch for MaaS rate-limit banners in the Control UI
+- Watch for `Stop generating` instead of `Send` (another worker still using Main Session)
 
 ### Manual Inspection
 
