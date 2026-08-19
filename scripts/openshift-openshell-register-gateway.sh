@@ -19,6 +19,8 @@ MTLS_DIR="${OPENSHELL_CONFIG_DIR}/gateways/${GATEWAY_NAME}/mtls"
 STATUS_RETRIES="${STATUS_RETRIES:-40}"
 STATUS_SLEEP="${STATUS_SLEEP:-5}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 log()  { printf '==> %s\n' "$*"; }
 info() { printf '    %s\n' "$*"; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -51,31 +53,12 @@ if gateway_listed; then
 fi
 
 if [[ "${GATEWAY_ALREADY_REGISTERED}" != "true" ]] || ! openshell status &>/dev/null; then
-  log "Extracting mTLS client certificates → ${MTLS_DIR}"
-  # Wipe stale bundle first (e.g. leftover from a previous cluster CA).
-  rm -rf "${MTLS_DIR}"
-  mkdir -p "${MTLS_DIR}"
-  chmod 700 "${OPENSHELL_CONFIG_DIR}/gateways/${GATEWAY_NAME}" 2>/dev/null || true
-  chmod 700 "${MTLS_DIR}"
-
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "${tmp}"' EXIT
-  oc -n "${NAMESPACE}" get secret "${SECRET}" -o jsonpath='{.data.ca\.crt}'  | base64 -d > "${tmp}/ca.crt"
-  oc -n "${NAMESPACE}" get secret "${SECRET}" -o jsonpath='{.data.tls\.crt}' | base64 -d > "${tmp}/tls.crt"
-  oc -n "${NAMESPACE}" get secret "${SECRET}" -o jsonpath='{.data.tls\.key}' | base64 -d > "${tmp}/tls.key"
-  grep -q 'BEGIN CERTIFICATE' "${tmp}/ca.crt"  || die "ca.crt from ${SECRET} is not a PEM certificate"
-  grep -q 'BEGIN CERTIFICATE' "${tmp}/tls.crt" || die "tls.crt from ${SECRET} is not a PEM certificate"
-  grep -q 'BEGIN .*PRIVATE KEY' "${tmp}/tls.key" || die "tls.key from ${SECRET} is not a PEM private key"
-  # Place certs *before* gateway add so the CLI builds client.p12 from the
-  # cluster secret (not package-managed Podman/Docker certs).
-  install -m 0644 "${tmp}/ca.crt"  "${MTLS_DIR}/ca.crt"
-  install -m 0644 "${tmp}/tls.crt" "${MTLS_DIR}/tls.crt"
-  install -m 0600 "${tmp}/tls.key" "${MTLS_DIR}/tls.key"
-  rm -rf "${tmp}"
-  trap - EXIT
-
   openshell gateway remove "${GATEWAY_NAME}" 2>/dev/null || true
   openshell gateway add "https://${GW_ROUTE}" --local --name "${GATEWAY_NAME}"
+  openshell gateway select "${GATEWAY_NAME}"
+  # gateway add overwrites mtls/ with a local Podman bundle — restore cluster certs.
+  NAMESPACE="${NAMESPACE}" GATEWAY_NAME="${GATEWAY_NAME}" \
+    "${SCRIPT_DIR}/openshift-openshell-sync-mtls.sh"
   openshell gateway select "${GATEWAY_NAME}"
 else
   log "Gateway '${GATEWAY_NAME}' already registered and reachable — skipping re-register"

@@ -60,3 +60,4 @@ tests/playwright-report/
 # Agent long-running script output (token-efficient mode)
 .logs/
 .agent-status/
+.verify-status.json
