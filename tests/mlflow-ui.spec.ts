@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { requireMlflowExperimentId, selectMlflowWorkspace } from './mlflow-helpers';
+import { requireMlflowExperimentId, selectMlflowWorkspace } from './ui-helpers';
 
 const EXPERIMENT_ID = requireMlflowExperimentId();
 

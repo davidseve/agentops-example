@@ -1,7 +1,7 @@
 import { test as setup } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { connectControlUi } from './helpers';
+import { connectControlUi } from './ui-helpers';
 
 const STORAGE_STATE = path.join(__dirname, 'test-results', '.auth', 'state.json');
 
