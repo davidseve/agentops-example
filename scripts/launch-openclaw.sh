@@ -18,7 +18,7 @@
 #
 # Usage: ./scripts/launch-openclaw.sh
 # Prereqs: OpenShell deployed (make -C deploy deploy-openshell), secrets/secrets.env
-#   (MAAS_API_KEY, OPENCLAW_GATEWAY_PASSWORD; optional INFERENCE_MODEL, MAAS_BASE_URL)
+#   (MAAS_API_KEY, OPENCLAW_GATEWAY_PASSWORD; INFERENCE_MODEL, MAAS_BASE_URL, INFERENCE_BACKEND, NEMO_*)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,12 +38,10 @@ error() { echo "[ERROR] $*" >&2; }
 pass()  { echo "[PASS]  $*"; }
 step()  { echo ""; echo "── $* ──"; }
 
-# Load secrets
-if [[ -f "${PROJECT_DIR}/secrets/secrets.env" ]]; then
-  set -a; source "${PROJECT_DIR}/secrets/secrets.env"; set +a
-fi
-: "${MAAS_API_KEY:?MAAS_API_KEY required (set in secrets/secrets.env)}"
-: "${OPENCLAW_GATEWAY_PASSWORD:?OPENCLAW_GATEWAY_PASSWORD required (set in secrets/secrets.env)}"
+# Load secrets + inference config (single source: secrets/secrets.env)
+# shellcheck source=common.sh
+source "${SCRIPT_DIR}/common.sh"
+load_inference_config || exit 1
 
 command -v openshell >/dev/null 2>&1 || { error "openshell CLI is required"; exit 1; }
 command -v oc >/dev/null 2>&1 || { error "oc is required"; exit 1; }
@@ -94,27 +92,35 @@ sed -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
 pass "Rendered config (password auth, mlflow-openclaw plugin, experiment=${MLFLOW_EXPERIMENT_ID})"
 
 # ─── Enable providers_v2 and configure inference route ────────────────────────
-step "Configuring inference router (providers_v2 + MaaS provider)"
-INFERENCE_MODEL="${INFERENCE_MODEL:-claude-sonnet-4-6}"
-MAAS_BASE_URL="${MAAS_BASE_URL:-https://maas-rhdp.apps.maas.redhatworkshops.io/v1}"
-PROVIDER_NAME="${PROVIDER_NAME:-maas-litellm}"
+step "Configuring inference router (providers_v2 + dual providers)"
+
+ensure_inference_provider() {
+  local name="$1" base_url="$2"
+  if openshell provider list 2>/dev/null | grep -q "$name"; then
+    info "Provider '$name' already exists"
+  else
+    openshell provider create \
+      --name "$name" \
+      --type openai \
+      --credential "OPENAI_API_KEY=${MAAS_API_KEY}" \
+      --config "OPENAI_BASE_URL=${base_url}"
+    info "Provider '$name' created (type=openai, base=${base_url})"
+  fi
+}
 
 openshell settings set --global --key providers_v2_enabled --value true --yes 2>/dev/null || true
 info "providers_v2_enabled = true"
 
-if openshell provider list 2>/dev/null | grep -q "$PROVIDER_NAME"; then
-  info "Provider '$PROVIDER_NAME' already exists"
-else
-  openshell provider create \
-    --name "$PROVIDER_NAME" \
-    --type openai \
-    --credential "OPENAI_API_KEY=${MAAS_API_KEY}" \
-    --config "OPENAI_BASE_URL=${MAAS_BASE_URL}"
-  info "Provider '$PROVIDER_NAME' created (type=openai, base=${MAAS_BASE_URL})"
+ensure_inference_provider "$PROVIDER_DIRECT" "$MAAS_BASE_URL"
+ensure_inference_provider "$PROVIDER_GUARDRAILED" "$NEMO_GUARDRAILS_URL"
+
+ACTIVE_PROVIDER="$PROVIDER_DIRECT"
+if [[ "$INFERENCE_BACKEND" == "guardrailed" ]]; then
+  ACTIVE_PROVIDER="$PROVIDER_GUARDRAILED"
 fi
 
-openshell inference set --provider "$PROVIDER_NAME" --model "$INFERENCE_MODEL" --no-verify 2>/dev/null \
-  && info "Inference route: $PROVIDER_NAME / $INFERENCE_MODEL" \
+openshell inference set --provider "$ACTIVE_PROVIDER" --model "$INFERENCE_MODEL" --no-verify 2>/dev/null \
+  && pass "Inference route: $ACTIVE_PROVIDER / $INFERENCE_MODEL (backend=${INFERENCE_BACKEND})" \
   || warn "Inference route configuration failed"
 
 # ─── Create sandbox if missing ────────────────────────────────────────────────

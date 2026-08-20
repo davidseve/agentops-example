@@ -112,6 +112,38 @@ load_secrets() {
   info "Secrets loaded from $SECRETS_FILE"
 }
 
+# Single source of truth for inference + NeMo wiring (secrets/secrets.env).
+load_inference_config() {
+  load_secrets || return 1
+
+  INFERENCE_MODEL="${INFERENCE_MODEL:-claude-sonnet-4-6}"
+  MAAS_BASE_URL="${MAAS_BASE_URL:-https://maas-rhdp.apps.maas.redhatworkshops.io/v1}"
+  INFERENCE_BACKEND="${INFERENCE_BACKEND:-direct}"
+  NEMO_GUARDRAILS_SERVICE="${NEMO_GUARDRAILS_SERVICE:-nemo-guardrails}"
+  NEMO_GUARDRAILS_NAMESPACE="${NEMO_GUARDRAILS_NAMESPACE:-openshell}"
+  NEMO_GUARDRAILS_PORT="${NEMO_GUARDRAILS_PORT:-80}"
+  PROVIDER_DIRECT="${PROVIDER_DIRECT:-maas-direct}"
+  PROVIDER_GUARDRAILED="${PROVIDER_GUARDRAILED:-maas-guardrailed}"
+
+  if [[ -z "${NEMO_GUARDRAILS_URL:-}" ]]; then
+    NEMO_GUARDRAILS_URL="http://${NEMO_GUARDRAILS_SERVICE}.${NEMO_GUARDRAILS_NAMESPACE}.svc.cluster.local:${NEMO_GUARDRAILS_PORT}/v1"
+  fi
+
+  case "$INFERENCE_BACKEND" in
+    direct|guardrailed) ;;
+    *)
+      error "INFERENCE_BACKEND must be 'direct' or 'guardrailed' (got: ${INFERENCE_BACKEND})"
+      return 1
+      ;;
+  esac
+
+  export INFERENCE_MODEL MAAS_BASE_URL INFERENCE_BACKEND
+  export NEMO_GUARDRAILS_SERVICE NEMO_GUARDRAILS_NAMESPACE NEMO_GUARDRAILS_PORT NEMO_GUARDRAILS_URL
+  export PROVIDER_DIRECT PROVIDER_GUARDRAILED
+  info "Inference config: model=${INFERENCE_MODEL} backend=${INFERENCE_BACKEND} maas=${MAAS_BASE_URL}"
+  info "NeMo service URL: ${NEMO_GUARDRAILS_URL}"
+}
+
 require_cmd() {
   local cmd="$1"
   if ! command -v "$cmd" &>/dev/null; then
