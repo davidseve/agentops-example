@@ -1,0 +1,35 @@
+{{- if .Values.openclawTraces.enabled }}
+{{/*
+Grant the OpenClaw sandbox SA access to this EvalHub MLflow workspace so
+mlflow-openclaw can log traces next to Garak runs (same experiment).
+The ClusterRole is created by the RHOAI MLflow operator; default name is
+stable on 3.4.3 (mlflow-operator-mlflow-integration). Override if a
+build suffixes it. helm template uses the default (lookup is empty).
+*/}}
+{{- $clusterRoleName := .Values.openclawTraces.clusterRoleName }}
+{{- if not $clusterRoleName }}
+  {{- range (lookup "rbac.authorization.k8s.io/v1" "ClusterRole" "" "").items }}
+    {{- if and (not $clusterRoleName) (contains "mlflow-integration" .metadata.name) }}
+      {{- $clusterRoleName = .metadata.name }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if $clusterRoleName }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.openclawTraces.serviceAccountName }}-evalhub-mlflow
+  namespace: {{ .Values.evalhub.namespace }}
+  labels:
+    {{- include "evalhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openclaw-traces
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $clusterRoleName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.openclawTraces.serviceAccountName }}
+    namespace: {{ .Values.openclawTraces.serviceAccountNamespace }}
+{{- end }}
+{{- end }}

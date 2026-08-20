@@ -1,0 +1,43 @@
+{{- if and .Values.evalhub.enabled .Values.evalhub.securityEval.enabled }}
+{{- $target := .Values.evalhub.securityEval.target }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.evalhub.securityEval.configMapName }}
+  namespace: {{ .Values.evalhub.namespace }}
+  labels:
+    {{- include "evalhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: security-eval
+data:
+  target.json: |-
+{{ $target | toPrettyJson | indent 4 }}
+{{- range $name, $job := .Values.evalhub.securityEval.jobs }}
+{{- $rootGarak := $.Values.evalhub.securityEval.garak | default dict }}
+{{- $jobGarak := dict }}
+{{- if and $job.extraParams (hasKey $job.extraParams "garak_config") }}
+{{- $jobGarak = index $job.extraParams "garak_config" }}
+{{- end }}
+{{- $mergedGarak := mergeOverwrite (dict) $rootGarak $jobGarak }}
+{{- $params := dict "timeout" $job.timeout "timeout_seconds" $job.timeout "garak_config" $mergedGarak }}
+{{- if $.Values.evalhub.securityEval.modelParameters }}
+{{- $_ := set $params "model_parameters" $.Values.evalhub.securityEval.modelParameters }}
+{{- end }}
+{{- if $job.extraParams }}
+{{- range $k, $v := $job.extraParams }}
+{{- if ne $k "garak_config" }}
+{{- $_ := set $params $k $v }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- $model := dict "url" $target.url "name" $target.name "auth" (dict "secret_ref" $target.secretRef) }}
+{{- $payload := dict "name" $job.experiment "model" $model "experiment" (dict "name" $job.experiment) "benchmarks" (list (dict "id" $job.benchmark "provider_id" $job.provider "parameters" $params)) }}
+{{- /* Helm toPrettyJson drops YAML null keys. Force top_p:null so Garak does not
+     send both temperature and top_p (Claude/Vertex 400). */ -}}
+{{- $raw := $payload | toPrettyJson }}
+{{- if and (hasKey $params "model_parameters") (not (contains "\"top_p\"" $raw)) }}
+{{- $raw = $raw | replace "\"model_parameters\": {" "\"model_parameters\": {\n          \"top_p\": null," }}
+{{- end }}
+  job-{{ $name }}.json: |-
+{{ $raw | indent 4 }}
+{{- end }}
+{{- end }}

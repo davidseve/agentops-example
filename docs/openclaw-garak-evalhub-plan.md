@@ -1,6 +1,6 @@
 # Plan: Automated OpenClaw security evaluations (EvalHub + Garak)
 
-**Status:** Proposed — not implemented. For team review before any code changes.
+**Status:** Implemented — operator guide is [SECURITY-EVALUATION.md](SECURITY-EVALUATION.md); decision is [ADR-0012](adr/0012-openclaw-security-evaluation.md). This page is the design record.
 
 **Date:** 2026-08-19  
 **Layer:** Agent / Platform  

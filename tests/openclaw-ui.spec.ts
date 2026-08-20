@@ -73,13 +73,42 @@ test.describe('OpenClaw Control UI', () => {
     expect(body.ok).toBe(true);
   });
 
-  test('chat completions HTTP API is disabled', async ({ request }) => {
-    const resp = await request.post('/v1/chat/completions', {
-      data: {
-        model: 'router',
-        messages: [{ role: 'user', content: 'ping' }],
-      },
+  test('chat completions HTTP API requires auth', async ({ playwright, baseURL }) => {
+    const ctx = await playwright.request.newContext({
+      baseURL,
+      ignoreHTTPSErrors: true,
+      storageState: { cookies: [], origins: [] },
     });
-    expect([403, 404, 405]).toContain(resp.status());
+    try {
+      const resp = await ctx.post('/v1/chat/completions', {
+        data: {
+          model: 'openclaw/default',
+          messages: [{ role: 'user', content: 'ping' }],
+        },
+      });
+      expect([401, 403]).toContain(resp.status());
+    } finally {
+      await ctx.dispose();
+    }
+  });
+
+  test('authenticated models API lists openclaw/default', async ({ playwright, baseURL }) => {
+    const password = process.env.OPENCLAW_GATEWAY_PASSWORD;
+    expect(password).toBeTruthy();
+    const ctx = await playwright.request.newContext({
+      baseURL,
+      ignoreHTTPSErrors: true,
+      storageState: { cookies: [], origins: [] },
+      extraHTTPHeaders: { Authorization: `Bearer ${password}` },
+    });
+    try {
+      const resp = await ctx.get('/v1/models');
+      expect(resp.ok()).toBeTruthy();
+      const body = await resp.json();
+      const ids = (body.data || []).map((m: { id: string }) => m.id);
+      expect(ids.some((id: string) => id.includes('openclaw'))).toBeTruthy();
+    } finally {
+      await ctx.dispose();
+    }
   });
 });

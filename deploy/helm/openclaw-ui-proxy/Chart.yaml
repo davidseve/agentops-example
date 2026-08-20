@@ -5,5 +5,5 @@ description: >-
   Presents client certificates to the OpenShell relay; OpenClaw password auth
   protects the gateway (ADR-0011).
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "1.24"

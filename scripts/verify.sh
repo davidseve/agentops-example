@@ -6,7 +6,8 @@
 #   smoke           — validate-smoke only (openshell infra + sandbox policy)
 #
 # Flags (parsed by cluster-lifecycle.sh and forwarded via env):
-#   SKIP_E2E=1      — skip Playwright and validate-traces
+#   SKIP_E2E=1             — skip Playwright and validate-traces
+#   SKIP_SECURITY_EVAL=1   — skip Track 2 HTTP sandbox smoke
 #
 # Exit codes:
 #   0 = all checks passed (warnings are informational)
@@ -26,11 +27,22 @@ fi
 
 VERIFY_PROFILE="${VERIFY_PROFILE:-full}"
 SKIP_E2E="${SKIP_E2E:-0}"
+SKIP_SECURITY_EVAL="${SKIP_SECURITY_EVAL:-0}"
 
 if [[ "${1:-}" == "--smoke" ]]; then
   VERIFY_PROFILE=smoke
 fi
 if [[ "${1:-}" == "--skip-e2e" ]]; then
+  SKIP_E2E=1
+fi
+if [[ "${1:-}" == "--skip-security-eval" ]]; then
+  SKIP_SECURITY_EVAL=1
+fi
+# Allow both flags: verify.sh --skip-e2e --skip-security-eval
+if [[ "${2:-}" == "--skip-security-eval" ]]; then
+  SKIP_SECURITY_EVAL=1
+fi
+if [[ "${2:-}" == "--skip-e2e" ]]; then
   SKIP_E2E=1
 fi
 
@@ -91,13 +103,24 @@ else
   else
     fail "make validate-security"
   fi
+
+  if [[ "$SKIP_SECURITY_EVAL" != "1" ]]; then
+    step "Layer 4.5: Sandbox HTTP smoke (Track 2)"
+    if run_make eval-agent-sandbox-smoke; then
+      pass "make eval-agent-sandbox-smoke"
+    else
+      fail "make eval-agent-sandbox-smoke"
+    fi
+  else
+    info "Skipping Track 2 HTTP sandbox smoke (SKIP_SECURITY_EVAL=1)"
+  fi
 fi
 
 # =============================================================================
 # Layer 5–6: Playwright E2E + MLflow traces
 # =============================================================================
 if [[ "$VERIFY_PROFILE" == "full" && "$SKIP_E2E" != "1" ]]; then
-  step "Layer 5: Playwright E2E (Control UI + security + MLflow UI)"
+  step "Layer 5: Playwright E2E (Control UI + MLflow UI)"
   ensure_playwright_deps
   export_playwright_env || warn "Playwright env incomplete — E2E may fail"
   warn_playwright_mlflow_oauth_missing

@@ -191,6 +191,51 @@ resolve_mlflow_experiment_id() {
   return 0
 }
 
+# Track 2 / demo: log sandbox evals into the RHOAI MLflow *evaluation* workspace
+# (same project as Garak). Uses the MLflow Route + oc token so it works from a laptop.
+export_eval_mlflow_env() {
+  local rhoai_ns="${RHOAI_NS:-redhat-ods-applications}"
+  local host=""
+  host="$(oc -n "$rhoai_ns" get route mlflow -o jsonpath='{.spec.host}' 2>/dev/null || true)"
+  if [[ -z "${MLFLOW_TRACKING_URI:-}" && -n "$host" ]]; then
+    export MLFLOW_TRACKING_URI="https://${host}"
+  fi
+  if [[ -z "${MLFLOW_TRACKING_TOKEN:-}" ]]; then
+    # Do not reuse MLFLOW_AUTH_TOKEN from Playwright (openshell SA → 403 on
+    # workspace evaluation). Demo logging uses the oc user token.
+    MLFLOW_TRACKING_TOKEN="$(oc whoami -t 2>/dev/null || true)"
+    export MLFLOW_TRACKING_TOKEN
+  fi
+  export MLFLOW_WORKSPACE="${MLFLOW_SANDBOX_WORKSPACE:-evaluation}"
+  export MLFLOW_SANDBOX_EXPERIMENT="${MLFLOW_SANDBOX_EXPERIMENT:-openclaw-sandbox-security}"
+  if [[ -n "${MLFLOW_TRACKING_URI:-}" ]]; then
+    info "Eval MLflow: uri=${MLFLOW_TRACKING_URI} workspace=${MLFLOW_WORKSPACE} experiment=${MLFLOW_SANDBOX_EXPERIMENT}"
+  else
+    warn "MLflow route not found — Track 2 will skip experiment logging"
+  fi
+}
+
+# Copy OPENCLAW_GATEWAY_PASSWORD into evaluation/model-auth api-key when empty.
+# Never prints the password. ca_cert is owned by the Helm post-install hook.
+ensure_evalhub_model_auth_api_key() {
+  local ns="${EVALHUB_NAMESPACE:-evaluation}"
+  local secret="${EVALHUB_MODEL_AUTH_SECRET:-model-auth}"
+  load_secrets || return 1
+  if ! oc -n "$ns" get secret "$secret" &>/dev/null; then
+    error "Secret ${secret} not found in ${ns} (deploy/upgrade rhoai-evalhub first)"
+    return 1
+  fi
+  local current=""
+  current="$(oc -n "$ns" get secret "$secret" -o jsonpath='{.data.api-key}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+  if [[ -n "$current" ]]; then
+    info "Secret ${ns}/${secret} api-key already set"
+    return 0
+  fi
+  oc -n "$ns" patch secret "$secret" --type merge \
+    -p "{\"stringData\":{\"api-key\":\"${OPENCLAW_GATEWAY_PASSWORD}\"}}" >/dev/null
+  info "Copied OPENCLAW_GATEWAY_PASSWORD into ${ns}/${secret} api-key"
+}
+
 warn_playwright_mlflow_oauth_missing() {
   local ocp_username="${OCP_TEST_USERNAME:-}"
   local ocp_password="${OCP_TEST_PASSWORD:-}"

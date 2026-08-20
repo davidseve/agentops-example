@@ -28,8 +28,75 @@ evalhub:
     - lighteval
   collections:
     - leaderboard-v2
+    - safety-and-fairness-v1
+    - toxicity-and-ethical-principles
+  # Garak / OpenClaw security eval jobs. Source of truth for scripts/evalhub.sh --job.
+  # Edit probes, timeouts, and generator options here — not in the Makefile.
+  securityEval:
+    enabled: true
+    configMapName: evalhub-security-eval
+    target:
+      # Public Route cert is in the cluster trust store. The in-cluster
+      # Service URL (openclaw-ui-proxy.openshell.svc:8443) uses service-ca;
+      # Garak's OpenAI/httpx client ignores model-auth ca_cert and retries
+      # SSL failures until the job timeout (ASR never lands in MLflow).
+      url: https://openclaw-gw--openclaw-ui.apps.ocp.sandbox337.opentlc.com/v1
+      name: openclaw/default
+      secretRef: model-auth
+    # Merged into job parameters.garak_config. Do NOT set plugins.generators
+    # here — the TrustyAI adapter skips injecting model.url / api-key when that
+    # map is present, which yields ASR=0 with num_examples_evaluated=0.
+    garak: {}
+    # Passed as parameters.model_parameters → OpenAICompatible extra_params
+    # after the adapter wires uri + api_key from target + model-auth.
+    modelParameters:
+      # Default Garak stop ["#",";"] truncates agent replies.
+      stop: []
+      request_timeout: 120
+      # Garak OpenAICompatible defaults temperature=0.7 AND top_p=1.0.
+      # Claude on Vertex/LiteLLM (inference.local) 400s if both are set, so
+      # Garak records outputs=[null] and ASR=0 with 0 examples. Null here
+      # overrides the default so only temperature is sent.
+      top_p: null
+    jobs:
+      smoke:
+        provider: garak
+        benchmark: quick
+        timeout: 900
+        extraParams:
+          garak_config:
+            run:
+              soft_probe_prompt_cap: 1
+        experiment: openclaw-garak-smoke
+      owasp:
+        provider: garak
+        benchmark: owasp_llm_top10
+        # Demo subset: full owasp_llm_top10 is ~200 probes × generations=5.
+        # Cap 1 on all probes still timed out at 1800s against the agent.
+        # Adapter `probes` overrides the profile list (do not set
+        # plugins.generators). Unknown names abort the scan (0 examples).
+        timeout: 1200
+        extraParams:
+          # Verified 2026-08-20 on Garak 0.14.1+rhaiv.7 (1-prompt jobs).
+          # Skip promptinject.HijackHateRobots (missing) and HijackHateHumans
+          # (exists but detector SKIP 0/0 against this agent).
+          probes: dan.Dan_11_0,encoding.InjectBase64,latentinjection.LatentJailbreak
+          garak_config:
+            run:
+              generations: 1
+              soft_probe_prompt_cap: 5
+        experiment: openclaw-garak-owasp
   otel:
     enabled: false
+
+# OpenClaw traces into this workspace (Garak experiments). Default gateway
+# launch still uses openshell / openclaw-tracing; demo override is
+# make launch-openclaw-eval-demo. Bound TokenRequest required (ADR-0010).
+openclawTraces:
+  enabled: true
+  serviceAccountName: openshell-sandbox
+  serviceAccountNamespace: openshell
+  clusterRoleName: mlflow-operator-mlflow-integration
 
 mlflow:
   name: mlflow

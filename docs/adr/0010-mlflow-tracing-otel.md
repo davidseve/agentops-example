@@ -63,7 +63,18 @@ however, must be owned by the sandbox UID.
 
 Use `kubernetes.io/service-account-token` annotation on a Secret bound to the
 `openshell-sandbox` SA. Long-lived token (no expiry unless SA/Secret deleted).
-Rotation: delete Secret + helm upgrade.
+Rotation: delete Secret + helm upgrade. This token can write the **openshell**
+MLflow workspace.
+
+Cross-workspace writes (demo: traces into **evaluation** /
+`openclaw-garak-owasp`) need a **bound TokenRequest** (`kubectl create token`
+or the TokenRequest API). The long-lived Secret uses issuer
+`kubernetes/serviceaccount` with no `aud` and is **403 PERMISSION_DENIED** on
+other workspaces even when a RoleBinding grants `mlflow-operator-mlflow-integration`
+in that namespace. `launch-openclaw.sh` mints a 24h TokenRequest when
+`MLFLOW_WORKSPACE` is not the sandbox namespace. EvalHub chart RoleBinding:
+`deploy/helm/evalhub/templates/openclaw-traces-rbac.yaml`. Demo launch:
+`make launch-openclaw-eval-demo`.
 
 ### Gateway env vars at launch
 

@@ -79,7 +79,7 @@
     },
     "http": {
       "endpoints": {
-        "chatCompletions": { "enabled": false }
+        "chatCompletions": { "enabled": true }
       }
     }
   }

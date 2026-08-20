@@ -52,6 +52,31 @@ if [[ -z "$APPS_DOMAIN" ]]; then
 fi
 UI_HOST="${SANDBOX_NAME}--openclaw-ui.${APPS_DOMAIN}"
 MLFLOW_TOKEN_SECRET="${SANDBOX_SA_NAME}-mlflow-token"
+# Default traces stay in the OpenShell workspace. Demo co-location with Garak:
+#   MLFLOW_WORKSPACE=evaluation MLFLOW_EXPERIMENT_NAME=openclaw-garak-owasp ./scripts/launch-openclaw.sh
+MLFLOW_WORKSPACE="${MLFLOW_WORKSPACE:-$NAMESPACE}"
+MLFLOW_EXPERIMENT_NAME="${MLFLOW_EXPERIMENT_NAME:-openclaw-tracing}"
+MLFLOW_TOKEN_TTL_SECONDS="${MLFLOW_TOKEN_TTL_SECONDS:-86400}"
+
+# Bound TokenRequest JWTs honor RoleBindings in a *different* workspace.
+# The long-lived kubernetes.io/service-account-token Secret 403s on
+# workspace evaluation even with the same SA + RoleBinding (legacy issuer
+# kubernetes/serviceaccount, no aud). Do not print the token.
+mint_sandbox_mlflow_token() {
+  if command -v kubectl >/dev/null 2>&1; then
+    kubectl create token "$SANDBOX_SA_NAME" -n "$NAMESPACE" --duration="${MLFLOW_TOKEN_TTL_SECONDS}s"
+    return 0
+  fi
+  oc -n "$NAMESPACE" create --raw \
+    "/api/v1/namespaces/${NAMESPACE}/serviceaccounts/${SANDBOX_SA_NAME}/token" \
+    -f - <<EOF | python3 -c "import sys,json; print(json.load(sys.stdin)['status']['token'])"
+{
+  "apiVersion": "authentication.k8s.io/v1",
+  "kind": "TokenRequest",
+  "spec": { "expirationSeconds": ${MLFLOW_TOKEN_TTL_SECONDS} }
+}
+EOF
+}
 
 # ─── Ensure local CLI points at this project's gateway ────────────────────────
 step "Ensuring OpenShell CLI gateway '${GATEWAY_NAME}'"
@@ -61,21 +86,37 @@ NAMESPACE="${NAMESPACE}" GATEWAY_NAME="${GATEWAY_NAME}" \
 # ─── MLflow wiring ────────────────────────────────────────────────────────────
 step "Reading MLflow wiring"
 MLFLOW_TOKEN="${MLFLOW_TOKEN:-}"
-if [[ -z "$MLFLOW_TOKEN" ]]; then
+if [[ -z "$MLFLOW_TOKEN" && "$MLFLOW_WORKSPACE" != "$NAMESPACE" ]]; then
+  MLFLOW_TOKEN="$(mint_sandbox_mlflow_token)" || true
+  if [[ -z "$MLFLOW_TOKEN" ]]; then
+    error "Could not mint TokenRequest for workspace ${MLFLOW_WORKSPACE} (need kubectl create token, or oc TokenRequest)."
+    exit 1
+  fi
+  info "Minted TokenRequest for SA ${SANDBOX_SA_NAME} → workspace ${MLFLOW_WORKSPACE} (ttl=${MLFLOW_TOKEN_TTL_SECONDS}s)"
+elif [[ -z "$MLFLOW_TOKEN" ]]; then
   MLFLOW_TOKEN=$(oc -n "$NAMESPACE" get secret "${MLFLOW_TOKEN_SECRET}" \
     -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null || true)
+  if [[ -n "$MLFLOW_TOKEN" ]]; then
+    info "MLflow SA token read from Secret"
+  fi
 fi
 if [[ -z "$MLFLOW_TOKEN" ]]; then
   error "MLflow token not available. Run: make -C deploy deploy-openshell"
   exit 1
 fi
-info "MLflow SA token read from Secret"
 
 MLFLOW_SVC_URL="https://mlflow.${RHOAI_NS}.svc:8443"
-MLFLOW_EXPERIMENT_NAME="${MLFLOW_EXPERIMENT_NAME:-openclaw-tracing}"
 # Placeholder until sandbox exists and we can resolve by name (per-workspace ids differ).
+# Ignore a stale id from Playwright/openshell (often experiment 1) when targeting
+# another workspace or experiment name.
+if [[ "${MLFLOW_EXPERIMENT_ID:-}" != "" && "${MLFLOW_EXPERIMENT_ID}" != "__RESOLVE__" ]]; then
+  if [[ "$MLFLOW_WORKSPACE" != "$NAMESPACE" || "$MLFLOW_EXPERIMENT_NAME" != "openclaw-tracing" ]]; then
+    warn "Ignoring pre-set MLFLOW_EXPERIMENT_ID=${MLFLOW_EXPERIMENT_ID}; will resolve ${MLFLOW_EXPERIMENT_NAME} in workspace ${MLFLOW_WORKSPACE}"
+    MLFLOW_EXPERIMENT_ID="__RESOLVE__"
+  fi
+fi
 MLFLOW_EXPERIMENT_ID="${MLFLOW_EXPERIMENT_ID:-__RESOLVE__}"
-info "MLflow tracking URI: ${MLFLOW_SVC_URL} (experiment id resolved after sandbox is ready)"
+info "MLflow tracking URI: ${MLFLOW_SVC_URL} workspace=${MLFLOW_WORKSPACE} experiment=${MLFLOW_EXPERIMENT_NAME}"
 
 # ─── Render config ────────────────────────────────────────────────────────────
 # NOTE: config/openclaw.json.tpl uses apiKey: "unused" and
@@ -193,11 +234,11 @@ info "Sandbox UID:GID = ${SANDBOX_UID}:${SANDBOX_GID}"
 
 # ─── Resolve MLflow experiment id (per-workspace on shared MLflow) ────────────
 if [[ "$MLFLOW_EXPERIMENT_ID" == "__RESOLVE__" ]]; then
-  step "Resolving MLflow experiment '${MLFLOW_EXPERIMENT_NAME}' in workspace ${NAMESPACE}"
+  step "Resolving MLflow experiment '${MLFLOW_EXPERIMENT_NAME}' in workspace ${MLFLOW_WORKSPACE}"
   EXP_JSON=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- \
     bash -c "curl -sk '${MLFLOW_SVC_URL}/api/2.0/mlflow/experiments/get-by-name?experiment_name=${MLFLOW_EXPERIMENT_NAME}' \
       -H 'Authorization: Bearer ${MLFLOW_TOKEN}' \
-      -H 'X-MLFLOW-WORKSPACE: ${NAMESPACE}'" 2>/dev/null || true)
+      -H 'X-MLFLOW-WORKSPACE: ${MLFLOW_WORKSPACE}'" 2>/dev/null || true)
   MLFLOW_EXPERIMENT_ID=$(echo "$EXP_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('experiment',{}).get('experiment_id',''))" 2>/dev/null || true)
   if [[ -z "$MLFLOW_EXPERIMENT_ID" ]]; then
     warn "Could not resolve experiment by name; defaulting to 1 (override with MLFLOW_EXPERIMENT_ID)"
@@ -225,23 +266,32 @@ sed -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
 step "Cleaning stale gateway processes"
 kill_stale_openclaw_gateway() {
   openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 -- bash -c '
-    for p in $(pgrep -f "openclaw gateway" 2>/dev/null); do
-      kill -9 "$p" 2>/dev/null
-    done
+    set +e
+    # Process title is often just "openclaw" (not "openclaw gateway run").
+    # Do not pkill -f "openclaw gateway" here — that matches this helper script.
+    pgrep -x openclaw | xargs -r kill -9
+    if command -v fuser >/dev/null; then
+      fuser -k 18789/tcp >/dev/null 2>&1
+      fuser -k 18790/tcp >/dev/null 2>&1
+    fi
     sleep 2
     rm -f /sandbox/workspace/.openclaw/state/*.lock /tmp/openclaw*/*.lock 2>/dev/null
-    pgrep -af "openclaw gateway" 2>/dev/null
+    leftover=$(pgrep -ax openclaw 2>/dev/null || true)
+    if echo "$leftover" | grep -qE "[0-9].*openclaw"; then
+      echo "STALE_OPENCLAW_PIDS"
+      echo "$leftover"
+    fi
     true
   ' 2>&1
   return 0
 }
 STALE_CHECK="$(kill_stale_openclaw_gateway)"
-if echo "$STALE_CHECK" | grep -q "openclaw gateway"; then
+if echo "$STALE_CHECK" | grep -q "STALE_OPENCLAW_PIDS"; then
   warn "Stale gateway process(es) survived first kill attempt — retrying:"
   echo "$STALE_CHECK" | while IFS= read -r line; do info "  $line"; done
   STALE_CHECK="$(kill_stale_openclaw_gateway)"
 fi
-if echo "$STALE_CHECK" | grep -q "openclaw gateway"; then
+if echo "$STALE_CHECK" | grep -q "STALE_OPENCLAW_PIDS"; then
   error "Could not kill stale OpenClaw gateway process(es) after 2 attempts — refusing to start a second gateway on top of a live one:"
   echo "$STALE_CHECK" | while IFS= read -r line; do error "  $line"; done
   error "Fix: openshell sandbox connect ${SANDBOX_POD}, then manually 'kill -9 <pid>' for each, then re-run this script."
@@ -361,6 +411,11 @@ pass "Workspace directories ready"
 step "Registering service route in OpenShell relay"
 openshell service expose "$SANDBOX_NAME" 18789 openclaw-ui 2>&1 || true
 pass "Service openclaw-ui exposed → https://${UI_HOST}/"
+# Chat Completions uses a second service: OpenShell strips Authorization on
+# sandbox routes (NVIDIA/OpenShell#1794). nginx copies Bearer to
+# X-OpenClaw-Authorization; this proxy restores it for OpenClaw.
+openshell service expose "$SANDBOX_NAME" 18790 openclaw-api 2>&1 || true
+pass "Service openclaw-api exposed on :18790 (Authorization restore proxy)"
 
 # ─── Step 9: Start gateway ────────────────────────────────────────────────────
 # No LITELLM_API_KEY injection: inference uses the inference router
@@ -373,14 +428,14 @@ openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 \
   --env "OTEL_TRACES_EXPORTER=none" \
   --env "OTEL_METRICS_EXPORTER=none" \
   --env "MLFLOW_TRACKING_TOKEN=${MLFLOW_TOKEN}" \
-  --env "MLFLOW_WORKSPACE=${NAMESPACE}" \
+  --env "MLFLOW_WORKSPACE=${MLFLOW_WORKSPACE}" \
   --env "NODE_EXTRA_CA_CERTS=${COMBINED_CA}" \
   --env "NODE_TLS_REJECT_UNAUTHORIZED=0" \
   -- bash -c '
     nohup openclaw gateway run > /sandbox/workspace/openclaw.log 2>&1 &
     disown
     sleep 8
-    if pgrep -f "openclaw gateway" >/dev/null; then
+    if pgrep -x openclaw >/dev/null; then
       echo "OK"
     else
       echo "FAIL"
@@ -398,6 +453,21 @@ openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 10 \
   pass "Gateway healthy on :18789" || \
   { error "Health check failed — check: openshell sandbox exec -n $SANDBOX_POD -- tail -50 /sandbox/workspace/openclaw.log"; exit 1; }
 
+step "Starting Authorization restore proxy"
+oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- mkdir -p /sandbox/workspace/.openclaw
+oc -n "$NAMESPACE" cp "${SCRIPT_DIR}/openclaw-auth-proxy.py" \
+  "${SANDBOX_POD}:/sandbox/workspace/.openclaw/openclaw-auth-proxy.py" -c agent
+openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 \
+  --env "HOME=/sandbox/workspace" \
+  -- bash -c '
+    nohup python3 /sandbox/workspace/.openclaw/openclaw-auth-proxy.py --port 18790 \
+      > /sandbox/workspace/openclaw-auth-proxy.log 2>&1 &
+    disown
+    sleep 2
+    curl -sf http://127.0.0.1:18790/health >/dev/null || exit 1
+  ' && pass "Auth restore proxy healthy on :18790" || \
+  { error "Auth restore proxy failed — check: openshell sandbox exec -n $SANDBOX_POD -- tail -20 /sandbox/workspace/openclaw-auth-proxy.log"; exit 1; }
+
 PLUGIN_CHECK=$(openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 5 \
   --env "HOME=/sandbox/workspace" \
   -- bash -c 'grep "http server listening" /sandbox/workspace/openclaw.log | tail -1' 2>/dev/null || true)
@@ -413,7 +483,7 @@ echo ""
 info "Gateway UI (nginx mTLS bridge): https://${UI_HOST}/"
 info "Auth: enter OPENCLAW_GATEWAY_PASSWORD (from secrets/secrets.env) in Control UI settings"
 info "      or open: https://${UI_HOST}/?password=<password>"
-info "Tracing:  mlflow-openclaw → ${MLFLOW_SVC_URL} (workspace=${NAMESPACE}, experiment=${MLFLOW_EXPERIMENT_ID})"
+info "Tracing:  mlflow-openclaw → ${MLFLOW_SVC_URL} (workspace=${MLFLOW_WORKSPACE}, experiment=${MLFLOW_EXPERIMENT_NAME} id=${MLFLOW_EXPERIMENT_ID})"
 info "Plugins:  memory-core, mlflow-openclaw"
 info ""
 info "Validate: make validate-openclaw validate-traces"

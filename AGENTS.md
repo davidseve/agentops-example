@@ -65,6 +65,7 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 | Observability | MLflow (tracing via mlflow-openclaw plugin) | Full Request/Response content in RHOAI MLflow — see [ADR-0010](docs/adr/0010-mlflow-tracing-otel.md) |
 | Prompt Management | MLflow (prompt registry) | Versioned prompts, A/B testing |
 | Agent | OpenClaw harness | Runs inside Agent Sandbox — see [AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) |
+| Red Teaming | EvalHub + Garak | Content/jailbreak scans via the agent HTTP API; sandbox layers via MLflow scorers — see [SECURITY-EVALUATION.md](docs/SECURITY-EVALUATION.md) |
 
 ### Agent harness (demo choice)
 
@@ -74,7 +75,6 @@ This demo uses **OpenClaw** inside an OpenShell sandbox (validated in Phase 1.5/
 
 | Component | Product/Technology | Purpose |
 |---|---|---|
-| Red Teaming | EvalHub + GARC | Automated adversarial prompt testing |
 | Cost Tracking | MaaS Dashboard | Token consumption per department/tenant |
 | Secure MCP | MCP Gateway | Auth, rate limiting on tool calls |
 
@@ -92,15 +92,15 @@ This maps demo features to specific Red Hat products/components:
 | Agent harness | OpenClaw (BYOA) | Runs in OpenShell sandbox via `launch-openclaw.sh` |
 | Agent Sandboxing | OpenShell | Sandboxed execution environment |
 | Model Serving | MaaS via OpenShell inference router | inference.local → MaaS external endpoint |
-| Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
+| Red Teaming | RHOAI - EvalHub | Garak via Helm job templates ([ADR-0012](docs/adr/0012-openclaw-security-evaluation.md)) |
 | Cost Governance | MaaS Dashboard | Token billing/showback (nice-to-have) |
 
 ## Demo Narrative (proposed)
 
 1. **Setup** (1-2 min): Show the deployed stack on OpenShift
 2. **Happy Path** (3-4 min): Agent performs its task, show traces in MLflow, show prompt version in registry
-3. **Security Attack** (4-5 min): Prompt injection, data exfiltration attempts - show NeMo blocking, OpenShell containing, traces capturing everything
-4. **Red Teaming** (2-3 min, if time): Automated GARC scan
+3. **Security Attack** (4-5 min): Prompt injection, data exfiltration attempts — OpenShell contains noisy egress/IMDS/sudo; Track 2 still FAILs `config-patch-blocked` until NeMo rails (and optionally `tools.deny: config.patch`) land. Show traces capturing the attempt.
+4. **Red Teaming** (2-3 min, if time): `make evalhub-security-smoke` (Garak `quick`) — see [SECURITY-EVALUATION.md](docs/SECURITY-EVALUATION.md)
 5. **Wrap-up** (1 min): "Your Agent, Our Platform, Production-Ready"
 
 ## Cursor Skills
@@ -137,6 +137,7 @@ agentops-example/
 │   │   ├── README.md              # ADR index (technical)
 │   │   └── NNNN-<slug>.md         # Individual ADRs
 │   ├── stack-decisions.md         # ADR executive summary (by layer)
+│   ├── SECURITY-EVALUATION.md     # EvalHub Garak + MLflow sandbox evals
 │   ├── architecture.md            # Detailed architecture (Phase 2)
 │   └── demo-script.md             # Step-by-step demo script (Phase 4)
 ├── deploy/
@@ -144,22 +145,29 @@ agentops-example/
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
 │   └── openshift/             # OpenShift-specific manifests (non-Helm)
+├── evals/
+│   ├── sandbox-cases.yaml     # Track 2 prompts (sandbox / tool policy)
+│   └── agent_sandbox_eval.py  # Deterministic scorers vs Chat Completions
 ├── agent/
 │   ├── src/                   # Agent source code (Phase 3)
 │   ├── prompts/               # Versioned prompts (Phase 3)
 │   └── guardrails/            # NeMo Guardrails config (Phase 3)
 ├── tests/
 │   ├── health-check.sh        # Pre-demo health verification
-│   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
+│   └── sandbox-security.spec.ts  # Optional UI security demo (not default e2e)
 └── scripts/
     ├── cluster-lifecycle.sh           # deploy / verify / full / teardown / status / preflight
     ├── verify.sh                      # Layered validation (Makefile + Playwright); .verify-status.json
     ├── common.sh                      # Shared helpers (APPS_DOMAIN, secrets, logging)
+    ├── evalhub.sh                     # EvalHub API: submit Helm jobs, providers, status
+    ├── eval-openclaw-security.sh      # smoke | sandbox | garak-quick | garak-owasp | all
+    ├── openclaw-auth-proxy.py         # Restore Authorization after OpenShell strips it
     ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
     ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
     ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
     ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
     ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
+    │                                    # MLFLOW_WORKSPACE / MLFLOW_EXPERIMENT_NAME for demo traces
     ├── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
     ├── warm-up.sh             # Pre-warm model
     └── demo-reset.sh          # Reset demo state
@@ -207,3 +215,4 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - [MLflow](https://mlflow.org/)
 - [OpenShell on OpenShift](https://docs.nvidia.com/openshell/latest/kubernetes/openshift) — cluster deployment; validated flow in [docs/openshell-installation.md](docs/openshell-installation.md)
 - [Architecture Decision Records](docs/adr/README.md) — full ADR index; executive summary in [docs/stack-decisions.md](docs/stack-decisions.md)
+- [Security evaluation](docs/SECURITY-EVALUATION.md) — EvalHub Garak + MLflow sandbox scorers ([ADR-0012](docs/adr/0012-openclaw-security-evaluation.md))

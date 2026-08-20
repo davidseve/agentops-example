@@ -29,6 +29,8 @@ spec:
     metadata:
       labels:
         app: openclaw-ui-proxy
+      annotations:
+        checksum/nginx-config: {{ include (print $.Template.BasePath "/nginx-configmap.yaml") . | sha256sum }}
     spec:
       containers:
         - name: mtls-bridge

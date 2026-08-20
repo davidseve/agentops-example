@@ -91,16 +91,19 @@ DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 APPS_DOMAIN ?= $(shell oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null)
 
 # verify.sh profiles (full | smoke); SKIP_E2E=1 skips Playwright + validate-traces.
+# SKIP_SECURITY_EVAL=1 skips Track 2 HTTP sandbox smoke in full verify.
 VERIFY_PROFILE ?=
 SKIP_E2E ?=
+SKIP_SECURITY_EVAL ?=
 
-.PHONY: help demo deploy-agent launch-openclaw validate-full deploy-demo deploy-and-verify
+.PHONY: help demo deploy-agent launch-openclaw launch-openclaw-eval-demo validate-full deploy-demo deploy-and-verify
 .PHONY: deploy-operators wait-operators deploy-platform deploy-database
 .PHONY: wait-dashboard-crd adopt-dashboard-config
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
-.PHONY: validate-openclaw validate-traces validate-security
+.PHONY: validate-openclaw validate-traces validate-security validate-evalhub
 .PHONY: test-e2e test-ui test-security test-mlflow
+.PHONY: evalhub-security-smoke evalhub-security eval-agent-sandbox eval-agent-sandbox-smoke
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
 .PHONY: openshell-sync-mtls openshell-register-gateway
@@ -121,12 +124,19 @@ help:
 	@echo "  make validate               RHOAI health check"
 	@echo "  make deploy-agent           OpenShell + UI proxy + launch-openclaw"
 	@echo "  make launch-openclaw        Sandbox runtime (requires deploy-openshell)"
+	@echo "  make launch-openclaw-eval-demo  Point traces at evaluation/openclaw-garak-owasp"
+	@echo ""
+	@echo "Security evals (see docs/SECURITY-EVALUATION.md):"
+	@echo "  make eval-agent-sandbox-smoke   Track 2 HTTP smoke (default verify)"
+	@echo "  make eval-agent-sandbox         Track 2 full YAML dataset"
+	@echo "  make evalhub-security-smoke     EvalHub Garak quick (not default verify)"
+	@echo "  make evalhub-security           EvalHub Garak owasp_llm_top10 (3-probe demo subset)"
 	@echo ""
 	@echo "Teardown:"
 	@echo "  make undeploy-everything    Full reset"
 	@echo "  make validate-cleanup       Confirm cluster is clean"
 	@echo ""
-	@echo "Variables: APPS_DOMAIN (auto-detected), VERIFY_PROFILE=smoke, SKIP_E2E=1"
+	@echo "Variables: APPS_DOMAIN (auto-detected), VERIFY_PROFILE=smoke, SKIP_E2E=1, SKIP_SECURITY_EVAL=1"
 
 require-apps-domain:
 	@if [ -z "$(APPS_DOMAIN)" ]; then \
@@ -147,6 +157,14 @@ launch-openclaw:
 		APPS_DOMAIN=$(APPS_DOMAIN) \
 		$(ROOT_DIR)/scripts/launch-openclaw.sh
 
+# Point mlflow-openclaw traces at the EvalHub workspace/experiment so the demo
+# MLflow UI shows Garak scores and agent traces together. Default launch-openclaw
+# stays on openshell / openclaw-tracing (Playwright). Requires kubectl create token.
+launch-openclaw-eval-demo:
+	MLFLOW_WORKSPACE=evaluation MLFLOW_EXPERIMENT_NAME=openclaw-garak-owasp \
+		MLFLOW_EXPERIMENT_ID=__RESOLVE__ \
+		$(MAKE) --no-print-directory launch-openclaw
+
 # OpenShell Helm + UI proxy + sandbox runtime (requires RHOAI platform first).
 deploy-agent: require-apps-domain deploy-openshell deploy-openclaw-ui-proxy launch-openclaw
 	@echo "Agent stack deployed."
@@ -157,10 +175,11 @@ deploy-demo: deploy-all deploy-agent
 	@echo "Full demo stack deployed (RHOAI + OpenShell + OpenClaw)."
 
 validate-full:
-	@VERIFY_PROFILE=$(VERIFY_PROFILE) SKIP_E2E=$(SKIP_E2E) \
+	@VERIFY_PROFILE=$(VERIFY_PROFILE) SKIP_E2E=$(SKIP_E2E) SKIP_SECURITY_EVAL=$(SKIP_SECURITY_EVAL) \
 		$(ROOT_DIR)/scripts/verify.sh \
 		$(if $(filter smoke,$(VERIFY_PROFILE)),--smoke,) \
-		$(if $(filter 1,$(SKIP_E2E)),--skip-e2e,)
+		$(if $(filter 1,$(SKIP_E2E)),--skip-e2e,) \
+		$(if $(filter 1,$(SKIP_SECURITY_EVAL)),--skip-security-eval,)
 
 # One-shot: deploy everything, then run the full verification suite.
 demo: deploy-demo validate-full
@@ -523,6 +542,9 @@ validate-security:
 # Unlike Makefile validate-* targets (which test infra from inside the cluster),
 # these tests run from outside and verify what the user actually sees.
 #
+# Default test-e2e is UI happy-path only (openclaw-ui + mlflow-ui). Sandbox
+# security chats live in make test-security (demo UI) and Track 2 HTTP evals.
+#
 # Prereqs: cd tests && npm install && npx playwright install chromium
 # Env vars: OPENCLAW_BASE_URL, MLFLOW_BASE_URL, MLFLOW_AUTH_TOKEN, MLFLOW_WORKSPACE
 #           MLFLOW_EXPERIMENT_ID (auto-resolved by scripts/run-playwright-tests.sh)
@@ -531,16 +553,38 @@ validate-security:
 # APPS_DOMAIN is auto-detected when unset (same as verify.sh / scripts/common.sh).
 
 test-e2e:
-	@$(ROOT_DIR)/scripts/run-playwright-tests.sh
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh --project=ui-tests --project=mlflow-ui-tests
 
 test-ui:
-	@$(ROOT_DIR)/scripts/run-playwright-tests.sh openclaw-ui.spec.ts
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh --project=ui-tests
 
 test-security:
-	@$(ROOT_DIR)/scripts/run-playwright-tests.sh sandbox-security.spec.ts
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh --project=security-tests
 
 test-mlflow:
-	@$(ROOT_DIR)/scripts/run-playwright-tests.sh mlflow-ui.spec.ts
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh --project=mlflow-ui-tests
+
+# --- OpenClaw security evals (Helm ConfigMap + YAML dataset; see docs/SECURITY-EVALUATION.md) ---
+
+validate-evalhub:
+	@echo "=== EvalHub security-eval ==="
+	@oc get evalhub evalhub -n evaluation -o jsonpath='{.status.phase}{"\n"}' | grep -q Ready
+	@oc get evalhub evalhub -n evaluation -o jsonpath='{.status.ready}{"\n"}' | grep -q True
+	@oc get evalhub evalhub -n evaluation -o jsonpath='{.spec.providers}' | grep -q garak
+	@oc get configmap evalhub-security-eval -n evaluation >/dev/null
+	@echo "OK: EvalHub Ready, garak listed, ConfigMap evalhub-security-eval present"
+
+evalhub-security-smoke:
+	@$(ROOT_DIR)/scripts/eval-openclaw-security.sh garak-quick
+
+evalhub-security:
+	@$(ROOT_DIR)/scripts/eval-openclaw-security.sh garak-owasp
+
+eval-agent-sandbox-smoke:
+	@$(ROOT_DIR)/scripts/eval-openclaw-security.sh smoke
+
+eval-agent-sandbox:
+	@$(ROOT_DIR)/scripts/eval-openclaw-security.sh sandbox
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,
@@ -646,6 +690,7 @@ validate:
 	@oc get evalhub evalhub -n evaluation -o jsonpath='{.status.phase}{"\n"}' | grep -q Ready
 	@oc get evalhub evalhub -n evaluation -o jsonpath='{.status.ready}{"\n"}' | grep -q True
 	@echo "OK: EvalHub Ready"
+	@$(MAKE) --no-print-directory validate-evalhub
 	@echo ""
 	@echo "All validation checks passed."
 

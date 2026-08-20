@@ -288,6 +288,7 @@ Pod: default--openclaw-gw
     └── [sandbox netns]     isolated network + filesystem view
         │
         ├── openclaw gateway run   child process, user "sandbox", port 18789
+        └── openclaw-auth-proxy.py  restores Authorization for /v1 (port 18790)
         └── openclaw agent / tools  additional child processes on demand
 ```
 
@@ -379,9 +380,15 @@ These steps run **inside the container as root** to prepare the environment. The
 
 ```bash
 openshell service expose openclaw-gw 18789 openclaw-ui
+openshell service expose openclaw-gw 18790 openclaw-api
 ```
 
-Registers a route in the OpenShell gateway: requests to `openclaw-gw--openclaw-ui.<APPS_DOMAIN>` are relayed through the gateway to port `18789` inside the sandbox.
+Registers routes in the OpenShell gateway:
+
+- `openclaw-gw--openclaw-ui.<APPS_DOMAIN>` → port `18789` (Control UI / WebSocket)
+- `openclaw-gw--openclaw-api.<APPS_DOMAIN>` → port `18790` (Chat Completions restore proxy)
+
+OpenShell **strips `Authorization`** on sandbox service routes ([issue 1794](https://github.com/NVIDIA/OpenShell/issues/1794)). nginx `location /v1/` copies the Bearer token to `X-OpenClaw-Authorization`; `scripts/openclaw-auth-proxy.py` on `:18790` restores `Authorization` for OpenClaw. See [SECURITY-EVALUATION.md](SECURITY-EVALUATION.md).
 
 This must happen before or independently of the gateway startup — it configures the routing mapping, not the process.
 

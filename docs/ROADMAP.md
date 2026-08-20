@@ -51,7 +51,7 @@
 - [x] Decide agent harness: OpenClaw (validated against a reference deployment)
 - [ ] Decide agent use case (what the agent actually does)
 - [ ] Create detailed architecture document with deployment topology
-- [ ] Define guardrails policies (topic control, jailbreak prevention, data protection)
+- [ ] Define guardrails policies (topic control, jailbreak prevention, data protection) — include Track 2 FAIL `config-patch-blocked` (refuse provider-key rotation / do not echo `sk-…`; see [SECURITY-EVALUATION.md](SECURITY-EVALUATION.md#demo-finding-config-patch-blocked-2026-08-20))
 - [ ] Design the demo narrative and attack scenarios
 
 
@@ -59,11 +59,11 @@
 ## Phase 3 - Implementation
 
 - [x] Implement agent configuration with OpenClaw harness
-- [ ] Configure NeMo Guardrails (rails, actions, policies)
+- [ ] Configure NeMo Guardrails (rails, actions, policies) — acceptance: `config-patch-blocked` PASS on `make eval-agent-sandbox` without weakening sandbox/netns cases; optionally deny `config.patch` in OpenClaw ([ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md))
 - [x] Configure MLflow tracing integration
 - [x] Deploy and validate on RHOAI 3.x cluster
 - [ ] Implement attack scenarios for the security demo — including the progressive network-policy unlock narrative, see [Deferred § Progressive network-policy unlock](#progressive-network-policy-unlock-for-the-security-attack-demo)
-- [ ] (Nice-to-have) EvalHub + GARC red teaming setup
+- [x] EvalHub + Garak red teaming against the OpenClaw HTTP API (Helm job templates) + MLflow sandbox scorers — see [SECURITY-EVALUATION.md](SECURITY-EVALUATION.md) and [ADR-0012](adr/0012-openclaw-security-evaluation.md)
 - [ ] (Nice-to-have) Cost tracking dashboard
 
 

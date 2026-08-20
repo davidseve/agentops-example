@@ -32,7 +32,7 @@ A working AgentOps platform stack on OpenShift includes:
 | TrustyAI | NeMo Guardrails deployment path |
 | KServe | Model serving infrastructure (required by TrustyAI) |
 | PostgreSQL (`maas-db`) | Shared database for MLflow and EvalHub |
-| EvalHub | Red teaming / evaluation (nice-to-have for demo) |
+| EvalHub | Red teaming / evaluation — see [SECURITY-EVALUATION.md](SECURITY-EVALUATION.md) |
 
 ```
 Helm charts (deploy/helm/)

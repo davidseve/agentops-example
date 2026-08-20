@@ -66,12 +66,14 @@ make deploy-all && make validate
 │   ├── adr/               # Architecture Decision Records
 │   ├── cluster-bootstrap.md   # RHOAI platform deploy on OpenShift
 │   ├── openshell-installation.md  # OpenShell install (local + cluster)
-│   └── AGENT-SANDBOX-AND-OPENSHELL.md  # Sandbox architecture + launch flow
+│   ├── AGENT-SANDBOX-AND-OPENSHELL.md  # Sandbox architecture + launch flow
+│   └── SECURITY-EVALUATION.md # EvalHub Garak + MLflow sandbox evals
 ├── deploy/                # Deployment manifests (Helm, Kustomize)
 │   ├── Makefile           # Cluster deploy targets (deploy-all, deploy-openshell, …)
 │   └── helm/              # RHOAI platform + OpenShell wrapper charts
 ├── agent/                 # Agent source code, prompts, guardrails config
-├── tests/                 # Health checks, red teaming
+├── evals/                 # Track 2 sandbox eval dataset + scorers
+├── tests/                 # Health checks, Playwright
 └── scripts/               # Utility scripts
 ```
 
@@ -82,6 +84,7 @@ make deploy-all && make validate
 - [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)
 - [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) - Agent Sandbox, OpenShell, and OpenClaw launch architecture
+- [docs/SECURITY-EVALUATION.md](docs/SECURITY-EVALUATION.md) - EvalHub Garak + MLflow sandbox security evals
 - [docs/stack-decisions.md](docs/stack-decisions.md) - Architecture decisions executive summary
 - [docs/adr/](docs/adr/) - Full Architecture Decision Records
 
