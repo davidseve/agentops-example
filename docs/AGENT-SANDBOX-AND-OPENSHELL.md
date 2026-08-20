@@ -581,6 +581,15 @@ make -C deploy validate-security
 1. **Blocked endpoint:** `curl https://github.com` from inside the sandbox returns `000` (timeout) or `403` — proving the policy blocks it.
 2. **Inference router:** `curl https://inference.local/v1/models` returns `200` — proving the inference route is working.
 
+### Infra vs Control UI validation
+
+| Layer | Command | What it proves |
+|-------|---------|----------------|
+| **Infrastructure** | `make -C deploy validate-security` | nftables/network policy blocks unauthorized egress (`curl` → `000`/`403`) |
+| **Control UI (E2E)** | `make -C deploy test-security` | User-facing agent refuses malicious prompts or shows block evidence in chat |
+
+Use both: `validate-security` catches policy misconfiguration; Playwright catches regressions in the agent harness or Control UI path. Security and guardrails Playwright suites click **New session** before each test and stay on that session (`askAgentViaUI` must not navigate back to `/`, which reopens Main Session). Assertions read only the latest assistant bubble, not the full chat log.
+
 ### Playwright E2E Tests
 
 Prereqs in `secrets/secrets.env`:
@@ -598,6 +607,7 @@ Copy `secrets/secrets.template.env` to `secrets/secrets.env` and set the **usern
 make -C deploy test-e2e           # full suite
 make -C deploy test-security    # sandbox-security.spec.ts
 make -C deploy test-ui          # openclaw-ui.spec.ts (browser → gateway → model → traces)
+make -C deploy test-guardrails  # guardrails-ui.spec.ts (NeMo jailbreak blocked in Control UI)
 make -C deploy test-mlflow      # mlflow-ui.spec.ts
 ```
 

@@ -51,7 +51,7 @@
 - [x] Decide agent harness: OpenClaw (validated against a reference deployment)
 - [ ] Decide agent use case (what the agent actually does)
 - [ ] Create detailed architecture document with deployment topology
-- [ ] Define guardrails policies (topic control, jailbreak prevention, data protection)
+- [x] Define guardrails policies (self-check input/output, jailbreak) — [agent/guardrails/](../agent/guardrails/)
 - [ ] Design the demo narrative and attack scenarios
 
 
@@ -59,7 +59,8 @@
 ## Phase 3 - Implementation
 
 - [x] Implement agent configuration with OpenClaw harness
-- [ ] Configure NeMo Guardrails (rails, actions, policies)
+- [x] Configure NeMo Guardrails (rails, actions, policies) — see [nemo-guardrails-installation.md](nemo-guardrails-installation.md)
+- [x] Playwright guardrails E2E (`tests/guardrails-ui.spec.ts`, `make -C deploy test-guardrails`)
 - [x] Configure MLflow tracing integration
 - [x] Deploy and validate on RHOAI 3.x cluster
 - [ ] Implement attack scenarios for the security demo — including the progressive network-policy unlock narrative, see [Deferred § Progressive network-policy unlock](#progressive-network-policy-unlock-for-the-security-attack-demo)

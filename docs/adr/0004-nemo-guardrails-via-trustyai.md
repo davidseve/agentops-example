@@ -53,8 +53,8 @@ Deploy NeMo Guardrails through the TrustyAI operator on OCP. This aligns with th
 
 | Component | Pinned version | Where enforced |
 |---|---|---|
-| TrustyAI operator | <!-- TODO: pin CSV --> | `deploy/helm/` |
-| NeMo Guardrails | <!-- TODO: pin version --> | TrustyAI operator config |
+| TrustyAI operator | RHOAI 3.4 channel `stable-3.4` | `deploy/helm/operators/values.yaml` |
+| NeMo Guardrails | TrustyAI-managed (RHOAI 3.4 GA) | `deploy/helm/guardrails/` |
 
 ## Demo Impact
 
@@ -63,7 +63,7 @@ The "Security Attack" demo segment (4-5 min) depends on NeMo Guardrails blocking
 ## Validation
 
 - **TrustyAI operator:** `trustyai: Managed` in the DataScienceCluster (`deploy/helm/platform/values.yaml`); `TrustyAIReady` confirmed during platform bootstrap.
-- **NeMo Guardrails rails/policies:** not yet deployed — Phase 3 implementation pending (see [ROADMAP.md](../ROADMAP.md)). The architectural decision (TrustyAI path, not standalone sidecar) remains Accepted.
+- **NeMo Guardrails rails/policies:** Helm chart `deploy/helm/guardrails/` deploys `NemoGuardrails` CR with self-check input/output rails; config in `agent/guardrails/`. Deploy: `make -C deploy deploy-guardrails`. See [nemo-guardrails-installation.md](../nemo-guardrails-installation.md).
 
 ## References
 
