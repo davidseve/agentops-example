@@ -1,0 +1,7 @@
+FlowStory (https://github.com/noyitz/flowstory)
+Copyright Noy Tzikow
+Licensed under the Apache License, Version 2.0.
+
+Vendored snapshot of dist/flowstory.min.js and templates/style.css
+for offline demo playback. Do not edit these files in place; refresh
+from upstream if you need a newer engine.

@@ -1,25 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-import { connectControlUi } from './helpers';
-
-const CHAT_TIMEOUT = 30_000;
-
-// The Control UI occasionally shows its own built-in "Control UI did not
-// start" recovery screen (app bundle registration race, not an auth/infra
-// issue — see docs.openclaw.ai/web/control-ui#blank-control-ui-page) when
-// tests navigate back-to-back rapidly against the same gateway process.
-// Retry connect up to twice. Password must be re-entered each navigation
-// (Control UI does not persist gateway.auth.password across reloads).
-async function gotoControlUi(page: Page) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await connectControlUi(page, '/', 15_000);
-      return;
-    } catch {
-      // retry
-    }
-  }
-  await connectControlUi(page, '/', 30_000);
-}
+import { test, expect } from '@playwright/test';
+import { CHAT_TIMEOUT, gotoControlUi } from './ui-helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -43,8 +23,6 @@ test.describe('OpenClaw Control UI', () => {
     const messageInput = page.getByPlaceholder(/Message/);
     await expect(messageInput).toBeVisible();
     await messageInput.fill('test message');
-    // Parallel workers share the main session; an in-flight agent run shows
-    // "Stop generating" instead of "Send". Either proves the composer is live.
     await expect(
       page.getByRole('button', { name: /Send|Stop generating|Queue message/ }),
     ).toBeVisible({ timeout: 10_000 });
@@ -56,14 +34,12 @@ test.describe('OpenClaw Control UI', () => {
     const messageInput = page.getByPlaceholder(/Message/);
     await messageInput.waitFor({ state: 'visible' });
 
-    // Wait out any in-flight run from a parallel worker on the shared session.
     await page.getByRole('button', { name: /Stop generating/ }).waitFor({ state: 'hidden', timeout: 60_000 }).catch(() => {});
 
     await messageInput.fill('Respond with exactly one word: PONG');
     await page.getByRole('button', { name: /Send/ }).click();
 
-    const response = page.locator('text=PONG').last();
-    await expect(response).toBeVisible({ timeout: CHAT_TIMEOUT });
+    await expect(page.locator('text=PONG').last()).toBeVisible({ timeout: CHAT_TIMEOUT });
   });
 
   test('health API returns ok', async ({ request }) => {

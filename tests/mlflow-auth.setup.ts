@@ -1,7 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { loginToMlflowOAuthIfNeeded, MLFLOW_WORKSPACE } from './mlflow-helpers';
+import { loginToMlflowOAuthIfNeeded, MLFLOW_WORKSPACE } from './ui-helpers';
 
 const MLFLOW_STORAGE_STATE = path.join(__dirname, 'test-results', '.auth', 'mlflow-state.json');
 

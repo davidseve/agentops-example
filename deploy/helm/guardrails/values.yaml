@@ -1,0 +1,24 @@
+# Defaults mirror secrets/secrets.template.env. At deploy time, make deploy-guardrails
+# overrides these from secrets/secrets.env (never commit real MAAS_API_KEY).
+guardrails:
+  enabled: true
+  name: nemo-guardrails
+  namespace: openshell
+  # TrustyAI NemoGuardrails Service exposes port 80 → container targetPort 8000.
+  servicePort: 80
+  replicas: 1
+  enableAuth: false
+  maasBaseUrl: "https://maas-rhdp.apps.maas.redhatworkshops.io/v1"
+  modelName: claude-sonnet-4-6
+  maasApiKey: ""
+  configMapName: nemo-guardrails-config
+  nemoConfigName: agentops-config
+  rails:
+    inputFlows:
+      - self check input
+    outputFlows:
+      - self check output
+    # OpenClaw Control UI uses streaming chat completions; required with output rails.
+    outputStreaming:
+      enabled: true
+      streamFirst: true

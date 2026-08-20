@@ -57,6 +57,15 @@ if [[ "$VERIFY_PROFILE" == "full" ]]; then
   else
     fail "make validate (RHOAI platform)"
   fi
+  if oc get nemoguardrails/nemo-guardrails -n openshell &>/dev/null; then
+    if run_make validate-guardrails; then
+      pass "make validate-guardrails"
+    else
+      fail "make validate-guardrails"
+    fi
+  else
+    info "Skipping validate-guardrails (NemoGuardrails CR not found)"
+  fi
 fi
 
 # =============================================================================
@@ -97,7 +106,7 @@ fi
 # Layer 5–6: Playwright E2E + MLflow traces
 # =============================================================================
 if [[ "$VERIFY_PROFILE" == "full" && "$SKIP_E2E" != "1" ]]; then
-  step "Layer 5: Playwright E2E (Control UI + security + MLflow UI)"
+  step "Layer 5: Playwright E2E (Control UI + security + guardrails + MLflow UI)"
   ensure_playwright_deps
   export_playwright_env || warn "Playwright env incomplete — E2E may fail"
   warn_playwright_mlflow_oauth_missing

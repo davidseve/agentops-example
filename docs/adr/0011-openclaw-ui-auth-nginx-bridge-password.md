@@ -67,7 +67,7 @@ Deploy: `APPS_DOMAIN=<domain> make -C deploy deploy-openclaw-ui-proxy`
   `launch-openclaw.sh`). Users enter it in Control UI settings or open
   `/?password=...`. Passwords are **not** persisted across Control UI
   reloads (OpenClaw behaviour); Playwright uses `/?password=` via
-  [`tests/helpers.ts`](../../tests/helpers.ts).
+  [`tests/ui-helpers.ts`](../../tests/ui-helpers.ts).
 - **TLS**: Route uses `reencrypt` (nginx terminates with service-CA cert;
   the OpenShift router presents the cluster edge cert to the browser).
 - **Service exposure**: `openshell service expose openclaw-gw 18789 openclaw-ui`
@@ -136,7 +136,7 @@ re-litigated without new upstream evidence:
 - CLI/gRPC path unchanged: mTLS client certs + `allowUnauthenticatedUsers: true`
 - No Keycloak, no oauth-proxy, no OAuth session secret
 - WebSocket works through nginx without the oauth-proxy Host-header bug
-- Playwright tests authenticate via `/?password=` (`tests/helpers.ts`)
+- Playwright tests authenticate via the password field + Connect (`tests/ui-helpers.ts`)
 
 ---
 
@@ -215,7 +215,7 @@ Pinned version today: see `OPENCLAW_PIN` in
 
 | # | Upstream change to watch | Where to look | What becomes possible | Suggested action |
 |---|---|---|---|---|
-| OC-1 | Control UI persists password across reloads (or first-class login gate UX) | OpenClaw Control UI / dashboard docs; issues around password not in `localStorage` | Better demo UX without `/?password=` | Update `tests/helpers.ts` and launch summary URL; keep password mode |
+| OC-1 | Control UI persists password across reloads (or first-class login gate UX) | OpenClaw Control UI / dashboard docs; issues around password not in `localStorage` | Better demo UX without `/?password=` | Update `tests/ui-helpers.ts` and launch summary URL; keep password mode |
 | OC-2 | Stronger shared-secret UX (token deep-links that stay stable, rateLimit defaults) | `gateway.auth` schema / docs.openclaw.ai | Safer shared-secret demos | Enable `gateway.auth.rateLimit` in `openclaw.json.tpl` if not already set |
 | OC-3 | First-class OIDC / SSO mode for Control UI (not just trusted-proxy headers) | OpenClaw gateway auth docs | True SSO without inventing header contracts | Prefer over reviving oauth-proxy if SSO becomes required |
 | OC-4 | trusted-proxy improvements (required headers, deny-by-default, no `allowLoopback` footguns) | OpenClaw `gateway.auth.trustedProxy` | Safer path if we return to identity-from-proxy | Only with a WebSocket-correct front proxy (**target B**) |
@@ -266,7 +266,7 @@ even with `pkiInitJob.enabled=true`.
 - Chart: [`deploy/helm/openclaw-ui-proxy/`](../../deploy/helm/openclaw-ui-proxy/)
 - Config: [`config/openclaw.json.tpl`](../../config/openclaw.json.tpl) (`gateway.auth.mode: password`)
 - Launch: [`scripts/launch-openclaw.sh`](../../scripts/launch-openclaw.sh)
-- Tests: [`tests/helpers.ts`](../../tests/helpers.ts), [`tests/auth.setup.ts`](../../tests/auth.setup.ts)
+- Tests: [`tests/ui-helpers.ts`](../../tests/ui-helpers.ts), [`tests/auth.setup.ts`](../../tests/auth.setup.ts)
 - [ADR-0006: Explicit Version Pinning](0006-explicit-version-pinning.md)
 - Roadmap deferred: [docs/ROADMAP.md](../ROADMAP.md) — "Multi-user browser identity / OCP SSO"
 - Reference project: ADR-0016 (OpenShift-native OAuth spike), ADR-0010 (OIDC / why OCP OAuth ≠ OpenShell OIDC), ADR-0012 (trusted-proxy)

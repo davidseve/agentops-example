@@ -48,6 +48,13 @@ export default defineConfig({
       use: { storageState: STORAGE_STATE },
     },
     {
+      name: 'guardrails-tests',
+      testMatch: /guardrails-ui\.spec\.ts/,
+      dependencies: ['security-tests'],
+      timeout: 120_000,
+      use: { storageState: STORAGE_STATE },
+    },
+    {
       name: 'mlflow-auth-setup',
       testMatch: /mlflow-auth\.setup\.ts/,
       use: { baseURL: mlflowBaseURL },

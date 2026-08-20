@@ -140,6 +140,7 @@ agentops-example/
 │   ├── architecture.md            # Detailed architecture (Phase 2)
 │   └── demo-script.md             # Step-by-step demo script (Phase 4)
 ├── deploy/
+│   ├── helm/guardrails/       # NemoGuardrails CR (TrustyAI)
 │   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
@@ -147,7 +148,7 @@ agentops-example/
 ├── agent/
 │   ├── src/                   # Agent source code (Phase 3)
 │   ├── prompts/               # Versioned prompts (Phase 3)
-│   └── guardrails/            # NeMo Guardrails config (Phase 3)
+│   └── guardrails/            # NeMo Guardrails Colang/prompts (Helm → TrustyAI CR)
 ├── tests/
 │   ├── health-check.sh        # Pre-demo health verification
 │   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
@@ -202,6 +203,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - [Red Hat AI Agentic Strategy 2026](assets/strategy-image.png)
 - [BYOA Blog Post](https://www.redhat.com/en/blog/operationalizing-bring-your-own-agent-red-hat-ai-openclaw-edition)
 - [RHOAI Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai/)
+- [NeMo Guardrails Installation](docs/nemo-guardrails-installation.md)
 - [Cluster Bootstrap Guide](docs/cluster-bootstrap.md) — RHOAI platform deploy, validate, teardown
 - [NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails)
 - [MLflow](https://mlflow.org/)
