@@ -78,10 +78,17 @@ pass()  { echo "    [PASS] $*"; PASS_COUNT=$((PASS_COUNT + 1)); condition pass "
 fail()  { echo "    [FAIL] $*"; FAIL_COUNT=$((FAIL_COUNT + 1)); condition fail "$CURRENT_LAYER"; }
 
 detect_apps_domain() {
+  local detected
+  detected=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null || true)
   if [[ -n "$APPS_DOMAIN" ]]; then
-    info "APPS_DOMAIN already set: $APPS_DOMAIN"
+    if [[ -n "$detected" && "$APPS_DOMAIN" != "$detected" ]]; then
+      warn "APPS_DOMAIN=$APPS_DOMAIN does not match cluster ingress $detected — using cluster domain"
+      APPS_DOMAIN="$detected"
+    else
+      info "APPS_DOMAIN already set: $APPS_DOMAIN"
+    fi
   else
-    APPS_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null || true)
+    APPS_DOMAIN="$detected"
     if [[ -z "$APPS_DOMAIN" ]]; then
       error "Could not detect apps domain from cluster. Set APPS_DOMAIN manually."
       return 1
