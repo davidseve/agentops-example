@@ -235,6 +235,9 @@ kill_stale_openclaw_gateway() {
     for p in $(pgrep -f "openclaw gateway" 2>/dev/null); do
       kill -9 "$p" 2>/dev/null
     done
+    if command -v fuser >/dev/null; then
+      fuser -k 18790/tcp >/dev/null 2>&1
+    fi
     sleep 2
     rm -f /sandbox/workspace/.openclaw/state/*.lock /tmp/openclaw*/*.lock 2>/dev/null
     pgrep -af "openclaw gateway" 2>/dev/null
@@ -368,6 +371,11 @@ pass "Workspace directories ready"
 step "Registering service route in OpenShell relay"
 openshell service expose "$SANDBOX_NAME" 18789 openclaw-ui 2>&1 || true
 pass "Service openclaw-ui exposed → https://${UI_HOST}/"
+# Chat Completions uses a second service: OpenShell strips Authorization on
+# sandbox routes (NVIDIA/OpenShell#1794). nginx copies Bearer to
+# X-OpenClaw-Authorization; this proxy restores it for OpenClaw.
+openshell service expose "$SANDBOX_NAME" 18790 openclaw-api 2>&1 || true
+pass "Service openclaw-api exposed on :18790 (Authorization restore proxy)"
 
 # ─── Step 9: Start gateway ────────────────────────────────────────────────────
 # No LITELLM_API_KEY injection: inference uses the inference router
@@ -405,6 +413,21 @@ openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 10 \
   pass "Gateway healthy on :18789" || \
   { error "Health check failed — check: openshell sandbox exec -n $SANDBOX_POD -- tail -50 /sandbox/workspace/openclaw.log"; exit 1; }
 
+step "Starting Authorization restore proxy"
+oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- mkdir -p /sandbox/workspace/.openclaw
+oc -n "$NAMESPACE" cp "${SCRIPT_DIR}/openclaw-auth-proxy.py" \
+  "${SANDBOX_POD}:/sandbox/workspace/.openclaw/openclaw-auth-proxy.py" -c agent
+openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 \
+  --env "HOME=/sandbox/workspace" \
+  -- bash -c '
+    nohup python3 /sandbox/workspace/.openclaw/openclaw-auth-proxy.py --port 18790 \
+      > /sandbox/workspace/openclaw-auth-proxy.log 2>&1 &
+    disown
+    sleep 2
+    curl -sf http://127.0.0.1:18790/health >/dev/null || exit 1
+  ' && pass "Auth restore proxy healthy on :18790" || \
+  { error "Auth restore proxy failed — check: openshell sandbox exec -n $SANDBOX_POD -- tail -20 /sandbox/workspace/openclaw-auth-proxy.log"; exit 1; }
+
 PLUGIN_CHECK=$(openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 5 \
   --env "HOME=/sandbox/workspace" \
   -- bash -c 'grep "http server listening" /sandbox/workspace/openclaw.log | tail -1' 2>/dev/null || true)
@@ -418,6 +441,7 @@ fi
 step "OpenClaw launch complete"
 echo ""
 info "Gateway UI (nginx mTLS bridge): https://${UI_HOST}/"
+info "Chat Completions: https://${UI_HOST}/v1/chat/completions (Bearer OPENCLAW_GATEWAY_PASSWORD)"
 info "Auth: enter OPENCLAW_GATEWAY_PASSWORD (from secrets/secrets.env) in Control UI settings"
 info "      or open: https://${UI_HOST}/?password=<password>"
 info "Tracing:  mlflow-openclaw → ${MLFLOW_SVC_URL} (workspace=${NAMESPACE}, experiment=${MLFLOW_EXPERIMENT_ID})"

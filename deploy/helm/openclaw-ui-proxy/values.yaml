@@ -11,5 +11,8 @@ sandboxName: openclaw-gw
 # OpenShell gateway Service name (= Helm release name of deploy/helm/openshell).
 openshellServiceName: openshell
 
+# OpenShell service name for the Chat Completions restore proxy (port 18790).
+apiServiceName: openclaw-api
+
 # UBI nginx image (OpenShift-compatible, non-root)
 image: registry.access.redhat.com/ubi9/nginx-124:latest

@@ -64,7 +64,7 @@ The demo implements the Red Hat AI Agentic Strategy 2026 platform stack:
 | Sandbox | OpenShell | Agent execution isolation, zero-trust sandboxing |
 | Observability | MLflow (tracing via mlflow-openclaw plugin) | Full Request/Response content in RHOAI MLflow — see [ADR-0010](docs/adr/0010-mlflow-tracing-otel.md) |
 | Prompt Management | MLflow (prompt registry) | Versioned prompts, A/B testing |
-| Agent | OpenClaw harness | Runs inside Agent Sandbox — see [AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) |
+| Agent | OpenClaw harness | Runs inside Agent Sandbox; Chat Completions HTTP API via nginx `/v1/` ([ADR-XXXX](docs/adr/XXXX-openclaw-chat-completions-http.md)) |
 
 ### Agent harness (demo choice)
 
@@ -89,7 +89,7 @@ This maps demo features to specific Red Hat products/components:
 | Agent Tracing | RHOAI - MLflow | MLflow via mlflow-openclaw plugin ([ADR-0010](docs/adr/0010-mlflow-tracing-otel.md)) |
 | Prompt Registry | RHOAI - MLflow | MLflow Prompt Registry |
 | Guardrails | NeMo Guardrails (NVIDIA partnership) | Deployed via TrustyAI operator on OCP |
-| Agent harness | OpenClaw (BYOA) | Runs in OpenShell sandbox via `launch-openclaw.sh` |
+| Agent harness | OpenClaw (BYOA) | Runs in OpenShell sandbox via `launch-openclaw.sh`; HTTP API [ADR-XXXX](docs/adr/XXXX-openclaw-chat-completions-http.md) |
 | Agent Sandboxing | OpenShell | Sandboxed execution environment |
 | Model Serving | MaaS via OpenShell inference router | inference.local → MaaS external endpoint |
 | Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
@@ -161,6 +161,7 @@ agentops-example/
     ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
     ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
     ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
+    ├── openclaw-auth-proxy.py         # Restore Authorization after OpenShell strips it (ADR-XXXX)
     ├── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
     ├── warm-up.sh             # Pre-warm model
     └── demo-reset.sh          # Reset demo state

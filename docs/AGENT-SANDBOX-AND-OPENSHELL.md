@@ -288,6 +288,7 @@ Pod: default--openclaw-gw
     └── [sandbox netns]     isolated network + filesystem view
         │
         ├── openclaw gateway run   child process, user "sandbox", port 18789
+        └── openclaw-auth-proxy.py  restores Authorization for /v1 (port 18790)
         └── openclaw agent / tools  additional child processes on demand
 ```
 
@@ -379,9 +380,15 @@ These steps run **inside the container as root** to prepare the environment. The
 
 ```bash
 openshell service expose openclaw-gw 18789 openclaw-ui
+openshell service expose openclaw-gw 18790 openclaw-api
 ```
 
-Registers a route in the OpenShell gateway: requests to `openclaw-gw--openclaw-ui.<APPS_DOMAIN>` are relayed through the gateway to port `18789` inside the sandbox.
+Registers routes in the OpenShell gateway:
+
+- `openclaw-gw--openclaw-ui.<APPS_DOMAIN>` → port `18789` (Control UI / WebSocket)
+- `openclaw-gw--openclaw-api.<APPS_DOMAIN>` → port `18790` (Chat Completions restore proxy)
+
+OpenShell **strips `Authorization`** on sandbox service routes ([issue 1794](https://github.com/NVIDIA/OpenShell/issues/1794)). nginx `location /v1/` copies the Bearer token to `X-OpenClaw-Authorization`; `scripts/openclaw-auth-proxy.py` on `:18790` restores `Authorization` for OpenClaw. See [ADR-XXXX](adr/XXXX-openclaw-chat-completions-http.md).
 
 This must happen before or independently of the gateway startup — it configures the routing mapping, not the process.
 
@@ -740,5 +747,6 @@ APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 | Privileged SCC rationale | ADR-0006 (reference project: `open-claw-in-openshell/docs/adrs/ADR-0006-scc-privileged-sandbox.md`) |
 | Version pinning policy | [ADR-0006](adr/0006-explicit-version-pinning.md) |
 | UI authentication (mTLS + password) | [ADR-0011](adr/0011-openclaw-ui-auth-nginx-bridge-password.md) |
+| Chat Completions HTTP API | [ADR-XXXX](adr/XXXX-openclaw-chat-completions-http.md) (number assigned on merge to `main`) |
 | MLflow tracing via plugin | [ADR-0010](adr/0010-mlflow-tracing-otel.md) |
 | OpenShell CLI reference | `openshell --help` (always authoritative) |

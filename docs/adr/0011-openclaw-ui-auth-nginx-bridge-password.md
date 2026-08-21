@@ -261,6 +261,9 @@ even with `pkiInitJob.enabled=true`.
 
 ---
 
+## Related Decisions
+- [ADR-XXXX: OpenClaw Chat Completions HTTP API](./XXXX-openclaw-chat-completions-http.md) (number assigned on merge to `main`)
+
 ## References
 
 - Chart: [`deploy/helm/openclaw-ui-proxy/`](../../deploy/helm/openclaw-ui-proxy/)
