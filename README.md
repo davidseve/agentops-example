@@ -70,7 +70,7 @@ make deploy-all && make validate
 ├── deploy/                # Deployment manifests (Helm, Kustomize)
 │   ├── Makefile           # Cluster deploy targets (deploy-all, deploy-openshell, …)
 │   └── helm/              # RHOAI platform + OpenShell wrapper charts
-├── agent/                 # Agent source code, prompts, guardrails config
+├── agent/                 # Agent source code and prompts
 ├── tests/                 # Health checks, red teaming
 └── scripts/               # Utility scripts
 ```

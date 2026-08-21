@@ -100,7 +100,7 @@ SKIP_E2E ?=
 .PHONY: deploy-operators wait-operators deploy-platform deploy-database
 .PHONY: wait-dashboard-crd adopt-dashboard-config
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub
-.PHONY: wait-nemoguardrails-crd deploy-guardrails undeploy-guardrails validate-guardrails guardrails-sync-config deploy-all
+.PHONY: wait-nemoguardrails-crd deploy-guardrails undeploy-guardrails validate-guardrails deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
 .PHONY: validate-openclaw validate-traces validate-security
 .PHONY: test-e2e test-ui test-security test-mlflow test-guardrails
@@ -278,10 +278,6 @@ wait-evalhub-crd:
 deploy-evalhub: deploy-database wait-evalhub-crd
 	$(HELM) upgrade --install $(EVALHUB_RELEASE) $(EVALHUB_CHART) $(HELM_OPTS)
 
-guardrails-sync-config:
-	@cp $(ROOT_DIR)/agent/guardrails/prompts.yml $(GUARDRAILS_CHART)/files/prompts.yml
-	@cp $(ROOT_DIR)/agent/guardrails/rails.co $(GUARDRAILS_CHART)/files/rails.co
-
 wait-nemoguardrails-crd:
 	@echo "Waiting for NemoGuardrails CRD..."
 	@until oc get crd nemoguardrails.trustyai.opendatahub.io >/dev/null 2>&1; do \
@@ -292,7 +288,7 @@ require-secrets-env:
 	@test -f $(ROOT_DIR)/secrets/secrets.env || { \
 		echo "ERROR: $(ROOT_DIR)/secrets/secrets.env required"; exit 1; }
 
-deploy-guardrails: require-secrets-env guardrails-sync-config wait-nemoguardrails-crd
+deploy-guardrails: require-secrets-env wait-nemoguardrails-crd
 	@set -a && . $(ROOT_DIR)/secrets/secrets.env && set +a && \
 	$(HELM) upgrade --install $(GUARDRAILS_RELEASE) $(GUARDRAILS_CHART) \
 		--namespace $${NEMO_GUARDRAILS_NAMESPACE:-openshell} --create-namespace \
