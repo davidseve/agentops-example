@@ -63,7 +63,7 @@ The "Security Attack" demo segment (4-5 min) depends on NeMo Guardrails blocking
 ## Validation
 
 - **TrustyAI operator:** `trustyai: Managed` in the DataScienceCluster (`deploy/helm/platform/values.yaml`); `TrustyAIReady` confirmed during platform bootstrap.
-- **NeMo Guardrails rails/policies:** Helm chart `deploy/helm/guardrails/` deploys `NemoGuardrails` CR with self-check input/output rails; config in `agent/guardrails/`. Deploy: `make -C deploy deploy-guardrails`. See [nemo-guardrails-installation.md](../nemo-guardrails-installation.md).
+- **NeMo Guardrails rails/policies:** Helm chart `deploy/helm/guardrails/` deploys `NemoGuardrails` CR with self-check input/output rails; rails/prompts in `deploy/helm/guardrails/files/` (`config.yaml` rendered by Helm). Deploy: `make -C deploy deploy-guardrails`. See [nemo-guardrails-installation.md](../nemo-guardrails-installation.md).
 
 ## References
 

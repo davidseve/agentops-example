@@ -38,10 +38,9 @@ make -C deploy deploy-guardrails
 
 This:
 
-1. Syncs `agent/guardrails/` into the Helm chart
-2. Waits for `nemoguardrails.trustyai.opendatahub.io` CRD
-3. Installs `rhoai-guardrails` with values from `secrets/secrets.env`
-4. Waits until the CR `status.phase` is `Ready`
+1. Waits for `nemoguardrails.trustyai.opendatahub.io` CRD
+2. Installs `rhoai-guardrails` with values from `secrets/secrets.env`
+3. Waits until the CR `status.phase` is `Ready`
 
 `deploy-guardrails` is also invoked by `make -C deploy deploy-all` and `deploy-agent`.
 
@@ -73,13 +72,12 @@ make -C deploy launch-openclaw   # creates maas-direct + maas-guardrailed provid
 
 ## Configuration
 
-Rails config lives in [`agent/guardrails/`](../agent/guardrails/):
+Rails config lives in [`deploy/helm/guardrails/files/`](../deploy/helm/guardrails/files/):
 
-- `config.yaml` — rendered by Helm (`model_name`, `openai_api_base` from secrets)
 - `prompts.yml` — Red Hat RHOAI 3.4 self-check prompts (jailbreak / moderation)
 - `rails.co` — built-in self-check flows
 
-Helm chart: [`deploy/helm/guardrails/`](../deploy/helm/guardrails/).
+`config.yaml` is rendered by Helm (`model_name`, `openai_api_base`, rail flows from `values.yaml`). Helm chart: [`deploy/helm/guardrails/`](../deploy/helm/guardrails/).
 
 ## Teardown
 

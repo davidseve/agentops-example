@@ -51,7 +51,7 @@
 - [x] Decide agent harness: OpenClaw (validated against a reference deployment)
 - [ ] Decide agent use case (what the agent actually does)
 - [ ] Create detailed architecture document with deployment topology
-- [x] Define guardrails policies (self-check input/output, jailbreak) — [agent/guardrails/](../agent/guardrails/)
+- [x] Define guardrails policies (self-check input/output, jailbreak) — [deploy/helm/guardrails/files/](../deploy/helm/guardrails/files/)
 - [ ] Design the demo narrative and attack scenarios
 
 

@@ -140,15 +140,14 @@ agentops-example/
 │   ├── architecture.md            # Detailed architecture (Phase 2)
 │   └── demo-script.md             # Step-by-step demo script (Phase 4)
 ├── deploy/
-│   ├── helm/guardrails/       # NemoGuardrails CR (TrustyAI)
+│   ├── helm/guardrails/       # NemoGuardrails CR (TrustyAI); rails in files/
 │   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
 │   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
 │   ├── kustomize/             # Kustomize overlays (Phase 4)
 │   └── openshift/             # OpenShift-specific manifests (non-Helm)
 ├── agent/
 │   ├── src/                   # Agent source code (Phase 3)
-│   ├── prompts/               # Versioned prompts (Phase 3)
-│   └── guardrails/            # NeMo Guardrails Colang/prompts (Helm → TrustyAI CR)
+│   └── prompts/               # Versioned prompts (Phase 3)
 ├── tests/
 │   ├── health-check.sh        # Pre-demo health verification
 │   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
