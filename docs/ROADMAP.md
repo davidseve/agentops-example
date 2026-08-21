@@ -25,7 +25,7 @@
 - [x] Dashboard race fixes: wait-dashboard-crd, adopt-dashboard-config (ADR-0008)
 - [x] MLflow chart: OpenClaw integration RBAC + experiment Job (gated, Phase 5 activates)
 - [x] Document MaaS options available in demo.redhat.com
-- [ ] Map each demo feature to Red Hat product/component (study guide / `docs/architecture.md`) — partial mapping in [AGENTS.md](../AGENTS.md) § Technology-to-Product Mapping
+- [x] Map each demo feature to Red Hat product/component (study guide / `docs/architecture.md`) — partial mapping in [AGENTS.md](../AGENTS.md) § Technology-to-Product Mapping
 - [x] Document initial pinned versions manifest (operator CSVs, image tags/digests)
 
 
@@ -46,12 +46,13 @@
 - [x] Removed all shared-cluster/"coexisting project" special-casing from `deploy/Makefile` end-to-end (2026-08-14). This went through a few iterations the same day: first per-field `oc patch` reconciliation, then a git-tracked `oc apply` manifest (`manifests/dsc-shared-overrides.yaml`), both trying to make this project's `trustyai`/`kserve`/`mlflowoperator` desired state survive a shared `rhoai-platform` Helm release owned by the coexisting `open-claw-in-openshell` project. All of it was removed once the real workflow was clarified: `make cluster-cleanup` (full teardown) before switching which project's stack is deployed on a given cluster — not indefinite side-by-side coexistence with divergent component sets. With that workflow, every `deploy-*` target's "skip if release already exists" branch (`deploy-operators`, `deploy-database`, `deploy-mlflow`, `deploy-evalhub`, and `deploy-platform`/`deploy-platform-fresh`, the latter two now merged into one target) was also unnecessary complexity: plain `helm upgrade --install` is already idempotent, so every one of those targets now just runs it unconditionally, no "already deployed" check at all. Also simplified: `wait-evalhub-crd` no longer treats a missing CRD as an expected "TrustyAI Removed on a shared DSC" outcome to silently skip (this project's own `deploy-platform` always sets `trustyai: Managed`, so the CRD reliably appears — same plain registration-race wait as `wait-mlflow-crd`/`wait-dashboard-crd`). Coexistence-flavored comments were also cleaned up in `values.yaml` (openclaw-ui-proxy, openshell route), `scripts/openshift-openshell-register-gateway.sh`, and [ADR-0008](adr/0008-rhoai-dsc-component-selection.md) (which was additionally stale — still listed `kserve` as `Removed`). Net effect: this project's deploy scripts no longer reference or reason about `open-claw-in-openshell` (or any other coexisting project) anywhere; if you want two independent stacks live on the same cluster at once, that's back to being a manual, unsolved concern, not something this Makefile tries to paper over.
 
 
+
 ## Phase 2 - Architecture and Agent Design
 
 - [x] Decide agent harness: OpenClaw (validated against a reference deployment)
-- [ ] Decide agent use case (what the agent actually does)
-- [ ] Create detailed architecture document with deployment topology
-- [x] Define guardrails policies (self-check input/output, jailbreak) — [deploy/helm/guardrails/files/](../deploy/helm/guardrails/files/)
+- [x] Decide agent use case (what the agent actually does)
+- [x] Create detailed architecture document with deployment topology
+- [x] Define guardrails policies (self-check input/output, jailbreak) — [agent/guardrails/](../agent/guardrails/)
 - [ ] Design the demo narrative and attack scenarios
 
 
@@ -78,8 +79,8 @@
 - [ ] Create warm-up script
 - [ ] Record fallback video
 - [ ] Build presentation slides (5-8 min theory)
-- [ ] Rehearsal runs (minimum 3x full run-throughs)
-- [ ] Final polish and edge-case handling
+- [ ] Rename github proyect.
+- [ ] Name conventions refactor.
 
 
 
@@ -90,36 +91,38 @@
 ### Progressive network-policy unlock for the Security Attack demo
 
 Found while comparing this project against a related OpenShell/OpenCode reference demo
-([r3v5/agent-ops, `opencode-vertex-tracing`](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing)).
+([r3v5/agent-ops,](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing) `opencode-vertex-tracing`).
 That demo's narrative starts from a fully default-deny sandbox, shows a tool call fail live,
-then unlocks endpoints one at a time with `openshell policy update <sandbox> --add-endpoint
-<host>:443 --binary <path> --wait` — a strong "zero-trust, progressively opened" visual for a
+then unlocks endpoints one at a time with `openshell policy update <sandbox> --add-endpoint <host>:443 --binary <path> --wait` — a strong "zero-trust, progressively opened" visual for a
 live audience.
 
-Today, [`scripts/launch-openclaw.sh`](../scripts/launch-openclaw.sh) applies the full
-[`policies/openclaw-sandbox.yaml`](../policies/openclaw-sandbox.yaml) at `sandbox create
---policy ...` time — MaaS and MLflow egress are both already open before the demo starts, so
+Today, `[scripts/launch-openclaw.sh](../scripts/launch-openclaw.sh)` applies the full
+`[policies/openclaw-sandbox.yaml](../policies/openclaw-sandbox.yaml)` at `sandbox create --policy ...` time — MaaS and MLflow egress are both already open before the demo starts, so
 we lose the "default-deny → live unlock" moment that [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)'s
 "Demo Impact" section and `AGENTS.md`'s "Security Attack" narrative block both call for.
 
 - [ ] Add a minimal (or empty) default policy for the `openclaw-demo` sandbox creation step,
-      instead of the full `openclaw-sandbox.yaml`
+  ```
+  instead of the full `openclaw-sandbox.yaml`
+  ```
 - [ ] Script (or document as manual demo steps) the live `openshell policy update
-      <SANDBOX_NAME> --add-endpoint <host>:443 --binary <path> --wait` calls for, in order:
-      MaaS inference, then MLflow tracing — mirroring the two `network_policies` blocks
-      already defined in `policies/openclaw-sandbox.yaml` (`maas_inference`, `mlflow_direct`)
+  ```
+  <SANDBOX_NAME> --add-endpoint <host>:443 --binary <path> --wait` calls for, in order:
+  MaaS inference, then MLflow tracing — mirroring the two `network_policies` blocks
+  already defined in `policies/openclaw-sandbox.yaml` (`maas_inference`, `mlflow_direct`)
+  ```
 - [ ] Verify the expected failure mode first (agent chat / MaaS call fails cleanly with the
-      egress not yet granted) before recording or presenting
+  ```
+  egress not yet granted) before recording or presenting
+  ```
 - [ ] Update the demo script / narrative docs (Phase 4's step-by-step demo script, once written)
-      with the exact `openshell policy update` commands and expected before/after behavior
+  ```
+  with the exact `openshell policy update` commands and expected before/after behavior
+  ```
 - [ ] Keep `policies/openclaw-sandbox.yaml` as the "final state" reference / fallback for
-      non-interactive (e.g. CI, `make validate-*`) runs that need full connectivity immediately
+  ```
+  non-interactive (e.g. CI, `make validate-*`) runs that need full connectivity immediately
+  ```
 
 
-## Open Questions
-
-- demo.redhat.com catalog: which RHOAI demos exist that we can reuse as base?
-- MaaS endpoints available: which models, rate limits, auth method?
-- What is the agent use case?
-- Can CRC also drop the raw `agent-sandbox-v0.5.1` manifest and use OLM-only Agent Sandbox? Tracked as an open Phase 2 item in the reference project (`open-claw-in-openshell/ROADMAP.md`) — this repo has no CRC deploy path.
 
