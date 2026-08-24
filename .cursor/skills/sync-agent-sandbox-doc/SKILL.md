@@ -4,7 +4,8 @@ description: >-
   Keep docs/AGENT-SANDBOX-AND-OPENSHELL.md in sync when Agent Sandbox,
   OpenShell, OpenClaw launch, sandbox policies, or related deploy paths
   change. Use after modifying launch-openclaw.sh, openshell/operators Helm
-  charts, policies/openclaw-sandbox.yaml, version pins, or validation targets
+  charts, policies/openclaw-sandbox.yaml, policies/openclaw-demo-initial.yaml,
+  scripts/demo-*.sh, version pins, or validation targets
   — or when the user asks to update the sandbox architecture guide.
 ---
 
@@ -24,7 +25,8 @@ Triggered automatically by the `agent-sandbox-doc-sync` rule when matched files 
 |---------|---------|
 | `scripts/launch-openclaw.sh` changed | New setup step, env var, `OPENCLAW_PIN`, image `--from` |
 | Helm openshell/operators/ui-proxy changed | Chart version, SCC, values, new template |
-| `policies/openclaw-sandbox.yaml` changed | Network/filesystem policy |
+| `policies/openclaw-sandbox.yaml` changed | Network/filesystem policy (CI final state) |
+| `policies/openclaw-demo-initial.yaml` or `scripts/demo-*.sh` changed | Demo v1 policy / live scripts — also update [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md), [`docs/demo-script.md`](../../docs/demo-script.md) |
 | `deploy/Makefile` validate/deploy targets changed | `validate-openclaw`, `deploy-openshell` waits |
 | Version pin bumped | Operator CSV, OpenShell chart, npm pin |
 | First validation of a new topology | e.g. switching to `sidecar` supervisor topology |
@@ -52,7 +54,9 @@ Sync progress:
 | `deploy/helm/openclaw-ui-proxy/` | §5 Step 8 / Traffic flow (browser path) |
 | `deploy/Makefile` (`deploy-openshell`, `validate-*`) | §2 How deploy-openshell works, §8 Validation, §9 Quick Reference |
 | `scripts/launch-openclaw.sh` | §3 Phase 6, **§5 Launch Script** (primary) |
-| `policies/openclaw-sandbox.yaml` | §1 Landlock / policy, §7 Policy anatomy |
+| `policies/openclaw-sandbox.yaml` | §1 Landlock / policy, §7 Policy anatomy (CI final) |
+| `policies/openclaw-demo-initial.yaml` | §7 Policy anatomy (demo initial — link to demo-narrativa-v1) |
+| `scripts/demo-*.sh` | §7 Policy anatomy, §9 Quick Reference (demo live scripts) |
 | `config/openclaw.json.tpl` | §5 (auth, plugins, tracing env) |
 | `OPENCLAW_PIN` / image `--from` | §6 Version Pinning |
 | OpenShell upstream behavior (driver, `service expose`) | §3 End-to-end flow, §4 Inside pod, §5 steps |
@@ -66,8 +70,9 @@ Read the actual files — especially:
 - `deploy/helm/operators/values.yaml` — channel, CSV, namespace
 - `deploy/helm/openshell/Chart.yaml` + `Chart.lock` — chart pin
 - `deploy/helm/openshell/values-openshift.yaml` — SCC, security context
-- `policies/openclaw-sandbox.yaml` — allowed endpoints and filesystem rules
-- `deploy/Makefile` — `validate-openclaw`, `validate-security`, deploy sequence
+- `policies/openclaw-sandbox.yaml` — CI final policy (github blocked)
+- `policies/openclaw-demo-initial.yaml` — demo v1 initial policy (github allowed for Test C)
+- `deploy/Makefile` — `validate-openclaw`, `validate-security`, `validate-demo-initial`, deploy sequence
 
 ### Step 3 — Editing rules
 

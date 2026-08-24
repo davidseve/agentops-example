@@ -17,18 +17,20 @@ Deploy all platform components to a fresh OpenShift cluster for the AgentOps dem
 
 ## Deploy
 
-**Recommended (full stack + verify):**
-
-```bash
-./scripts/cluster-lifecycle.sh preflight   # once per cluster
-./scripts/cluster-lifecycle.sh full        # deploy + verify (one-shot)
-```
-
-**Platform only (RHOAI layer):**
+**RHOAI platform only** (operators, MLflow, EvalHub, NeMo Guardrails):
 
 ```bash
 cd deploy && make deploy-all
 # or token-efficient: make deploy-all-quiet
+```
+
+**Full demo v1 stack** (platform + OpenShell + OpenClaw with demo-initial policy): use the **`demo-backstage-install`** skill — do **not** rely on `./scripts/cluster-lifecycle.sh full` alone (it launches with the CI hardened sandbox policy).
+
+**Platform + generic lifecycle** (CI hardened policy):
+
+```bash
+./scripts/cluster-lifecycle.sh preflight   # once per cluster
+./scripts/cluster-lifecycle.sh full        # deploy + verify (CI profile)
 ```
 
 `make deploy-all` is the single entry point for the RHOAI layer. It installs charts in order and **blocks
@@ -166,7 +168,13 @@ Follow global skill **`long-running-scripts`**.
 - **Platform only:** `make deploy-all-quiet` (writes `.agent-status/deploy-all.json`) or one long `make deploy-all`
 - **No polling** during `oc wait` / operator reconciliation
 - Quick check: `./scripts/cluster-lifecycle.sh verify --smoke` or `make validate-smoke`
-- Full check: `./scripts/cluster-lifecycle.sh verify` or `make validate` once at the end
+- Full CI check: `./scripts/cluster-lifecycle.sh verify` or `make validate` once at the end
+- Demo backstage check: `VERIFY_PROFILE=demo ./scripts/verify.sh` (see `demo-verify` skill)
+
+## Related
+
+- Full demo v1 install: `demo-backstage-install` skill — [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md)
+- Demo verify (permissive egress): `demo-verify` skill
 
 ## Notes
 
