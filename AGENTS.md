@@ -95,31 +95,64 @@ This maps demo features to specific Red Hat products/components:
 | Red Teaming | RHOAI - EvalHub | GARC integration (nice-to-have) |
 | Cost Governance | MaaS Dashboard | Token billing/showback (nice-to-have) |
 
-## Demo Narrative (proposed)
+## Demo Narrative
 
-1. **Setup** (1-2 min): Show the deployed stack on OpenShift
-2. **Happy Path** (3-4 min): Agent performs its task, show traces in MLflow, show prompt version in registry
-3. **Security Attack** (4-5 min): Prompt injection, data exfiltration attempts - show NeMo blocking, OpenShell containing, traces capturing everything
-4. **Red Teaming** (2-3 min, if time): Automated GARC scan
-5. **Wrap-up** (1 min): "Your Agent, Our Platform, Production-Ready"
+Active live script (~9–10 min): [`docs/demo-narrativa-v1.md`](docs/demo-narrativa-v1.md) (Spanish) + [`docs/demo-script.md`](docs/demo-script.md) (English).
+
+1. **Context** (1–2 min): Architecture map via [`docs/demo/layers.html`](docs/demo/layers.html) — skill: `demo-presenter-panel`
+2. **Tests A & B** (2–3 min): API key not in sandbox; `/etc/shadow` blocked — skill: `demo-present`
+3. **Test C + Cambio 1** (2 min): Unauthorized `curl` succeeds, then restrict egress — skill: `demo-restrict-egress`
+4. **Test D + Cambio 2** (2–3 min): Jailbreak on direct MaaS, then NeMo blocks — skill: `demo-enable-guardrails`
+5. **MLflow** (1–2 min): Same session trace — skill: `mlflow-tracing-validate`
+6. **Close**: *Your Agent. Our Platform. Production-Ready.* — skill: `demo-present`
+
+Backstage install (before stage): `demo-backstage-install` → `demo-backstage-prep` → `demo-verify`. Reset between rehearsals: `demo-reset`.
+
+EvalHub/Garak extension (second namespace, precomputed evals): [`docs/demo-narrativa-v2.md`](docs/demo-narrativa-v2.md) — nice-to-have, not part of the active script.
 
 ## Cursor Skills
 
 Project-level skills live in `.cursor/skills/`. Use them when the task matches their description:
 
+### Infrastructure and platform
+
 | Skill | When to use |
 |---|---|
 | `openshift-mcp` | Any OpenShift/Kubernetes cluster operation — prefer MCP (`user-kubernetes`) over `oc`/`kubectl` |
-| `cluster-bootstrap` | Deploy RHOAI platform stack on OpenShift — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
-| `cluster-cleanup` | Remove RHOAI platform stack from OpenShift — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
+| `secrets-setup` | Create/validate `secrets/secrets.env` before deploy |
+| `cluster-bootstrap` | Deploy RHOAI platform stack — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
+| `cluster-cleanup` | Remove RHOAI platform stack — see [cluster-bootstrap.md](docs/cluster-bootstrap.md) |
 | `openshell-local-install` | Install OpenShell CLI + local gateway on macOS/Linux — see [openshell-installation.md](docs/openshell-installation.md) |
 | `openshell-local-cleanup` | Uninstall local OpenShell stack on macOS/Linux |
 | `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy deploy-openshell` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
+| `guardrails-cluster-install` | Deploy/validate/undeploy NeMo Guardrails (TrustyAI) — see [nemo-guardrails-installation.md](docs/nemo-guardrails-installation.md) |
+| `launch-openclaw` | Launch OpenClaw in sandbox — use demo-initial policy for v1 narrative |
+
+### Demo v1 ([demo-narrativa-v1.md](docs/demo-narrativa-v1.md))
+
+| Skill | When to use |
+|---|---|
+| `demo-backstage-install` | One-shot backstage install (RHOAI + OpenShell + OpenClaw demo state) |
+| `demo-backstage-prep` | Pre-stage checklist before going live |
+| `demo-verify` | Validate demo initial state (`VERIFY_PROFILE=demo`) |
+| `demo-present` | Master live runbook (phases 0–5) |
+| `demo-presenter-panel` | Serve `layers.html` + `live.html` panels |
+| `demo-restrict-egress` | Live Cambio 1 — block unauthorized egress |
+| `demo-enable-guardrails` | Live Cambio 2 — switch inference to NeMo |
+| `demo-reset` | Reset between rehearsals (direct MaaS + demo-initial policy) |
+| `mlflow-tracing-validate` | MLflow traces block (phase 4) |
+
+### Docs, governance, utilities
+
+| Skill | When to use |
+|---|---|
 | `sync-agent-sandbox-doc` | Keep [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) in sync when sandbox/openshell/launch paths change |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
-| `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/); required before reversing Accepted decisions |
+| `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/) |
 | `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure |
+| `no-secrets` | Scan for credentials before commit or PR |
+| `redhat-kb` | Search Red Hat Knowledge Base for official troubleshooting |
 
 ## Project Structure
 
@@ -138,7 +171,9 @@ agentops-example/
 │   │   └── NNNN-<slug>.md         # Individual ADRs
 │   ├── stack-decisions.md         # ADR executive summary (by layer)
 │   ├── architecture.md            # Detailed architecture (Phase 2)
-│   └── demo-script.md             # Step-by-step demo script (Phase 4)
+│   ├── demo-narrativa-v1.md       # Active live demo narrative (Spanish)
+│   ├── demo-narrativa-v2.md       # EvalHub/Garak extension (future)
+│   └── demo-script.md             # Step-by-step demo script with timing (English)
 ├── deploy/
 │   ├── helm/guardrails/       # NemoGuardrails CR (TrustyAI); rails in files/
 │   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
@@ -160,9 +195,11 @@ agentops-example/
     ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
     ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
     ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
-    ├── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
-    ├── warm-up.sh             # Pre-warm model
-    └── demo-reset.sh          # Reset demo state
+    ├── demo-enable-guardrails.sh      # Live demo Cambio 2: NeMo inference path
+    ├── demo-disable-guardrails.sh     # Reset to direct MaaS
+    ├── demo-restrict-egress.sh        # Live demo Cambio 1: apply final sandbox policy
+    ├── demo-reset.sh                  # Reset demo (direct MaaS + demo-initial policy)
+    └── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
 ```
 
 ## Architecture Decisions (ADRs)
