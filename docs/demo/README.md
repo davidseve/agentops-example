@@ -18,6 +18,16 @@ python3 -m http.server 8765
 
 Marks are vendored under [assets/icons/](assets/icons/); sources in [assets/icons/NOTICE.txt](assets/icons/NOTICE.txt). FlowStory has no node-logo field, so [logo-renderer.js](logo-renderer.js) paints them on the canvas.
 
+## Cursor skills
+
+| Page / phase | Skill |
+|---|---|
+| Serve panels | `demo-presenter-panel` |
+| Live runbook (A–D) | `demo-present` |
+| Cambio 1 / 2 / reset | `demo-restrict-egress`, `demo-enable-guardrails`, `demo-reset` |
+
+See [AGENTS.md](../AGENTS.md) § Demo v1 skills and [demo-script.md](../demo-script.md).
+
 
 Advance **one hop at a time** with a presentation clicker (Page Down / right) or **← →**. Prev is Page Up / left. **Start** still auto-plays the whole flow; **Reset** (or Home) clears the map.
 
@@ -35,9 +45,17 @@ Garak and EvalHub are out of this diagram. A later variant may use Garak as the 
 
 Loop stays off. Click a box for product / owner details.
 
-## Page 2 — Live companion (not built yet)
+## Page 2 — Live companion
 
-Same map. Tests A–D plus EvalHub, with the exact prompt to paste into OpenClaw. Split screen with the Control UI.
+[live.html](live.html) — Tests A–D with copy-paste prompts, security layer board, and demo script commands. Split screen with the OpenClaw Control UI.
+
+```bash
+cd docs/demo
+python3 -m http.server 8765
+# http://127.0.0.1:8765/live.html
+```
+
+Narrative (Spanish): [demo-narrativa-v1.md](../demo-narrativa-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
 
 ## Vendor
 

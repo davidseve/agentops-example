@@ -78,8 +78,8 @@ make deploy-all && make validate
 ## Documentation
 
 - [NeMo Guardrails Installation](docs/nemo-guardrails-installation.md)
-
-- [AGENTS.md](AGENTS.md) - Full project context and tech stack definition
+- [Demo script (live, ~9–10 min)](docs/demo-script.md) — Cursor skills in [AGENTS.md](AGENTS.md) § Demo v1
+- [Demo narrative v1 (Spanish)](docs/demo-narrativa-v1.md)
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap and task tracking
 - [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)

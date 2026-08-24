@@ -11,6 +11,16 @@ OpenClaw → inference.local → [maas-direct | maas-guardrailed] → MaaS
 
 For the live demo narrative, inference starts on **direct MaaS** (`INFERENCE_BACKEND=direct`). NeMo is deployed in backstage; the presenter runs `./scripts/demo-enable-guardrails.sh` for Cambio 2 (jailbreak blocked by self-check rails).
 
+Demo sandbox policy: create with [`policies/openclaw-demo-initial.yaml`](../policies/openclaw-demo-initial.yaml) (permissive egress for Test C). Restrict live with `./scripts/demo-restrict-egress.sh`. Reset between rehearsals: `./scripts/demo-reset.sh`. See [`demo-narrativa-v1.md`](../docs/demo-narrativa-v1.md).
+
+### Install via Cursor skills
+
+| Skill | Path | Use when you want to… |
+|---|---|---|
+| `guardrails-cluster-install` | [`.cursor/skills/guardrails-cluster-install/`](../.cursor/skills/guardrails-cluster-install/SKILL.md) | Deploy, validate, or remove NeMo Guardrails on the cluster |
+| `demo-enable-guardrails` | [`.cursor/skills/demo-enable-guardrails/`](../.cursor/skills/demo-enable-guardrails/SKILL.md) | Live demo Cambio 2 — switch inference to NeMo on stage |
+| `demo-reset` | [`.cursor/skills/demo-reset/`](../.cursor/skills/demo-reset/SKILL.md) | Reset demo to direct MaaS + demo-initial policy between rehearsals |
+
 ## Prerequisites
 
 - RHOAI platform deployed with `trustyai: Managed` (`make -C deploy deploy-all`)
@@ -68,6 +78,8 @@ After OpenShell is up:
 make -C deploy launch-openclaw   # creates maas-direct + maas-guardrailed providers
 ./scripts/demo-enable-guardrails.sh   # live demo: switch to NeMo path
 ./scripts/demo-disable-guardrails.sh  # reset to direct MaaS
+./scripts/demo-restrict-egress.sh     # live demo Cambio 1: block unauthorized egress
+./scripts/demo-reset.sh               # full demo reset (MaaS direct + demo-initial policy)
 ```
 
 ## Configuration

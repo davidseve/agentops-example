@@ -53,7 +53,7 @@
 - [x] Decide agent use case (what the agent actually does)
 - [x] Create detailed architecture document with deployment topology
 - [x] Define guardrails policies (self-check input/output, jailbreak) — [agent/guardrails/](../agent/guardrails/)
-- [ ] Design the demo narrative and attack scenarios
+- [x] Design the demo narrative and attack scenarios — active script [`demo-narrativa-v1.md`](demo-narrativa-v1.md); EvalHub extension [`demo-narrativa-v2.md`](demo-narrativa-v2.md)
 
 
 
@@ -64,7 +64,7 @@
 - [x] Playwright guardrails E2E (`tests/guardrails-ui.spec.ts`, `make -C deploy test-guardrails`)
 - [x] Configure MLflow tracing integration
 - [x] Deploy and validate on RHOAI 3.x cluster
-- [ ] Implement attack scenarios for the security demo — including the progressive network-policy unlock narrative, see [Deferred § Progressive network-policy unlock](#progressive-network-policy-unlock-for-the-security-attack-demo)
+- [ ] Implement attack scenarios for the security demo — scripts + narrative in [`demo-narrativa-v1.md`](demo-narrativa-v1.md); validate Prueba C egress on cluster
 - [ ] (Nice-to-have) EvalHub + GARC red teaming setup
 - [ ] (Nice-to-have) Cost tracking dashboard
 
@@ -74,7 +74,7 @@
 
 - [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: `[deploy/helm/openshell/](../deploy/helm/openshell/)` + `make -C deploy deploy-openshell`
 - [x] Refactor OpenShell wrapper chart (`0.3.0`): absorb namespace + SCC RoleBinding into Helm; Agent Sandbox via OLM only (OSC 1.13); retire kustomize + SCC script + raw `v0.5.1` manifest — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
-- [ ] Write step-by-step demo script with timing marks (10-13 min)
+- [x] Write step-by-step demo script with timing marks (~9–10 min live) — [`demo-script.md`](demo-script.md) (English); narrative [`demo-narrativa-v1.md`](demo-narrativa-v1.md) (Spanish)
 - [x] Create health-check script (`tests/health-check.sh`)
 - [ ] Create warm-up script
 - [ ] Record fallback video
@@ -90,39 +90,21 @@
 
 ### Progressive network-policy unlock for the Security Attack demo
 
+> **Not the active demo narrative.** The live script ([`demo-narrativa-v1.md`](demo-narrativa-v1.md)) starts with MaaS + MLflow already reachable and **closes** egress on stage (Test C → `demo-restrict-egress.sh`). The reference-demo pattern below (default-deny → live unlock) remains an alternative worth documenting separately.
+
 Found while comparing this project against a related OpenShell/OpenCode reference demo
 ([r3v5/agent-ops,](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing) `opencode-vertex-tracing`).
 That demo's narrative starts from a fully default-deny sandbox, shows a tool call fail live,
 then unlocks endpoints one at a time with `openshell policy update <sandbox> --add-endpoint <host>:443 --binary <path> --wait` — a strong "zero-trust, progressively opened" visual for a
 live audience.
 
-Today, `[scripts/launch-openclaw.sh](../scripts/launch-openclaw.sh)` applies the full
-`[policies/openclaw-sandbox.yaml](../policies/openclaw-sandbox.yaml)` at `sandbox create --policy ...` time — MaaS and MLflow egress are both already open before the demo starts, so
-we lose the "default-deny → live unlock" moment that [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)'s
-"Demo Impact" section and `AGENTS.md`'s "Security Attack" narrative block both call for.
+Active v1 demo uses the opposite direction for egress:
 
-- [ ] Add a minimal (or empty) default policy for the `openclaw-demo` sandbox creation step,
-  ```
-  instead of the full `openclaw-sandbox.yaml`
-  ```
-- [ ] Script (or document as manual demo steps) the live `openshell policy update
-  ```
-  <SANDBOX_NAME> --add-endpoint <host>:443 --binary <path> --wait` calls for, in order:
-  MaaS inference, then MLflow tracing — mirroring the two `network_policies` blocks
-  already defined in `policies/openclaw-sandbox.yaml` (`maas_inference`, `mlflow_direct`)
-  ```
-- [ ] Verify the expected failure mode first (agent chat / MaaS call fails cleanly with the
-  ```
-  egress not yet granted) before recording or presenting
-  ```
-- [ ] Update the demo script / narrative docs (Phase 4's step-by-step demo script, once written)
-  ```
-  with the exact `openshell policy update` commands and expected before/after behavior
-  ```
-- [ ] Keep `policies/openclaw-sandbox.yaml` as the "final state" reference / fallback for
-  ```
-  non-interactive (e.g. CI, `make validate-*`) runs that need full connectivity immediately
-  ```
+- [x] Demo-initial policy with permissive egress — [`policies/openclaw-demo-initial.yaml`](../policies/openclaw-demo-initial.yaml)
+- [x] Live restrict script — [`scripts/demo-restrict-egress.sh`](../scripts/demo-restrict-egress.sh) applies [`policies/openclaw-sandbox.yaml`](../policies/openclaw-sandbox.yaml)
+- [x] Narrative + timed script — [`demo-narrativa-v1.md`](demo-narrativa-v1.md), [`demo-script.md`](demo-script.md)
+- [ ] Keep `policies/openclaw-sandbox.yaml` as CI / `validate-security` final state (unchanged)
+- [ ] Optional: document the reference-demo unlock flow as an alternate narrative (deferred)
 
 
 
