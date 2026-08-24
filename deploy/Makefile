@@ -92,7 +92,7 @@ DOCKER_CONFIG ?= /tmp/helm-nodocker-agentops
 # Auto-detect from OpenShift ingress when unset (same as scripts/common.sh).
 APPS_DOMAIN ?= $(shell oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null)
 
-# verify.sh profiles (full | smoke); SKIP_E2E=1 skips Playwright + validate-traces.
+# verify.sh profiles (full | smoke | demo); SKIP_E2E=1 skips Playwright + validate-traces.
 VERIFY_PROFILE ?=
 SKIP_E2E ?=
 
@@ -102,7 +102,7 @@ SKIP_E2E ?=
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub
 .PHONY: wait-nemoguardrails-crd deploy-guardrails undeploy-guardrails validate-guardrails deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
-.PHONY: validate-openclaw validate-traces validate-security
+.PHONY: validate-openclaw validate-traces validate-security validate-demo-initial
 .PHONY: test-e2e test-ui test-security test-mlflow test-guardrails
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
@@ -130,7 +130,7 @@ help:
 	@echo "  make undeploy-everything    Full reset"
 	@echo "  make validate-cleanup       Confirm cluster is clean"
 	@echo ""
-	@echo "Variables: APPS_DOMAIN (auto-detected), VERIFY_PROFILE=smoke, SKIP_E2E=1"
+	@echo "Variables: APPS_DOMAIN (auto-detected), VERIFY_PROFILE=smoke|demo, SKIP_E2E=1"
 
 require-apps-domain:
 	@if [ -z "$(APPS_DOMAIN)" ]; then \
@@ -596,7 +596,7 @@ validate-traces:
 		fi'
 
 validate-security:
-	@echo "=== Sandbox Policy Enforcement ==="
+	@echo "=== Sandbox Policy Enforcement (CI / final hardened policy) ==="
 	@openshell gateway select $(GATEWAY_NAME) >/dev/null 2>&1 || true
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
 		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null; echo'); \
@@ -606,6 +606,25 @@ validate-security:
 	else \
 		echo "FAIL: github.com reachable (HTTP $$RESULT) — policy not enforcing"; exit 1; \
 	fi
+	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://inference.local/v1/models 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "200" ]; then \
+		echo "OK: inference.local reachable (HTTP $$RESULT)"; \
+	else \
+		echo "FAIL: inference.local not reachable (HTTP $$RESULT)"; exit 1; \
+	fi
+
+validate-demo-initial:
+	@echo "=== Demo Initial Sandbox Policy (permissive egress for Test C) ==="
+	@openshell gateway select $(GATEWAY_NAME) >/dev/null 2>&1 || true
+	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	case "$$RESULT" in \
+		200|301|302) echo "OK: github.com reachable for demo Test C (HTTP $$RESULT)" ;; \
+		*) echo "FAIL: github.com not reachable (HTTP $${RESULT:-timeout}) — use policies/openclaw-demo-initial.yaml at sandbox create"; exit 1 ;; \
+	esac
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
 		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://inference.local/v1/models 2>/dev/null; echo'); \
 	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
