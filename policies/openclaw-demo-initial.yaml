@@ -1,0 +1,45 @@
+version: 1
+
+# Demo initial state (v1 narrative): permissive egress to one public host so Prueba C
+# shows curl succeeding before demo-restrict-egress.sh applies openclaw-sandbox.yaml.
+# CI / validate-security use policies/openclaw-sandbox.yaml (final hardened state).
+
+filesystem_policy:
+  include_workdir: false
+  read_only: [/usr, /lib, /proc, /dev/urandom, /app, /etc, /var/log, /sandbox]
+  read_write: [/sandbox/workspace, /tmp, /dev/null, /home]
+
+landlock:
+  compatibility: best_effort
+
+process:
+  run_as_user: sandbox
+  run_as_group: sandbox
+
+network_policies:
+  # LLM inference: handled by OpenShell's inference router (inference.local).
+
+  mlflow_direct:
+    name: rhoai-mlflow-direct-traces
+    endpoints:
+      - host: "mlflow.redhat-ods-applications.svc"
+        port: 8443
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+        tls: skip
+    binaries:
+      - { path: /usr/bin/node }
+      - { path: /usr/local/bin/node }
+      - { path: /usr/bin/curl }
+
+  demo_egress_github:
+    name: demo-permissive-github
+    endpoints:
+      - host: "github.com"
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+    binaries:
+      - { path: /usr/bin/curl }

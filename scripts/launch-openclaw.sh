@@ -31,6 +31,9 @@ SANDBOX_SA_NAME="${SANDBOX_SA_NAME:-${OPENSHELL_RELEASE_NAME}-sandbox}"
 APPS_DOMAIN="${APPS_DOMAIN:-}"
 RHOAI_NS="${RHOAI_NS:-redhat-ods-applications}"
 POLICY_FILE="${POLICY_FILE:-${PROJECT_DIR}/policies/openclaw-sandbox.yaml}"
+if [[ "$POLICY_FILE" != /* ]]; then
+  POLICY_FILE="${PROJECT_DIR}/${POLICY_FILE#./}"
+fi
 
 info()  { echo "[INFO]  $*"; }
 warn()  { echo "[WARN]  $*"; }
