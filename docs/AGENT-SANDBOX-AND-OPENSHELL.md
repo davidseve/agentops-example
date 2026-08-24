@@ -98,7 +98,8 @@ The `privileged` SCC is granted **only** to the `openshell-sandbox` ServiceAccou
 | OpenShell Gateway | `deploy/helm/openshell/` (wrapper chart with upstream OCI subchart dependency) | `make -C deploy deploy-openshell` |
 | SCC RoleBinding | `deploy/helm/openshell/templates/scc-rolebinding.yaml` | Included in `deploy-openshell` |
 | OpenClaw UI Proxy | `deploy/helm/openclaw-ui-proxy/` (nginx mTLS bridge) | `make -C deploy deploy-openclaw-ui-proxy` |
-| Sandbox Policy | `policies/openclaw-sandbox.yaml` | Applied at `sandbox create` time |
+| Sandbox Policy (CI / final) | `policies/openclaw-sandbox.yaml` | Applied at `sandbox create` time for `cluster-lifecycle full` |
+| Sandbox Policy (demo v1 initial) | `policies/openclaw-demo-initial.yaml` | Backstage launch via `POLICY_FILE=policies/openclaw-demo-initial.yaml`; restrict live with `./scripts/demo-restrict-egress.sh` |
 
 ### Architecture Diagram
 
@@ -557,7 +558,14 @@ The sandbox policy controls what the agent can do at runtime:
 | `process` | User/group the agent runs as | `run_as_user: sandbox` |
 | `network_policies` | Allowed egress endpoints | Explicit host + port + protocol per policy |
 
-**Default deny:** any endpoint not listed in `network_policies` is blocked. LLM inference is handled by OpenShell's inference router (`inference.local`) — no explicit network policy needed. Only `mlflow.redhat-ods-applications.svc:8443` (MLflow tracing) is explicitly allowed.  GitHub, PyPI, and everything else is denied.
+**Default deny:** any endpoint not listed in `network_policies` is blocked. LLM inference is handled by OpenShell's inference router (`inference.local`) — no explicit network policy needed.
+
+| Policy file | Egress posture | Used by |
+|-------------|----------------|---------|
+| `policies/openclaw-sandbox.yaml` | MLflow only; GitHub/PyPI denied | CI (`make validate-security`), live demo after Cambio 1 |
+| `policies/openclaw-demo-initial.yaml` | MLflow + `github.com:443` for Test C | Demo backstage (`demo-backstage-install`, `demo-reset`) |
+
+See [`demo-narrativa-v1.md`](demo-narrativa-v1.md) for the live narrative and [`scripts/demo-restrict-egress.sh`](../scripts/demo-restrict-egress.sh) / [`scripts/demo-reset.sh`](../scripts/demo-reset.sh) for on-stage policy toggles.
 
 ---
 
@@ -572,8 +580,11 @@ make -C deploy validate-openclaw
 # MLflow trace pipeline
 make -C deploy validate-traces
 
-# Network policy enforcement
+# Network policy enforcement (CI hardened policy)
 make -C deploy validate-security
+
+# Demo backstage initial state (permissive egress for Test C)
+make -C deploy validate-demo-initial
 ```
 
 ### What `validate-security` Checks
@@ -585,7 +596,8 @@ make -C deploy validate-security
 
 | Layer | Command | What it proves |
 |-------|---------|----------------|
-| **Infrastructure** | `make -C deploy validate-security` | nftables/network policy blocks unauthorized egress (`curl` → `000`/`403`) |
+| **Infrastructure (CI)** | `make -C deploy validate-security` | nftables/network policy blocks unauthorized egress (`curl` → `000`/`403`) |
+| **Demo backstage** | `make -C deploy validate-demo-initial` | `github.com` reachable before Cambio 1; `inference.local` still OK |
 | **Control UI (E2E)** | `make -C deploy test-security` | User-facing agent refuses malicious prompts or shows block evidence in chat |
 
 Use both: `validate-security` catches policy misconfiguration; Playwright catches regressions in the agent harness or Control UI path. Security and guardrails Playwright suites click **New session** before each test and stay on that session (`askAgentViaUI` must not navigate back to `/`, which reopens Main Session). Assertions read only the latest assistant bubble, not the full chat log.
@@ -714,6 +726,15 @@ APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 ./scripts/cluster-lifecycle.sh verify
 ```
 
+**Demo v1 backstage** (permissive egress, direct MaaS):
+
+```bash
+POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+VERIFY_PROFILE=demo ./scripts/verify.sh
+# Between rehearsals: ./scripts/demo-reset.sh
+# Live Cambio 1: ./scripts/demo-restrict-egress.sh
+```
+
 ### Key Commands
 
 | Task | Command |
@@ -726,6 +747,9 @@ APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 | Check CLI status | `openshell status` |
 | View sandbox policy | `openshell policy get <name> --full` |
 | Update policy live | `openshell policy set <name> --policy <file> --wait` |
+| Reset demo to initial policy | `./scripts/demo-reset.sh` |
+| Restrict demo egress (Cambio 1) | `./scripts/demo-restrict-egress.sh` |
+| Validate demo backstage | `VERIFY_PROFILE=demo ./scripts/verify.sh` |
 
 ---
 
