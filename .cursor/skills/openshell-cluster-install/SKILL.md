@@ -23,7 +23,8 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 
 | User intent | Action |
 |---|---|
-| Deploy **full stack** (RHOAI + OpenShell + OpenClaw) | `./scripts/cluster-lifecycle.sh full` |
+| Deploy **full demo v1 stack** (narrativa-v1 backstage) | **`demo-backstage-install`** skill — not `cluster-lifecycle full` alone |
+| Deploy **CI full stack** (RHOAI + OpenShell + hardened policy) | `./scripts/cluster-lifecycle.sh full` |
 | Deploy OpenShell on OpenShift only | `APPS_DOMAIN=<domain> make -C deploy deploy-openshell` |
 | First-time cluster setup | `make -C deploy deploy-operators` then deploy (must come after RHOAI — ADR-0003) |
 | Re-register local CLI gateway + mTLS | `make -C deploy openshell-register-gateway` (default alias `ocp`) |
@@ -71,7 +72,15 @@ APPS_DOMAIN=<apps-domain> make -C deploy deploy-openclaw-ui-proxy
 ```
 
 5. **Launch OpenClaw** (creates the sandbox if missing, then starts the gateway).
-   Requires `MAAS_API_KEY` and `OPENCLAW_GATEWAY_PASSWORD` in `secrets/secrets.env`:
+   Requires `MAAS_API_KEY` and `OPENCLAW_GATEWAY_PASSWORD` in `secrets/secrets.env`.
+
+   **Demo v1** (permissive egress for Test C — use `launch-openclaw` skill):
+
+```bash
+POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+```
+
+   **CI / hardened policy** (default):
 
 ```bash
 ./scripts/launch-openclaw.sh
@@ -146,6 +155,7 @@ Follow global skill **`long-running-scripts`**. For this repo:
 
 ## Related
 
+- Demo v1 backstage: `demo-backstage-install`, `launch-openclaw` skills
 - Cluster cleanup: `openshell-cluster-cleanup` skill, or `make -C deploy undeploy-openshell`
 - Local CLI install: `openshell-local-install` skill
 - Guide: [docs/openshell-installation.md](../../../docs/openshell-installation.md#openshift--rhoai-cluster-deployment)
