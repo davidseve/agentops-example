@@ -4,9 +4,11 @@
 # Profiles (VERIFY_PROFILE env var):
 #   full  (default) — platform + openshell + security + Playwright E2E + traces
 #   smoke           — validate-smoke only (openshell infra + sandbox policy)
+#   demo            — backstage initial state for demo-narrativa-v1 (permissive egress, direct MaaS)
 #
 # Flags (parsed by cluster-lifecycle.sh and forwarded via env):
 #   SKIP_E2E=1      — skip Playwright and validate-traces
+#   --demo          — same as VERIFY_PROFILE=demo
 #
 # Exit codes:
 #   0 = all checks passed (warnings are informational)
@@ -33,6 +35,9 @@ fi
 if [[ "${1:-}" == "--skip-e2e" ]]; then
   SKIP_E2E=1
 fi
+if [[ "${1:-}" == "--demo" ]]; then
+  VERIFY_PROFILE=demo
+fi
 
 detect_apps_domain || exit 1
 
@@ -41,7 +46,7 @@ if command -v openshell &>/dev/null; then
   openshell gateway select "$GATEWAY_NAME" &>/dev/null || true
 fi
 
-info "Verification profile: ${VERIFY_PROFILE} (set VERIFY_PROFILE=smoke for fast subset)"
+info "Verification profile: ${VERIFY_PROFILE} (set VERIFY_PROFILE=smoke|demo for subsets)"
 
 run_make() {
   make -C "$DEPLOY_DIR" "$@"
@@ -50,7 +55,7 @@ run_make() {
 # =============================================================================
 # Layer 1: RHOAI platform
 # =============================================================================
-if [[ "$VERIFY_PROFILE" == "full" ]]; then
+if [[ "$VERIFY_PROFILE" == "full" || "$VERIFY_PROFILE" == "demo" ]]; then
   step "Layer 1: RHOAI platform"
   if run_make validate; then
     pass "make validate (RHOAI platform)"
@@ -90,15 +95,24 @@ else
   if run_make validate-openclaw; then
     pass "make validate-openclaw"
   else
-  # validate-openclaw may WARN on embedded CLI fallback — not a hard fail if infra OK
+    # validate-openclaw may WARN on embedded CLI fallback — not a hard fail if infra OK
     warn "make validate-openclaw reported issues (embedded CLI fallback is OK if E2E passes)"
   fi
 
-  step "Layer 4: Sandbox security policy"
-  if run_make validate-security; then
-    pass "make validate-security"
+  if [[ "$VERIFY_PROFILE" == "demo" ]]; then
+    step "Layer 4: Demo initial sandbox policy (permissive egress)"
+    if run_make validate-demo-initial; then
+      pass "make validate-demo-initial"
+    else
+      fail "make validate-demo-initial"
+    fi
   else
-    fail "make validate-security"
+    step "Layer 4: Sandbox security policy (CI hardened)"
+    if run_make validate-security; then
+      pass "make validate-security"
+    else
+      fail "make validate-security"
+    fi
   fi
 fi
 
@@ -118,6 +132,13 @@ if [[ "$VERIFY_PROFILE" == "full" && "$SKIP_E2E" != "1" ]]; then
   fi
 
   step "Layer 6: MLflow traces"
+  if run_make validate-traces; then
+    pass "make validate-traces"
+  else
+    fail "make validate-traces"
+  fi
+elif [[ "$VERIFY_PROFILE" == "demo" && "$SKIP_E2E" != "1" ]]; then
+  step "Layer 5: MLflow traces (demo profile skips Playwright — egress state differs from CI)"
   if run_make validate-traces; then
     pass "make validate-traces"
   else

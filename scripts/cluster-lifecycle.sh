@@ -12,6 +12,7 @@
 #
 # Verify flags (forwarded to verify.sh):
 #   --smoke      fast subset (validate-smoke only)
+#   --demo       demo v1 initial state (permissive egress, no Playwright security)
 #   --skip-e2e   infra Makefile checks without Playwright/traces
 #
 set -euo pipefail
@@ -21,12 +22,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
 SMOKE=false
+DEMO=false
 SKIP_E2E=false
 
 parse_flags() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --smoke)     SMOKE=true; shift ;;
+      --demo)      DEMO=true; shift ;;
       --skip-e2e)  SKIP_E2E=true; shift ;;
       *) break ;;
     esac
@@ -92,6 +95,10 @@ cmd_verify() {
   local verify_args=()
   if [[ "$SMOKE" == "true" ]]; then
     verify_args+=(--smoke)
+  fi
+  if [[ "$DEMO" == "true" ]]; then
+    export VERIFY_PROFILE=demo
+    verify_args+=(--demo)
   fi
   if [[ "$SKIP_E2E" == "true" ]]; then
     verify_args+=(--skip-e2e)
@@ -176,7 +183,7 @@ case "$COMMAND" in
   status)    cmd_status ;;
   full)      cmd_full ;;
   help|--help|-h)
-    echo "Usage: $0 {preflight|deploy|verify|full|teardown|status} [--smoke] [--skip-e2e]"
+    echo "Usage: $0 {preflight|deploy|verify|full|teardown|status} [--smoke] [--demo] [--skip-e2e]"
     echo ""
     echo "Commands:"
     echo "  preflight   Verify tools, secrets, cluster clean, Playwright deps"
@@ -188,6 +195,7 @@ case "$COMMAND" in
     echo ""
     echo "Verify flags:"
     echo "  --smoke     Fast subset (validate-smoke only)"
+    echo "  --demo      Demo v1 initial state (VERIFY_PROFILE=demo)"
     echo "  --skip-e2e  Skip Playwright E2E and validate-traces"
     ;;
   *)
