@@ -48,6 +48,13 @@ export default defineConfig({
       use: { storageState: STORAGE_STATE },
     },
     {
+      name: 'demo-narrative-tests',
+      testMatch: /demo-narrative\.spec\.ts/,
+      dependencies: ['auth-setup'],
+      timeout: 180_000,
+      use: { storageState: STORAGE_STATE },
+    },
+    {
       name: 'guardrails-tests',
       testMatch: /guardrails-ui\.spec\.ts/,
       dependencies: ['security-tests'],

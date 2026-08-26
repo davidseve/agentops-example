@@ -9,6 +9,7 @@
     "test:openclaw": "npx playwright test openclaw-ui.spec.ts",
     "test:security": "npx playwright test sandbox-security.spec.ts",
     "test:guardrails": "npx playwright test guardrails-ui.spec.ts",
+    "test:demo": "npx playwright test demo-narrative.spec.ts",
     "test:mlflow": "npx playwright test mlflow-ui.spec.ts"
   },
   "devDependencies": {

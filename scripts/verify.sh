@@ -4,7 +4,7 @@
 # Profiles (VERIFY_PROFILE env var):
 #   full  (default) — platform + openshell + security + Playwright E2E + traces
 #   smoke           — validate-smoke only (openshell infra + sandbox policy)
-#   demo            — backstage initial state for demo-narrativa-v1 (permissive egress, direct MaaS)
+#   demo            — backstage initial state + demo narrative E2E + traces
 #
 # Flags (parsed by cluster-lifecycle.sh and forwarded via env):
 #   SKIP_E2E=1      — skip Playwright and validate-traces
@@ -138,7 +138,17 @@ if [[ "$VERIFY_PROFILE" == "full" && "$SKIP_E2E" != "1" ]]; then
     fail "make validate-traces"
   fi
 elif [[ "$VERIFY_PROFILE" == "demo" && "$SKIP_E2E" != "1" ]]; then
-  step "Layer 5: MLflow traces (demo profile skips Playwright — egress state differs from CI)"
+  step "Layer 5: Demo narrative E2E (Tests A–D + Cambio 1/2)"
+  ensure_playwright_deps
+  export_playwright_env || warn "Playwright env incomplete — E2E may fail"
+
+  if run_make test-demo; then
+    pass "make test-demo"
+  else
+    fail "make test-demo"
+  fi
+
+  step "Layer 6: MLflow traces"
   if run_make validate-traces; then
     pass "make validate-traces"
   else

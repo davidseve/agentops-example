@@ -103,7 +103,7 @@ SKIP_E2E ?=
 .PHONY: wait-nemoguardrails-crd deploy-guardrails undeploy-guardrails validate-guardrails deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
 .PHONY: validate-openclaw validate-traces validate-security validate-demo-initial
-.PHONY: test-e2e test-ui test-security test-mlflow test-guardrails
+.PHONY: test-e2e test-ui test-security test-mlflow test-guardrails test-demo
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
 .PHONY: openshell-sync-mtls openshell-register-gateway
@@ -660,6 +660,9 @@ test-mlflow:
 
 test-guardrails:
 	@$(ROOT_DIR)/scripts/run-playwright-tests.sh guardrails-ui.spec.ts
+
+test-demo:
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh demo-narrative.spec.ts
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,

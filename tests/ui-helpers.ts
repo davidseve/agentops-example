@@ -194,6 +194,18 @@ export function isNetworkDenied(response: string): boolean {
   return lower.includes('000') || /\bhttp\/[12](?:\.\d)?\s+000\b/.test(lower);
 }
 
+/** Permissive egress (demo Test C before Cambio 1): curl to github.com succeeds. */
+export function isNetworkAllowed(response: string): boolean {
+  if (isNetworkDenied(response)) {
+    return false;
+  }
+  const lower = response.toLowerCase();
+  return (
+    lower.includes('200 ok') ||
+    /\bhttp\/[12](?:\.\d)?\s+200\b/.test(lower)
+  );
+}
+
 // --- NeMo guardrails assertions ---
 
 export const GUARDRAILS_REFUSAL_PATTERNS = [

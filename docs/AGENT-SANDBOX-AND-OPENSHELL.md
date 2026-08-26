@@ -599,8 +599,9 @@ make -C deploy validate-demo-initial
 | **Infrastructure (CI)** | `make -C deploy validate-security` | nftables/network policy blocks unauthorized egress (`curl` → `000`/`403`) |
 | **Demo backstage** | `make -C deploy validate-demo-initial` | `github.com` reachable before Cambio 1; `inference.local` still OK |
 | **Control UI (E2E)** | `make -C deploy test-security` | User-facing agent refuses malicious prompts or shows block evidence in chat |
+| **Demo narrative (E2E)** | `make -C deploy test-demo` | Full live script: Tests A–D + Cambio 1/2 in one Control UI session |
 
-Use both: `validate-security` catches policy misconfiguration; Playwright catches regressions in the agent harness or Control UI path. Security and guardrails Playwright suites click **New session** before each test and stay on that session (`askAgentViaUI` must not navigate back to `/`, which reopens Main Session). Assertions read only the latest assistant bubble, not the full chat log.
+Use both: `validate-security` catches policy misconfiguration; Playwright catches regressions in the agent harness or Control UI path. Security and guardrails Playwright suites click **New session** before each test and stay on that session (`askAgentViaUI` must not navigate back to `/`, which reopens Main Session). The demo narrative suite (`demo-narrative.spec.ts`) keeps a **single chat session** across Tests A–D (no `resetChatSession` between steps), matching the live presenter flow. Assertions read only the latest assistant bubble, not the full chat log.
 
 ### Playwright E2E Tests
 
@@ -616,7 +617,8 @@ Copy `secrets/secrets.template.env` to `secrets/secrets.env` and set the **usern
 `verify.sh` warns before Playwright if either OAuth variable is missing.
 
 ```bash
-make -C deploy test-e2e           # full suite
+make -C deploy test-e2e           # full suite (CI hardened policy)
+make -C deploy test-demo          # demo-narrative.spec.ts (Tests A–D + Cambio 1/2)
 make -C deploy test-security    # sandbox-security.spec.ts
 make -C deploy test-ui          # openclaw-ui.spec.ts (browser → gateway → model → traces)
 make -C deploy test-guardrails  # guardrails-ui.spec.ts (NeMo jailbreak blocked in Control UI)
@@ -650,12 +652,15 @@ auth-setup ──┬── ui-tests ──────┬── mlflow-ui-tests
              │                  │
 mlflow-auth-setup ─────────────┘
              │
-             └── security-tests
+             ├── security-tests ── guardrails-tests
+             │
+             └── demo-narrative-tests   (isolated — not part of test-e2e)
 ```
 
 | Project | Parallel-safe with | Why |
 |---|---|---|
 | `auth-setup` | `mlflow-auth-setup` | Different URLs and OAuth flows |
+| `demo-narrative-tests` | — | Serial; single chat session; mutates policy + inference path |
 | `ui-tests` | — | Serial within project; shares Main Session chat + MaaS |
 | `security-tests` | — | Serial within project; same Main Session as UI chat tests |
 | `mlflow-ui-tests` | `security-tests` (after `ui-tests`) | Different host (`rh-ai` MLflow UI vs OpenClaw gateway) |
@@ -664,6 +669,7 @@ mlflow-auth-setup ─────────────┘
 
 - [`tests/openclaw-ui.spec.ts`](../tests/openclaw-ui.spec.ts) — `mode: 'serial'` (chat prompts must not overlap on Main Session)
 - [`tests/sandbox-security.spec.ts`](../tests/sandbox-security.spec.ts) — `mode: 'serial'` (same session; prompts go through the agent LLM)
+- [`tests/demo-narrative.spec.ts`](../tests/demo-narrative.spec.ts) — `mode: 'serial'` (one session for full demo A–D; runs `demo-reset` / Cambio scripts)
 
 **Expected speed-up**
 
