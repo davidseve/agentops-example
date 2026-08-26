@@ -3,7 +3,7 @@
 > English timed companion to the active narrative: [`demo-narrativa-v1.md`](demo-narrativa-v1.md).
 > Extended EvalHub/Garak variant: [`demo-narrativa-v2.md`](demo-narrativa-v2.md) (not presented live).
 >
-> UI: [`docs/demo/layers.html`](demo/layers.html) (intro) + [`docs/demo/live.html`](demo/live.html) (A–D prompts, split screen with Control UI).
+> UI: [`docs/demo/overall-demo-architecture.html`](demo/overall-demo-architecture.html) (phase 0) + [`docs/demo/v1/live.html`](demo/v1/live.html) (live companion). Launcher: [`docs/demo/index.html`](demo/index.html).
 
 ## Cursor skills (demo v1)
 
@@ -38,8 +38,9 @@ Open panels:
 
 ```bash
 cd docs/demo && python3 -m http.server 8765
-# http://127.0.0.1:8765/layers.html  — architecture walk-through
-# http://127.0.0.1:8765/live.html    — live companion (prompts + layer board)
+# http://127.0.0.1:8765/index.html       — launcher
+# http://127.0.0.1:8765/overall-demo-architecture.html  — architecture walk-through
+# http://127.0.0.1:8765/v1/live.html     — live companion
 ```
 
 ---
@@ -48,7 +49,7 @@ cd docs/demo && python3 -m http.server 8765
 
 **Say:** BYOA — the customer brings the agent (OpenClaw here). Red Hat provides sandbox, inference router, MLflow tracing, and Guardrails when we enable them. We are not starting from a locked bunker: MaaS and MLflow are already on; we will **close** egress and **enable** NeMo in front of the audience.
 
-**Show:** `layers.html` — Usuario → OpenClaw → `inference.local` → Gateway → NeMo (grey) → MaaS → MLflow.
+**Show:** `overall-demo-architecture.html` — Usuario → OpenClaw → `inference.local` → Gateway → NeMo (grey) → MaaS → MLflow.
 
 **Do not** jump straight to chat.
 
@@ -114,7 +115,7 @@ curl -sI https://github.com
 
 Same prompt. **Expected:** Blocked (timeout / network denied).
 
-Update `live.html` layer board → egress **closed**.
+Update `v1/live.html` layer board → egress **closed** (auto-updates on step nav).
 
 ---
 
@@ -189,6 +190,22 @@ If time is tight: one MLflow visit only. **Do not** cut A–D.
 ```
 
 Then **New session** in Control UI before running A–D again.
+
+## Automated rehearsal
+
+Run the full live narrative (Tests A–D + Cambio 1/2) without the presenter panels:
+
+```bash
+make -C deploy test-demo
+```
+
+Or as part of backstage verify:
+
+```bash
+VERIFY_PROFILE=demo ./scripts/verify.sh
+```
+
+The suite uses one Control UI chat session (like the live demo), runs `demo-reset.sh` before and after, and applies `demo-restrict-egress.sh` / `demo-enable-guardrails.sh` at the Cambio steps. Prompts match this script and [`docs/demo/v1/narrative-data.js`](demo/v1/narrative-data.js).
 
 ## Fallback
 

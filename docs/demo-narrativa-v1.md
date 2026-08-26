@@ -83,9 +83,9 @@ Qué debería mostrar, siempre visible o a un clic:
 
 Así el público no pierde el mapa cuando saltamos al chat, a `oc`/`openshell policy`, o a MLflow. Las “slides” son el propio panel actualizándose.
 
-**Intro:** panel FlowStory en [`docs/demo/layers.html`](demo/layers.html). Abrir con `python3 -m http.server` desde `docs/demo/`. Detalle en [`docs/demo/README.md`](demo/README.md).
+**Intro:** panel FlowStory en [`docs/demo/overall-demo-architecture.html`](demo/overall-demo-architecture.html). Abrir con `python3 -m http.server` desde `docs/demo/`. Detalle en [`docs/demo/README.md`](demo/README.md). Durante A–D, paneles enfocados enlazados desde el mapa global: [`scenarios/test-a-credentials.html`](demo/scenarios/test-a-credentials.html) … D (C y D con Before/After).
 
-**En vivo:** [`docs/demo/live.html`](demo/live.html) — pruebas A–D + prompts para copiar en OpenClaw, pantalla partida con el Control UI.
+**En vivo:** [`docs/demo/v1/live.html`](demo/v1/live.html) — pruebas A–D + prompts para copiar en OpenClaw, pantalla partida con el Control UI. Launcher: [`docs/demo/index.html`](demo/index.html).
 
 ### 1. Configuración inicial — sin tocar nada
 
@@ -186,4 +186,4 @@ El ítem deferred del ROADMAP (“default-deny y ir **abriendo** MaaS/MLflow”)
 - MLflow: ¿cortes intermedios o un bloque al final? El panel puede llevar el enlace en ambos casos.
 - Host concreto del `curl` (debe verse el 200 y luego el bloqueo).
 - Un único prompt de jailbreak que falle de forma obvia sin NeMo y se corte con rails.
-- Dónde vive el panel: intro en [`layers.html`](demo/layers.html); companion en [`live.html`](demo/live.html). Enganchar al estado real del sandbox sigue siendo opcional.
+- Dónde vive el panel: arquitectura general en [`overall-demo-architecture.html`](demo/overall-demo-architecture.html); companion en [`v1/live.html`](demo/v1/live.html). Enganchar al estado real del sandbox sigue siendo opcional.

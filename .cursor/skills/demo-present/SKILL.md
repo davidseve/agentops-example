@@ -17,8 +17,8 @@ Live presentation aligned with [`docs/demo-narrativa-v1.md`](../../docs/demo-nar
 
 | Phase | Min | Skill / action | Script |
 |---|---|---|---|
-| 0. Context | 1–2 | `demo-presenter-panel` | `layers.html` |
-| 1. Tests A–B | 2–3 | Prompts from `live.html` | None |
+| 0. Context | 1–2 | `demo-presenter-panel` | `overall-demo-architecture.html` |
+| 1. Tests A–B | 2–3 | Prompts from `v1/live.html` | None |
 | 2. Test C + Cambio 1 | 2 | `demo-restrict-egress` | `./scripts/demo-restrict-egress.sh` |
 | 3. Test D + Cambio 2 | 2–3 | `demo-enable-guardrails` | `./scripts/demo-enable-guardrails.sh` |
 | 4. MLflow | 1–2 | `mlflow-tracing-validate` | GenAI Studio |
@@ -28,7 +28,7 @@ Live presentation aligned with [`docs/demo-narrativa-v1.md`](../../docs/demo-nar
 
 **Say:** BYOA — customer brings the agent. Red Hat provides sandbox, inference router, MLflow, Guardrails when enabled. MaaS and MLflow are already on; we will **close** egress and **enable** NeMo live.
 
-**Show:** [`docs/demo/layers.html`](../../docs/demo/layers.html) — NeMo grey until Cambio 2.
+**Show:** [`docs/demo/overall-demo-architecture.html`](../../docs/demo/overall-demo-architecture.html) — NeMo grey until Cambio 2.
 
 **Do not** jump straight to chat.
 
@@ -82,7 +82,7 @@ Use `demo-restrict-egress` skill:
 
 Same prompt. **Expected:** Blocked.
 
-Update `live.html` layer board → egress **closed**.
+Advance `v1/live.html` to C-post → egress **closed**.
 
 ## Phase 3 — Test D + Cambio 2 (NeMo)
 

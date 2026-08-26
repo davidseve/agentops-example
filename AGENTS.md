@@ -99,7 +99,7 @@ This maps demo features to specific Red Hat products/components:
 
 Active live script (~9–10 min): [`docs/demo-narrativa-v1.md`](docs/demo-narrativa-v1.md) (Spanish) + [`docs/demo-script.md`](docs/demo-script.md) (English).
 
-1. **Context** (1–2 min): Architecture map via [`docs/demo/layers.html`](docs/demo/layers.html) — skill: `demo-presenter-panel`
+1. **Context** (1–2 min): Architecture map via [`docs/demo/overall-demo-architecture.html`](docs/demo/overall-demo-architecture.html) — skill: `demo-presenter-panel`
 2. **Tests A & B** (2–3 min): API key not in sandbox; `/etc/shadow` blocked — skill: `demo-present`
 3. **Test C + Cambio 1** (2 min): Unauthorized `curl` succeeds, then restrict egress — skill: `demo-restrict-egress`
 4. **Test D + Cambio 2** (2–3 min): Jailbreak on direct MaaS, then NeMo blocks — skill: `demo-enable-guardrails`
@@ -137,7 +137,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `demo-backstage-prep` | Pre-stage checklist before going live |
 | `demo-verify` | Validate demo initial state (`VERIFY_PROFILE=demo`) |
 | `demo-present` | Master live runbook (phases 0–5) |
-| `demo-presenter-panel` | Serve `layers.html` + `live.html` panels |
+| `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v1/live.html` panel |
 | `demo-restrict-egress` | Live Cambio 1 — block unauthorized egress |
 | `demo-enable-guardrails` | Live Cambio 2 — switch inference to NeMo |
 | `demo-reset` | Reset between rehearsals (direct MaaS + demo-initial policy) |

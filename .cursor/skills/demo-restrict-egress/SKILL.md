@@ -34,7 +34,7 @@ Egress restricted — unauthorized curl (e.g. github.com) should now be blocked
 
 Repeat Test C prompt in Control UI — curl should fail / network denied.
 
-Update `live.html` layer board → egress **closed**.
+Update `v1/live.html` step nav → egress **closed** (auto-updates).
 
 ## Verify (optional, post-change)
 

@@ -53,8 +53,9 @@ Use `demo-presenter-panel` skill or:
 cd docs/demo && python3 -m http.server 8765
 ```
 
-- Intro: `http://127.0.0.1:8765/layers.html`
-- Live companion: `http://127.0.0.1:8765/live.html`
+- Overall demo architecture: `http://127.0.0.1:8765/overall-demo-architecture.html`
+- Live companion (v1): `http://127.0.0.1:8765/v1/live.html`
+- Launcher: `http://127.0.0.1:8765/index.html`
 
 ### 4. Open Control UI
 
@@ -62,7 +63,7 @@ cd docs/demo && python3 -m http.server 8765
 https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/
 ```
 
-Split screen: Control UI + `live.html`.
+Split screen: Control UI + `v1/live.html`.
 
 ### 5. Optional rehearsal reset
 
@@ -74,7 +75,7 @@ Then **New session** in Control UI before running tests A–D.
 
 ## Expected result
 
-- Three browser targets ready: layers (optional recap), live companion, Control UI
+- Three browser targets ready: `overall-demo-architecture.html` (optional phase 0 recap), `v1/live.html`, Control UI
 - Sandbox on demo-initial policy with direct MaaS
 - No live config changes needed until Test C (egress) and Test D (NeMo)
 
