@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>AgentOps — Live companion (v1)</title>
+<link rel="stylesheet" href="./narrative.css">
+</head>
+<body class="nr-page">
+
+<header class="nr-header">
+  <h1>AgentOps — Live companion (v1)</h1>
+  <span class="nr-tagline">Split panel · Your Agent. Our Platform. Production-Ready.</span>
+  <a href="../overall-demo-architecture.html">Overall demo architecture</a>
+  <a href="../index.html">Launcher</a>
+  <a href="../../demo-narrativa-v1.md">Narrativa v1</a>
+</header>
+
+<div class="nr-layout" id="nr-root">
+  <aside class="nr-sidebar">
+    <h2>Security layers</h2>
+    <div data-nr-layers></div>
+    <h2>Agent capabilities</h2>
+    <div data-nr-matrix></div>
+  </aside>
+
+  <main class="nr-main">
+    <p class="nr-meta" style="margin-top:0">
+      Phase 0: use <a href="../overall-demo-architecture.html">overall-demo-architecture.html</a> on a second panel.
+      Phases 1–5: navigate with ← → or the step buttons. Sub-steps C/D: Before / After.
+    </p>
+    <nav class="nr-step-nav" data-nr-nav aria-label="Demo steps"></nav>
+    <div data-nr-card></div>
+  </main>
+</div>
+
+<script type="module">
+import { initNarrativeUI } from "./narrative-ui.js";
+
+initNarrativeUI({ root: document.getElementById("nr-root") });
+</script>
+</body>
+</html>
