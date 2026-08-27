@@ -8,7 +8,7 @@ description: >-
 
 # Demo Restrict Egress (Cambio 1)
 
-Apply the final sandbox policy live — [`policies/openclaw-sandbox.yaml`](../../policies/openclaw-sandbox.yaml).
+Apply the final sandbox policy live — [`config/openshell/default.yaml`](../../config/openshell/default.yaml).
 
 **Script:** [`scripts/demo-restrict-egress.sh`](../../scripts/demo-restrict-egress.sh)
 
@@ -54,4 +54,4 @@ make -C deploy validate-security
 
 - Reset to initial: `demo-reset`
 - Full runbook: `demo-present`
-- CI policy reference: [`policies/openclaw-sandbox.yaml`](../../policies/openclaw-sandbox.yaml)
+- CI policy reference: [`config/openshell/default.yaml`](../../config/openshell/default.yaml)

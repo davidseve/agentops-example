@@ -23,7 +23,7 @@ Nada que “encender” en escena salvo el Control UI:
 - **Landlock / política de ficheros** ya aplicada (el agente no debe leer `/etc/shadow` ni secretos).
 - **Egress todavía permisivo** a propósito: un `curl` a un sitio no autorizado **sí puede salir**. Eso permite el primer cambio de config en vivo.
 
-La política “final” de CI ([`policies/openclaw-sandbox.yaml`](../policies/openclaw-sandbox.yaml)) **no** es el estado de arranque de la demo: en CI el egress no autorizado ya está cerrado. Para el relato hace falta [`policies/openclaw-demo-initial.yaml`](../policies/openclaw-demo-initial.yaml) y luego endurecerla en vivo.
+La política “final” de CI ([`config/openshell/default.yaml`](../config/openshell/default.yaml)) **no** es el estado de arranque de la demo: en CI el egress no autorizado ya está cerrado. Para el relato hace falta [`config/openshell/github-egress.yaml`](../config/openshell/github-egress.yaml) y luego endurecerla en vivo.
 
 Reset entre ensayos: `./scripts/demo-reset.sh`.
 
@@ -164,8 +164,8 @@ Si aprieta el tiempo: un solo salto a MLflow (live). No recortar key + ficheros 
 ## Backstage (no se ve)
 
 - NeMo Guardrails desplegado pero **el provider live empieza en MaaS directo**.
-- Política inicial de demo: [`openclaw-demo-initial.yaml`](../policies/openclaw-demo-initial.yaml) — egress abierto hacia host de prueba (p. ej. GitHub) además de MLflow.
-- Política CI (`openclaw-sandbox.yaml`): estado **final** endurecido; aplicar en vivo con `demo-restrict-egress.sh`.
+- Política inicial de demo: [`github-egress.yaml`](../config/openshell/github-egress.yaml) — egress abierto hacia host de prueba (p. ej. GitHub) además de MLflow.
+- Política CI (`default.yaml`): estado **final** endurecido; aplicar en vivo con `demo-restrict-egress.sh`.
 - Video de respaldo si falla el `policy update` o el rewire a NeMo.
 
 ## Relación con el trabajo técnico (no es el script de ensayo)
@@ -175,7 +175,7 @@ Si aprieta el tiempo: un solo salto a MLflow (live). No recortar key + ficheros 
 | MLflow desde el minuto 0 | Ya está ([ADR-0010](adr/0010-mlflow-tracing-otel.md)); no desactivar traces para “simplificar” |
 | Key no está en el sandbox | Inference router; no reintroducir la key en el agente |
 | Ficheros ya bloqueados | Landlock / `tools.fs.workspaceOnly` en la config inicial |
-| Curl que **sí** sale, luego se cierra | `openclaw-demo-initial.yaml` al crear sandbox; `demo-restrict-egress.sh` en vivo |
+| Curl que **sí** sale, luego se cierra | `github-egress.yaml` al crear sandbox; `demo-restrict-egress.sh` en vivo |
 | Jailbreak que **sí** pasa, luego NeMo | `demo-enable-guardrails.sh` ([ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md)) |
 | Reset entre ensayos | `demo-reset.sh` → MaaS directo + política inicial |
 

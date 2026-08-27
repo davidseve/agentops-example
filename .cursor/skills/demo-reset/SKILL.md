@@ -27,7 +27,7 @@ Restore backstage initial state for [`demo-narrativa-v1.md`](../../docs/demo-nar
 This calls:
 
 1. `demo-disable-guardrails.sh` → direct MaaS
-2. `openshell policy set` → [`policies/openclaw-demo-initial.yaml`](../../policies/openclaw-demo-initial.yaml)
+2. `openshell policy set` → [`config/openshell/github-egress.yaml`](../../config/openshell/github-egress.yaml)
 
 ## Required follow-up
 

@@ -10,7 +10,7 @@ globs: >-
   deploy/helm/operators/**,
   deploy/helm/openclaw-ui-proxy/**,
   deploy/Makefile,
-  policies/**,
+  config/openshell/**,
   config/openclaw.json.tpl
 alwaysApply: false
 ---
