@@ -17,8 +17,8 @@ Final checks after `demo-backstage-install`, before opening to the audience.
 ```
 Pre-stage prep:
 - [ ] 1. Confirm direct MaaS (no NeMo in path)
-- [ ] 2. Confirm demo-initial egress (github reachable)
-- [ ] 3. Start presenter HTTP server
+- [ ] 2. Ensure MLflow experiment + demo-initial egress
+- [ ] 3. Start presenter panels (UI + observability proxy)
 - [ ] 4. Open Control UI + panels (split screen)
 - [ ] 5. Optional rehearsal reset
 ```
@@ -31,7 +31,21 @@ Pre-stage prep:
 
 Expected: `Inference route: maas-direct / <model> (direct MaaS)`
 
-### 2. Confirm demo-initial policy
+### 2. MLflow experiment + demo-initial policy
+
+Ensure the `openclaw-tracing` experiment exists in your workspace (ids are per-workspace — never assume `id=1`):
+
+```bash
+./scripts/ensure-mlflow-experiment.sh
+```
+
+Re-launch OpenClaw so `openclaw.json` carries the resolved experiment id (fixes `No Experiment with id=1` trace export errors):
+
+```bash
+POLICY_FILE=config/openshell/github-egress.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+```
+
+Confirm demo-initial egress:
 
 ```bash
 make -C deploy validate-demo-initial
@@ -39,10 +53,10 @@ make -C deploy validate-demo-initial
 
 Expected: `github.com reachable for demo Test C`
 
-If sandbox was created with hardened policy, re-launch:
+If sandbox was created with hardened policy only (skipped launch above), re-launch with demo policy:
 
 ```bash
-POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+POLICY_FILE=config/openshell/github-egress.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
 ```
 
 ### 3. Start presenter panels
@@ -50,12 +64,20 @@ POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C
 Use `demo-presenter-panel` skill or:
 
 ```bash
-cd docs/demo && python3 -m http.server 8765
+# Optional: verify cluster + ports without starting servers
+./scripts/demo-presenter-serve.sh --check-only
+
+# Start static UI (:8765) + observability proxy (:8766)
+./scripts/demo-presenter-serve.sh
 ```
+
+The script prints URLs when ready:
 
 - Overall demo architecture: `http://127.0.0.1:8765/overall-demo-architecture.html`
 - Live companion (v1): `http://127.0.0.1:8765/v1/live.html`
 - Launcher: `http://127.0.0.1:8765/index.html`
+
+If port `8765` or `8766` is already in use: `lsof -ti :8765 | xargs kill` (or `:8766`).
 
 ### 4. Open Control UI
 

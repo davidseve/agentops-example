@@ -10,13 +10,40 @@ description: >-
 
 Interactive FlowStory panels — not slides. See [`docs/demo/README.md`](../../docs/demo/README.md).
 
-## Start HTTP server
+## Start servers
 
-From repo root:
+From repo root (recommended — preflight + static UI + cluster observability proxy):
+
+```bash
+./scripts/demo-presenter-serve.sh
+```
+
+Preflight only (cluster + ports, no servers started):
+
+```bash
+./scripts/demo-presenter-serve.sh --check-only
+```
+
+The script checks `oc` login, `openshell`, sandbox pod (`openclaw-gw`), gateway pod (`openshell-0`), and that ports `8765`/`8766` are free before binding. If a port is in use:
+
+```bash
+lsof -ti :8765 | xargs kill   # or :8766
+```
+
+Static UI only (no live logs/traces panel; skips cluster preflight):
 
 ```bash
 cd docs/demo && python3 -m http.server 8765
 ```
+
+Observability proxy only:
+
+```bash
+python3 scripts/demo-observability-proxy.py
+# http://127.0.0.1:8766/api/health
+```
+
+Requires logged-in `oc` and `openshell` on the presenter's workstation. The proxy binds to `127.0.0.1` only.
 
 ## URLs
 
@@ -28,7 +55,21 @@ cd docs/demo && python3 -m http.server 8765
 | Scenario B (files) | `http://127.0.0.1:8765/scenarios/test-b-files.html` | Test B — Landlock / `/etc/shadow` |
 | Scenario C (egress) | `http://127.0.0.1:8765/scenarios/test-c-egress.html` | Test C — Before/After Cambio 1 (`1`/`2` or `b`/`a`) |
 | Scenario D (guardrails) | `http://127.0.0.1:8765/scenarios/test-d-guardrails.html` | Test D — Before/After Cambio 2 |
-| Live companion (v1) | `http://127.0.0.1:8765/v1/live.html` | Recommended — phases 1–5 |
+| Live companion (v1) | `http://127.0.0.1:8765/v1/live.html` | Recommended — phases 1–5 + cluster observability panel |
+
+## Cluster observability (v1)
+
+When using `demo-presenter-serve.sh`, `v1/live.html` includes a **Cluster observability** panel below the step card:
+
+| Tab | Source |
+|---|---|
+| OpenClaw | `/sandbox/workspace/openclaw.log` via `openshell sandbox exec` |
+| Sandbox (OCSF) | `/var/log/openshell.YYYY-MM-DD.log` via `openshell sandbox exec` |
+| OpenShell Gateway | `oc logs openshell-0` |
+| NeMo Guardrails | TrustyAI-managed pod (`nemo-guardrails-*`) |
+| MLflow | Recent traces from experiment `openclaw-tracing` |
+
+The panel polls `http://127.0.0.1:8766` and suggests a tab when you advance demo steps (A/B → OpenClaw, C → OpenShell, D → NeMo, MLflow step → MLflow). Per tab: **↓** pauses live updates (remembered per component).
 
 ## Split screen layout
 

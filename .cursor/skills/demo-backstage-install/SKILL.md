@@ -49,7 +49,9 @@ APPS_DOMAIN=$APPS_DOMAIN make -C deploy deploy-openclaw-ui-proxy
 
 make -C deploy validate-guardrails
 
-POLICY_FILE=policies/openclaw-demo-initial.yaml \
+./scripts/ensure-mlflow-experiment.sh
+
+POLICY_FILE=config/openshell/github-egress.yaml \
 INFERENCE_BACKEND=direct \
 APPS_DOMAIN=$APPS_DOMAIN \
 make -C deploy launch-openclaw
@@ -75,8 +77,8 @@ Control UI: `https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/`
 
 | Target | Policy | Verify profile |
 |---|---|---|
-| Demo backstage | `openclaw-demo-initial.yaml` | `VERIFY_PROFILE=demo` |
-| CI / `make demo` | `openclaw-sandbox.yaml` | `VERIFY_PROFILE=full` |
+| Demo backstage | `github-egress.yaml` | `VERIFY_PROFILE=demo` |
+| CI / `make demo` | `default.yaml` | `VERIFY_PROFILE=full` |
 
 Do **not** use `./scripts/cluster-lifecycle.sh full` alone for demo v1 — it launches with the hardened default policy.
 

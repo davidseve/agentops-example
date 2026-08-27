@@ -127,7 +127,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy deploy-openshell` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
 | `guardrails-cluster-install` | Deploy/validate/undeploy NeMo Guardrails (TrustyAI) — see [nemo-guardrails-installation.md](docs/nemo-guardrails-installation.md) |
-| `launch-openclaw` | Launch OpenClaw in sandbox — use demo-initial policy for v1 narrative |
+| `launch-openclaw` | Launch OpenClaw in sandbox — use `config/openshell/github-egress.yaml` for v1 narrative |
 
 ### Demo v1 ([demo-narrativa-v1.md](docs/demo-narrativa-v1.md))
 
@@ -137,10 +137,10 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `demo-backstage-prep` | Pre-stage checklist before going live |
 | `demo-verify` | Validate demo initial state (`VERIFY_PROFILE=demo`) |
 | `demo-present` | Master live runbook (phases 0–5) |
-| `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v1/live.html` panel |
+| `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v1/live.html` panel — log highlight rules: [demo-scenario-logs.md](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules) |
 | `demo-restrict-egress` | Live Cambio 1 — block unauthorized egress |
 | `demo-enable-guardrails` | Live Cambio 2 — switch inference to NeMo |
-| `demo-reset` | Reset between rehearsals (direct MaaS + demo-initial policy) |
+| `demo-reset` | Reset between rehearsals (direct MaaS + github egress policy) |
 | `mlflow-tracing-validate` | MLflow traces block (phase 4) |
 
 ### Docs, governance, utilities
@@ -174,6 +174,11 @@ agentops-example/
 │   ├── demo-narrativa-v1.md       # Active live demo narrative (Spanish)
 │   ├── demo-narrativa-v2.md       # EvalHub/Garak extension (future)
 │   └── demo-script.md             # Step-by-step demo script with timing (English)
+├── config/
+│   ├── openclaw.json.tpl          # OpenClaw harness config template
+│   └── openshell/                 # OpenShell sandbox policies (Landlock, egress)
+│       ├── default.yaml           # Default: MLflow only (CI, post–Cambio 1)
+│       └── github-egress.yaml     # Demo Test C: allows curl → github.com
 ├── deploy/
 │   ├── helm/guardrails/       # NemoGuardrails CR (TrustyAI); rails in files/
 │   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
@@ -195,10 +200,11 @@ agentops-example/
     ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
     ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
     ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
+    ├── ensure-mlflow-experiment.sh    # Get-or-create openclaw-tracing experiment (per workspace)
     ├── demo-enable-guardrails.sh      # Live demo Cambio 2: NeMo inference path
     ├── demo-disable-guardrails.sh     # Reset to direct MaaS
     ├── demo-restrict-egress.sh        # Live demo Cambio 1: apply final sandbox policy
-    ├── demo-reset.sh                  # Reset demo (direct MaaS + demo-initial policy)
+    ├── demo-reset.sh                  # Reset demo (direct MaaS + github egress policy)
     └── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
 ```
 

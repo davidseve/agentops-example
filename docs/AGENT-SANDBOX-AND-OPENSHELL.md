@@ -59,7 +59,7 @@ OpenShell creates a dedicated netns inside the sandbox pod.  Processes running i
 
 A [Linux Security Module](https://docs.kernel.org/userspace-api/landlock.html) for filesystem sandboxing.  Instead of relying solely on Unix permissions, a process declares rules like "I can read `/usr` and write `/tmp`; deny everything else."  OpenShell's supervisor configures Landlock from the sandbox policy file.
 
-In our policy (`policies/openclaw-sandbox.yaml`):
+In our policy (`config/openshell/default.yaml`):
 
 ```yaml
 filesystem_policy:
@@ -98,8 +98,8 @@ The `privileged` SCC is granted **only** to the `openshell-sandbox` ServiceAccou
 | OpenShell Gateway | `deploy/helm/openshell/` (wrapper chart with upstream OCI subchart dependency) | `make -C deploy deploy-openshell` |
 | SCC RoleBinding | `deploy/helm/openshell/templates/scc-rolebinding.yaml` | Included in `deploy-openshell` |
 | OpenClaw UI Proxy | `deploy/helm/openclaw-ui-proxy/` (nginx mTLS bridge) | `make -C deploy deploy-openclaw-ui-proxy` |
-| Sandbox Policy (CI / final) | `policies/openclaw-sandbox.yaml` | Applied at `sandbox create` time for `cluster-lifecycle full` |
-| Sandbox Policy (demo v1 initial) | `policies/openclaw-demo-initial.yaml` | Backstage launch via `POLICY_FILE=policies/openclaw-demo-initial.yaml`; restrict live with `./scripts/demo-restrict-egress.sh` |
+| Sandbox Policy (default / CI) | `config/openshell/default.yaml` | Applied at `sandbox create` time for `cluster-lifecycle full` |
+| Sandbox Policy (github egress) | `config/openshell/github-egress.yaml` | Backstage launch via `POLICY_FILE=config/openshell/github-egress.yaml`; restrict live with `./scripts/demo-restrict-egress.sh` |
 
 ### Architecture Diagram
 
@@ -207,7 +207,7 @@ Deploys the OpenShell Gateway StatefulSet.  The wrapper chart (`deploy/helm/open
 ### Phase 3 — Sandbox Creation
 
 ```bash
-openshell sandbox create --from openclaw --name openclaw-gw --policy policies/openclaw-sandbox.yaml
+openshell sandbox create --from openclaw --name openclaw-gw --policy config/openshell/default.yaml
 ```
 
 The CLI sends a `CreateSandbox` gRPC request to the gateway.  The gateway's Kubernetes driver:
@@ -341,7 +341,7 @@ Ensures the local `openshell` CLI points at this cluster's gateway with valid mT
 openshell sandbox create \
   --from openclaw \
   --name openclaw-gw \
-  --policy policies/openclaw-sandbox.yaml \
+  --policy config/openshell/default.yaml \
   --upload .rendered/openclaw.json:/sandbox/.openclaw/config.json
 ```
 
@@ -371,6 +371,7 @@ These steps run **inside the container as root** to prepare the environment. The
 |------|-------------|-----|
 | Install OpenClaw | `npm install -g openclaw@2026.6.34` | Pin to a tested version ([ADR-0006](adr/0006-explicit-version-pinning.md)) |
 | Upload config | `oc cp openclaw.json` + `chown` to sandbox UID | OpenClaw rejects config not owned by the sandbox user |
+| Upload workspace bootstrap | `oc cp agent/workspace/{AGENTS,SOUL,IDENTITY}.md` → `/sandbox/workspace/` | Demo overrides default OpenClaw bootstrap that refuses sensitive probes; `skipBootstrap: true` in config |
 | Install MLflow plugin | `npm install @mlflow/mlflow-openclaw@0.2.0-rc.0` | Traces with full Request/Response content to RHOAI MLflow |
 | Patch plugin | `patch-mlflow-plugin.py` + `chown root:root` | SDK compatibility patches; OpenClaw requires root-owned extensions |
 | Stage CA bundle | Merge OpenShell CA + OpenShift service-ca | TLS trust for MLflow's internal service-ca-signed certificate |
@@ -562,8 +563,17 @@ The sandbox policy controls what the agent can do at runtime:
 
 | Policy file | Egress posture | Used by |
 |-------------|----------------|---------|
-| `policies/openclaw-sandbox.yaml` | MLflow only; GitHub/PyPI denied | CI (`make validate-security`), live demo after Cambio 1 |
-| `policies/openclaw-demo-initial.yaml` | MLflow + `github.com:443` for Test C | Demo backstage (`demo-backstage-install`, `demo-reset`) |
+| `config/openshell/default.yaml` | MLflow only; GitHub/PyPI denied | CI (`make validate-security`), live demo after Cambio 1 |
+| `config/openshell/github-egress.yaml` | MLflow + `github.com:443` for Test C | Demo backstage (`demo-backstage-install`, `demo-reset`) |
+
+**Per-policy binaries** (which executable may open sockets to that endpoint):
+
+| Policy block | Binaries | Purpose |
+|--------------|----------|---------|
+| `mlflow_direct` | `/usr/bin/node` | OpenClaw gateway + `mlflow-openclaw` trace export |
+| `demo_egress_github` (demo-initial only) | `/usr/bin/curl` | Test C — agent `curl` to `github.com` |
+
+`curl` is not listed under `mlflow_direct`; MLflow API validation from scripts uses `oc exec` outside the sandbox netns. `inference.local` needs no explicit binary allowlist.
 
 See [`demo-narrativa-v1.md`](demo-narrativa-v1.md) for the live narrative and [`scripts/demo-restrict-egress.sh`](../scripts/demo-restrict-egress.sh) / [`scripts/demo-reset.sh`](../scripts/demo-reset.sh) for on-stage policy toggles.
 
@@ -577,7 +587,8 @@ See [`demo-narrativa-v1.md`](demo-narrativa-v1.md) for the live narrative and [`
 # Gateway health (uses sandbox exec, proves netns isolation)
 make -C deploy validate-openclaw
 
-# MLflow trace pipeline
+# MLflow trace pipeline (ensures experiment + checks traces)
+make -C deploy ensure-mlflow-experiment
 make -C deploy validate-traces
 
 # Network policy enforcement (CI hardened policy)
@@ -735,7 +746,7 @@ APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 **Demo v1 backstage** (permissive egress, direct MaaS):
 
 ```bash
-POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+POLICY_FILE=config/openshell/github-egress.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
 VERIFY_PROFILE=demo ./scripts/verify.sh
 # Between rehearsals: ./scripts/demo-reset.sh
 # Live Cambio 1: ./scripts/demo-restrict-egress.sh
@@ -754,6 +765,7 @@ VERIFY_PROFILE=demo ./scripts/verify.sh
 | View sandbox policy | `openshell policy get <name> --full` |
 | Update policy live | `openshell policy set <name> --policy <file> --wait` |
 | Reset demo to initial policy | `./scripts/demo-reset.sh` |
+| Ensure MLflow tracing experiment | `./scripts/ensure-mlflow-experiment.sh` or `make -C deploy ensure-mlflow-experiment` |
 | Restrict demo egress (Cambio 1) | `./scripts/demo-restrict-egress.sh` |
 | Validate demo backstage | `VERIFY_PROFILE=demo ./scripts/verify.sh` |
 

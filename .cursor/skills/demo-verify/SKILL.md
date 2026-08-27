@@ -65,10 +65,11 @@ Runs [`tests/demo-narrative.spec.ts`](../../tests/demo-narrative.spec.ts): reset
 
 | Fail | Fix |
 |---|---|
-| `validate-demo-initial` | Re-launch with `POLICY_FILE=policies/openclaw-demo-initial.yaml` |
+| `validate-demo-initial` | Re-launch with `POLICY_FILE=config/openshell/github-egress.yaml` |
 | `validate-guardrails` | `guardrails-cluster-install` |
 | `validate-openclaw` | `launch-openclaw` with demo env vars |
 | Still on guardrailed path | `./scripts/demo-disable-guardrails.sh` |
+| MLflow experiment / trace export | `./scripts/ensure-mlflow-experiment.sh` then re-launch OpenClaw |
 
 ## Related skills
 

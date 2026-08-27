@@ -4,7 +4,7 @@ description: >-
   Launch OpenClaw inside an OpenShell sandbox with MaaS providers and MLflow
   tracing. Use when running launch-openclaw, creating the sandbox, starting
   the agent gateway, or preparing the demo — always set POLICY_FILE to
-  openclaw-demo-initial.yaml for demo v1.
+  config/openshell/github-egress.yaml for demo v1.
 ---
 
 # Launch OpenClaw
@@ -22,10 +22,10 @@ Imperative runtime step: register CLI gateway, create sandbox (if missing), wire
 
 ## Demo v1 (required env)
 
-For [`demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md), **always** use the demo-initial policy and direct MaaS:
+For [`demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md), **always** use the github egress policy and direct MaaS:
 
 ```bash
-POLICY_FILE=policies/openclaw-demo-initial.yaml \
+POLICY_FILE=config/openshell/github-egress.yaml \
 INFERENCE_BACKEND=direct \
 make -C deploy launch-openclaw
 ```
@@ -33,7 +33,7 @@ make -C deploy launch-openclaw
 Or from repo root:
 
 ```bash
-POLICY_FILE=policies/openclaw-demo-initial.yaml \
+POLICY_FILE=config/openshell/github-egress.yaml \
 INFERENCE_BACKEND=direct \
 APPS_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}') \
 ./scripts/launch-openclaw.sh
@@ -41,10 +41,10 @@ APPS_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.dom
 
 | Variable | Demo v1 value | CI / final state |
 |---|---|---|
-| `POLICY_FILE` | `policies/openclaw-demo-initial.yaml` | `policies/openclaw-sandbox.yaml` |
+| `POLICY_FILE` | `config/openshell/github-egress.yaml` | `config/openshell/default.yaml` |
 | `INFERENCE_BACKEND` | `direct` | `direct` at launch; guardrailed only via demo script |
 
-Constants in [`scripts/common.sh`](../../scripts/common.sh): `POLICY_DEMO_INITIAL`, `POLICY_FINAL`.
+Constants in [`scripts/common.sh`](../../scripts/common.sh): `POLICY_GITHUB_EGRESS`, `POLICY_DEFAULT`.
 
 ## CI / hardened policy (not demo initial state)
 
@@ -52,7 +52,7 @@ Constants in [`scripts/common.sh`](../../scripts/common.sh): `POLICY_DEMO_INITIA
 make -C deploy launch-openclaw
 ```
 
-Default `POLICY_FILE` is `policies/openclaw-sandbox.yaml` (github.com blocked).
+Default `POLICY_FILE` is `config/openshell/default.yaml` (github.com blocked).
 
 ## Verify
 
@@ -77,7 +77,13 @@ Control UI: `https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/`
 | Policy file not found | Run from repo root; check `POLICY_FILE` path |
 | Provider not found at demo | Re-run launch with demo env vars |
 | Control UI password missing | Set `OPENCLAW_GATEWAY_PASSWORD` in secrets.env |
-| github.com blocked before Test C | Wrong policy — use `openclaw-demo-initial.yaml` |
+| github.com blocked before Test C | Wrong policy — use `config/openshell/github-egress.yaml` |
+| MLflow `No Experiment with id=1` | Run `./scripts/ensure-mlflow-experiment.sh` then re-launch |
+| Test B: agent refuses `cat /etc/shadow` | Re-run launch (uploads `agent/workspace/AGENTS.md`); start **new chat** (`/new`) — default OpenClaw bootstrap refuses sensitive probes at LLM layer |
+
+## Workspace bootstrap
+
+Demo probes (A–D) require `agent/workspace/AGENTS.md` uploaded to `/sandbox/workspace/`. Config sets `agents.defaults.skipBootstrap: true` so OpenClaw does not overwrite with default templates that refuse exfiltration-style commands. Landlock/egress/guardrails are the intended defenses, not model refusal.
 
 ## Related skills
 
