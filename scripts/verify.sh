@@ -106,6 +106,11 @@ else
     else
       fail "make validate-demo-initial"
     fi
+    if run_make validate-scenario-a-baseline; then
+      pass "make validate-scenario-a-baseline"
+    else
+      fail "make validate-scenario-a-baseline"
+    fi
   else
     step "Layer 4: Sandbox security policy (CI hardened)"
     if run_make validate-security; then

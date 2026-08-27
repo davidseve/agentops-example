@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 import * as path from 'path';
+import { loadLocalSecretsEnv } from './load-secrets-env';
+
+loadLocalSecretsEnv();
 
 // OpenClaw gateway URL (via nginx mTLS bridge — password auth in Control UI)
 const baseURL = process.env.OPENCLAW_BASE_URL || 'https://openclaw-gw--openclaw-ui.apps.ocp.sandbox701.opentlc.com';
@@ -30,6 +33,10 @@ export default defineConfig({
   workers,
   projects: [
     {
+      name: 'unit-tests',
+      testMatch: /observability-log-rules\.spec\.ts/,
+    },
+    {
       name: 'auth-setup',
       // Must not match mlflow-auth.setup.ts (substring "auth.setup.ts").
       testMatch: /(?:^|\/)auth\.setup\.ts$/,
@@ -45,6 +52,13 @@ export default defineConfig({
       name: 'security-tests',
       testMatch: /sandbox-security\.spec\.ts/,
       dependencies: ['auth-setup'],
+      use: { storageState: STORAGE_STATE },
+    },
+    {
+      name: 'scenario-a-regression-tests',
+      testMatch: /scenario-a-regression\.spec\.ts/,
+      dependencies: ['auth-setup'],
+      timeout: 120_000,
       use: { storageState: STORAGE_STATE },
     },
     {
