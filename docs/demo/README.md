@@ -5,6 +5,19 @@ Interactive FlowStory panel for the AgentOps talk. Not slides.
 ## Launcher
 
 ```bash
+# Preflight + static UI + local observability proxy (recommended for v1 live companion)
+./scripts/demo-presenter-serve.sh
+# http://127.0.0.1:8765/v1/live.html
+
+# Preflight only (oc/openshell/sandbox/gateway + port check)
+./scripts/demo-presenter-serve.sh --check-only
+```
+
+Requires logged-in `oc` and `openshell`. Fails fast if ports `8765`/`8766` are already in use (free with `lsof -ti :8765 | xargs kill`).
+
+Static UI only (offline / no observability panel):
+
+```bash
 cd docs/demo
 python3 -m http.server 8765
 # http://127.0.0.1:8765/index.html
@@ -29,10 +42,38 @@ docs/demo/
 │   ├── live.html
 │   ├── narrative.css
 │   ├── narrative-data.js
-│   └── narrative-ui.js
+│   ├── narrative-ui.js
+│   ├── observability-panel.js
+│   └── observability-log-rules.js
 ├── v2/live.html         # Stub — unified panel (future)
 └── v3/live.html         # Stub — FlowStory narrative mode (future)
 ```
+
+### v1 cluster observability
+
+`v1/live.html` can show live cluster logs and MLflow traces when the local proxy is running:
+
+```bash
+./scripts/demo-presenter-serve.sh   # UI :8765 + proxy :8766
+```
+
+| Component | Proxy endpoint | Cluster source | Tail lines |
+|-----------|----------------|----------------|------------|
+| OpenClaw | `/api/logs/openclaw` | `oc exec` → `openclaw.log` | 120 |
+| Sandbox | `/api/logs/sandbox?filter=signal` | `oc exec` → `/var/log/openshell.YYYY-MM-DD.log` | 300 |
+| OpenShell | `/api/logs/openshell` | `oc logs openshell-0` | 120 |
+| NeMo | `/api/logs/nemo` | `oc logs` on `nemo-guardrails-*` pod (dynamic discovery) | 120 |
+| MLflow | `/api/traces/mlflow` | MLflow REST API from sandbox pod ([ADR-0010](../adr/0010-mlflow-tracing-otel.md)) | — |
+
+Tail line limits are tuned in `LOG_LINES_BY_COMPONENT` in [`v1/observability-panel.js`](v1/observability-panel.js) (proxy accepts `?lines=1..500`, sandbox `?filter=all|signal`). Three-tier classification (signal/warn/noise), focus Filter (default ON), step-aware sandbox overrides (e.g. github.com green on C-pre only), and step hints: [`v1/observability-log-rules.js`](v1/observability-log-rules.js).
+
+**Runbook:** [demo-scenario-logs.md](demo-scenario-logs.md) — what to search for in each component during Tests A–D; [§ Sandbox panel highlight rules](demo-scenario-logs.md#sandbox-panel-highlight-rules) documents green/amber/gray tiers and step-aware overrides.
+
+**Panel controls (per tab):**
+- **Filter** — focus mode: show signal (green) and warn (amber) only (default ON); disable to see full log in gray
+- **↓** — pause/resume live updates (each tab remembers its own state)
+
+Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py). Requires `oc` and `openshell` on the presenter laptop; binds to `127.0.0.1` only.
 
 ## Phase 0 — Overall demo architecture
 
@@ -70,7 +111,7 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 
 | Flow | URL | When |
 |------|-----|------|
-| v1 | [v1/live.html](v1/live.html) | Recommended — narrative steps, matrix, diagram, YAML |
+| v1 | [v1/live.html](v1/live.html) | Recommended — narrative steps, matrix, diagram, YAML, cluster observability |
 | v2 | [v2/live.html](v2/live.html) | Coming soon (unified panel) |
 | v3 | [v3/live.html](v3/live.html) | Coming soon (FlowStory narrative) |
 
