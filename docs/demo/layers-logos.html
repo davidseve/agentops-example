@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>AgentOps — Platform architecture (logos)</title>
+<link rel="stylesheet" href="./shared/vendor/style.css">
+<link rel="stylesheet" href="./shared/demo.css">
+</head>
+<body>
+
+<button class="fs-theme-toggle" id="fs-theme" title="Toggle theme">&#9790;</button>
+
+<div class="fs-brand" id="fs-brand"></div>
+<div class="fs-title" id="fs-title"></div>
+<div class="fs-tagline">Your Agent. Our Platform. Production-Ready.</div>
+
+<div class="fs-panel">
+  <div class="fs-flow-bar">
+    <select id="fs-flow-select"></select>
+    <button id="fs-prev" title="Previous hop (clicker / ← / Page Up)">&#9664;</button>
+    <button class="fs-start" id="fs-play">&#9654; Start</button>
+    <button id="fs-next" title="Next hop (clicker / → / Page Down)">&#9654;</button>
+    <button id="fs-speed">1x</button>
+    <button id="fs-loop" style="border-color:#79c0ff;color:#79c0ff">&#8635; Loop</button>
+    <button class="fs-reset" id="fs-reset">Reset</button>
+  </div>
+  <div class="fs-steps" id="fs-steps">
+    <div class="fs-steps-title">Layers <span style="font-weight:400;font-size:11px;color:var(--fs-text-dim)">· clicker or ← →</span></div>
+    <div id="fs-steps-container"></div>
+  </div>
+  <div class="fs-inspector" id="fs-inspector">
+    <div class="fs-inspector-title" id="fs-inspector-title" style="color:var(--fs-accent)">Layer board</div>
+    <div id="fs-inspector-content"></div>
+  </div>
+</div>
+
+<div id="fs-highlight-box" style="display:none;position:fixed;z-index:350;border-radius:10px;pointer-events:none"></div>
+<div id="fs-overlay" onclick="if(event.target===this)window.__flowstory?.closeOverlay()" style="display:none;position:fixed;top:0;left:0;right:380px;bottom:0;z-index:300;background:rgba(0,0,0,0.6)">
+  <div id="fs-overlay-card" style="position:absolute;background:#161b22ee;border:1px solid #30363d;border-radius:14px;max-width:420px;padding:22px 26px;box-shadow:0 12px 40px rgba(0,0,0,0.5);transition:opacity .2s">
+    <button id="fs-overlay-close" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#8b949e;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px">✕</button>
+    <div id="fs-overlay-accent" style="width:4px;height:24px;border-radius:2px;position:absolute;left:0;top:22px"></div>
+    <h2 id="fs-overlay-title" style="margin:0 0 6px;font-size:18px;color:#c9d1d9;font-family:system-ui"></h2>
+    <p id="fs-overlay-desc" style="margin:0 0 14px;font-size:13px;color:#8b949e;line-height:1.5;font-family:system-ui"></p>
+    <div id="fs-overlay-details" style="font-size:12px;font-family:'SF Mono',Menlo,monospace"></div>
+    <button id="fs-overlay-resume" style="margin-top:14px;padding:7px 20px;border:1px solid #3fb950;border-radius:8px;background:transparent;color:#3fb950;font-size:13px;cursor:pointer;font-family:system-ui">&#9654; Resume</button>
+  </div>
+</div>
+
+<div class="fs-legend" id="fs-legend"></div>
+<div class="fs-credit">Complete platform · logos · <a href="./layers.html">text version</a></div>
+
+<canvas id="fs-canvas"></canvas>
+
+<script type="module">
+import { FlowStory } from './shared/vendor/flowstory.min.js';
+import { attachLogos, preloadLogos, installLogoRenderer } from './shared/logo-renderer.js';
+
+const BOX = { w: 148, h: 50 };
+const diagram = {
+  meta: {
+    title: "AgentOps — Platform architecture",
+    branding: {
+      logo: "./shared/assets/redhat-logo.svg",
+      title: "Red Hat"
+    }
+  },
+  canvas: { width: 820, height: 740 },
+  nodes: {
+    cluster: {
+      x: 228, y: 48, w: 552, h: 668,
+      type: "boundary",
+      label: "OpenShift + RHOAI",
+      labelAlign: "left",
+      labelColor: "#8b949e"
+    },
+    openshell: {
+      x: 248, y: 88, w: 504, h: 328,
+      type: "container",
+      label: "OpenShell",
+      color: "#58a6ff"
+    },
+    agentsb: {
+      x: 268, y: 124, w: 464, h: 100,
+      type: "container",
+      label: "Agent Sandbox",
+      color: "#d2a8ff"
+    },
+    user: {
+      x: 40, y: 324, w: BOX.w, h: BOX.h,
+      label: "Usuario",
+      sublabel: "presenter",
+      color: "#79c0ff",
+      fontSize: 12
+    },
+    oc: {
+      x: 292, y: 156, w: BOX.w, h: BOX.h,
+      label: "OpenClaw",
+      sublabel: "BYOA · customer",
+      color: "#f0883e",
+      fontSize: 12
+    },
+    landlock: {
+      x: 512, y: 156, w: BOX.w, h: BOX.h,
+      label: "Landlock",
+      sublabel: "files locked",
+      color: "#8b949e",
+      fontSize: 12
+    },
+    ir: {
+      x: 512, y: 240, w: BOX.w, h: BOX.h,
+      label: "inference.local",
+      sublabel: "router injects key",
+      color: "#58a6ff",
+      fontSize: 12
+    },
+    gw: {
+      x: 268, y: 324, w: 464, h: BOX.h,
+      label: "OpenShell GW",
+      sublabel: "all outbound",
+      color: "#1f6feb",
+      fontSize: 12
+    },
+    nemo: {
+      x: 512, y: 436, w: BOX.w, h: BOX.h,
+      label: "NeMo Guardrails",
+      sublabel: "TrustyAI · RHOAI",
+      color: "#2dd4bf",
+      fontSize: 12
+    },
+    maas: {
+      x: 512, y: 528, w: BOX.w, h: BOX.h,
+      label: "MaaS",
+      sublabel: "OpenShift AI",
+      color: "#3fb950",
+      fontSize: 12
+    },
+    llm: {
+      x: 512, y: 620, w: BOX.w, h: BOX.h,
+      label: "LLM",
+      sublabel: "the model",
+      color: "#7ee787",
+      fontSize: 12,
+      stackCount: 2,
+      stackOffset: { dx: 8, dy: -7 }
+    },
+    internet: {
+      x: 40, y: 528, w: BOX.w, h: BOX.h,
+      label: "Internet",
+      sublabel: "public egress",
+      color: "#f78166",
+      fontSize: 12
+    },
+    mlflow: {
+      x: 292, y: 436, w: BOX.w, h: BOX.h,
+      label: "MLflow",
+      sublabel: "traces · RHOAI",
+      color: "#e3b341",
+      fontSize: 12
+    }
+  },
+  tooltips: {
+    user: {
+      title: "Usuario",
+      description: "The presenter reaches OpenClaw through the OpenShell Gateway — never a direct hop into the sandbox. Customer harness UI behind the nginx mTLS bridge.",
+      details: [
+        ["Owner", "Customer (BYOA)"],
+        ["Platform", "nginx bridge on OpenShift"],
+        ["ADR", "0011"]
+      ]
+    },
+    oc: {
+      title: "OpenClaw — BYOA agent",
+      description: "Runs inside the Agent Sandbox. The customer brings the agent; Red Hat isolates, observes, and governs it.",
+      details: [
+        ["Owner", "Customer"],
+        ["Product", "Not Red Hat"],
+        ["Runs in", "Agent Sandbox"]
+      ]
+    },
+    landlock: {
+      title: "Landlock filesystem policy",
+      description: "Inside the Agent Sandbox. After the model tells the agent to read a file, Landlock blocks /etc/shadow and secrets.",
+      details: [
+        ["Owner", "Red Hat Agent Sandbox"],
+        ["State", "Locked"],
+        ["Policy", "policies/openclaw-sandbox.yaml"]
+      ]
+    },
+    ir: {
+      title: "inference.local",
+      description: "How the agent addresses the OpenShell inference router. Injects the MaaS API key — the agent process never sees it — then the call leaves through the gateway.",
+      details: [
+        ["Owner", "NVIDIA OpenShell on OpenShift"],
+        ["Path", "inference.local → Gateway → NeMo → MaaS → LLM"]
+      ]
+    },
+    gw: {
+      title: "OpenShell Gateway",
+      description: "Choke point inside OpenShell. The Usuario enters here to reach OpenClaw. Every call leaving the Agent Sandbox — inference, traces, curl — also goes through the gateway.",
+      details: [
+        ["Owner", "NVIDIA OpenShell on OpenShift"],
+        ["Role", "Egress + inference router"],
+        ["Policy", "nftables / network_policies"]
+      ]
+    },
+    nemo: {
+      title: "NeMo Guardrails",
+      description: "Input/output rails on the live hop. Every inference request goes through TrustyAI / NeMo before MaaS.",
+      details: [
+        ["Product", "RHOAI · TrustyAI"],
+        ["Rails", "NVIDIA NeMo Guardrails"],
+        ["ADR", "0004"]
+      ]
+    },
+    maas: {
+      title: "Models as a Service",
+      description: "Serving gateway after Guardrails. Calls the LLM — the agent never talks to the model directly.",
+      details: [
+        ["Product", "Red Hat OpenShift AI"],
+        ["Role", "Model serving gateway"]
+      ]
+    },
+    llm: {
+      title: "LLM",
+      description: "The model MaaS calls. Last hop on the inference path. The stack is other models MaaS could serve — same hop, different replica.",
+      details: [
+        ["Served by", "MaaS"],
+        ["Role", "LLM inference"],
+        ["Also", "More than one model"]
+      ]
+    },
+    internet: {
+      title: "Internet",
+      description: "Public egress. The agent can curl out — but only through the OpenShell Gateway. Usuario and Internet sit outside OpenShift.",
+      details: [
+        ["Path", "OpenClaw → Gateway → Internet"],
+        ["Policy", "nftables / network_policies"],
+        ["Role", "Demo hop 8"]
+      ]
+    },
+    mlflow: {
+      title: "MLflow",
+      description: "One tracking server. Agent traces from the first token (mlflow-openclaw plugin).",
+      details: [
+        ["Product", "RHOAI · MLflow"],
+        ["ADR", "0010"]
+      ]
+    }
+  },
+  flows: {
+    layers: {
+      label: "Add layers",
+      steps: [
+        {
+          text: "Usuario reaches OpenClaw through the OpenShell Gateway",
+          mode: "arrow",
+          from: "user",
+          to: "gw",
+          color: "#79c0ff",
+          num: 1,
+          fromRight: true,
+          toLeft: true,
+          yOff: -10
+        },
+        {
+          text: "Gateway forwards the Usuario into OpenClaw",
+          mode: "arrow",
+          from: "gw",
+          to: "oc",
+          color: "#79c0ff",
+          num: 1,
+          fromTop: true,
+          toBottom: true,
+          fromXOff: -200,
+          toXOff: -66,
+          glow: "openshell"
+        },
+        {
+          text: "OpenClaw calls inference.local — the router injects the API key",
+          mode: "arrow",
+          from: "oc",
+          to: "ir",
+          color: "#58a6ff",
+          num: 2,
+          fromRight: true,
+          toLeft: true,
+          yOff: 18,
+          glow: "openshell"
+        },
+        {
+          text: "The call leaves through the OpenShell Gateway — all outbound",
+          mode: "arrow",
+          from: "ir",
+          to: "gw",
+          color: "#1f6feb",
+          num: 3,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: 0,
+          toXOff: 86,
+          glow: "openshell"
+        },
+        {
+          text: "Gateway forwards through NeMo Guardrails (TrustyAI)",
+          mode: "arrow",
+          from: "gw",
+          to: "nemo",
+          color: "#58a6ff",
+          num: 4,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: 74,
+          toXOff: -12
+        },
+        {
+          text: "NeMo forwards to MaaS",
+          mode: "arrow",
+          from: "nemo",
+          to: "maas",
+          color: "#3fb950",
+          num: 5,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: -12,
+          toXOff: -12
+        },
+        {
+          text: "MaaS calls the LLM",
+          mode: "arrow",
+          from: "maas",
+          to: "llm",
+          color: "#7ee787",
+          num: 6,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: -12,
+          toXOff: -12
+        },
+        {
+          text: "LLM responds — it tells the agent to read a file",
+          mode: "arrow",
+          from: "llm",
+          to: "maas",
+          color: "#3fb950",
+          num: 6,
+          fromTop: true,
+          toBottom: true,
+          fromXOff: 12,
+          toXOff: 12
+        },
+        {
+          text: "Response returns through NeMo Guardrails",
+          mode: "arrow",
+          from: "maas",
+          to: "nemo",
+          color: "#3fb950",
+          num: 5,
+          fromTop: true,
+          toBottom: true,
+          fromXOff: 12,
+          toXOff: 12
+        },
+        {
+          text: "Response returns through the OpenShell Gateway",
+          mode: "arrow",
+          from: "nemo",
+          to: "gw",
+          color: "#3fb950",
+          num: 4,
+          fromTop: true,
+          toBottom: true,
+          fromXOff: 12,
+          toXOff: 98
+        },
+        {
+          text: "Gateway returns to inference.local",
+          mode: "arrow",
+          from: "gw",
+          to: "ir",
+          color: "#3fb950",
+          num: 3,
+          fromTop: true,
+          toBottom: true,
+          fromXOff: 98,
+          toXOff: 12
+        },
+        {
+          text: "Response returns to OpenClaw — the model asked for a file",
+          mode: "arrow",
+          from: "ir",
+          to: "oc",
+          color: "#3fb950",
+          num: 2,
+          fromLeft: true,
+          toRight: true,
+          yOff: 22
+        },
+        {
+          text: "OpenClaw tries the file — Landlock is already locking it",
+          mode: "arrow",
+          from: "oc",
+          to: "landlock",
+          color: "#c9d1d9",
+          num: 7,
+          fromRight: true,
+          toLeft: true,
+          yOff: -14,
+          glow: "agentsb"
+        },
+        {
+          text: "Landlock returns to OpenClaw — no secret files",
+          mode: "arrow",
+          from: "landlock",
+          to: "oc",
+          color: "#c9d1d9",
+          num: 7,
+          fromLeft: true,
+          toRight: true,
+          yOff: 6
+        },
+        {
+          text: "OpenClaw curls out through the Gateway",
+          mode: "arrow",
+          from: "oc",
+          to: "gw",
+          color: "#f78166",
+          num: 8,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: 2,
+          toXOff: -132,
+          glow: "openshell"
+        },
+        {
+          text: "Gateway forwards the request to the Internet",
+          mode: "arrow",
+          from: "gw",
+          to: "internet",
+          color: "#f78166",
+          num: 8,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: -210,
+          toXOff: 0
+        },
+        {
+          text: "Internet responds through the Gateway",
+          mode: "arrow",
+          from: "internet",
+          to: "gw",
+          color: "#3fb950",
+          num: 8,
+          fromTop: true,
+          toBottom: true,
+          fromXOff: 0,
+          toXOff: -196
+        },
+        {
+          text: "Response returns to OpenClaw",
+          mode: "arrow",
+          from: "gw",
+          to: "oc",
+          color: "#3fb950",
+          num: 8,
+          fromTop: true,
+          toBottom: true,
+          fromXOff: -94,
+          toXOff: 40
+        },
+        {
+          text: "OpenClaw answers through the Gateway",
+          mode: "arrow",
+          from: "oc",
+          to: "gw",
+          color: "#3fb950",
+          num: 1,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: -36,
+          toXOff: -170
+        },
+        {
+          text: "Gateway returns the answer to the Usuario",
+          mode: "arrow",
+          from: "gw",
+          to: "user",
+          color: "#3fb950",
+          num: 1,
+          fromLeft: true,
+          toRight: true,
+          yOff: 10
+        },
+        {
+          text: "Traces leave OpenClaw through the Gateway",
+          mode: "arrow",
+          from: "oc",
+          to: "gw",
+          color: "#e3b341",
+          num: 9,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: 78,
+          toXOff: -56,
+          glow: "openshell"
+        },
+        {
+          text: "Gateway forwards traces to MLflow",
+          mode: "arrow",
+          from: "gw",
+          to: "mlflow",
+          color: "#e3b341",
+          num: 9,
+          fromBottom: true,
+          toTop: true,
+          fromXOff: -134,
+          toXOff: 0
+        }
+      ]
+    }
+  },
+  inspector: {
+    initialState: {
+      phase: "request",
+      headers: [
+        { value: "Credentials     locked  (gateway holds the key)", style: "keep", id: "l-creds" },
+        { value: "Egress          via OpenShell Gateway", style: "keep", id: "l-gw" },
+        { value: "Files           locked  (Landlock)", style: "keep", id: "l-files" },
+        { value: "Guardrails      on  (NeMo on the hop)", style: "keep", id: "l-rails" },
+        { value: "Internet        curl  (Gateway egress)", style: "keep", id: "l-net" },
+        { value: "MLflow          on  (one server)", style: "keep", id: "l-mlflow" }
+      ],
+      body: [
+        { value: "Path:  (not on the hop yet)", style: "keep", id: "p-path" }
+      ]
+    },
+    mutations: {
+      layers: [
+        { step: 1, label: "1  Usuario → Gateway", actions: [{ id: "l-gw", style: "highlight" }] },
+        { step: 2, label: "1  Gateway → OpenClaw" },
+        { step: 3, label: "2  OpenClaw → inference.local", actions: [{ id: "l-creds", style: "highlight" }] },
+        { step: 4, label: "3  OpenShell Gateway", actions: [{ id: "l-gw", style: "highlight" }] },
+        {
+          step: 5,
+          label: "4  NeMo on the path",
+          actions: [{ id: "l-rails", style: "highlight" }],
+          replaceBody: [
+            { value: "Path:  inference.local  →  GW  →  NeMo  →  MaaS  →  LLM", style: "add", id: "p-path" }
+          ]
+        },
+        { step: 6, label: "5  MaaS", actions: [{ id: "p-path", style: "highlight" }] },
+        { step: 7, label: "6  LLM" },
+        {
+          step: 8,
+          label: "6  LLM → MaaS (read this file)",
+          phase: "response",
+          replaceBody: [
+            { value: "Path:  LLM → MaaS → NeMo → GW → IR → OpenClaw  then  Landlock", style: "add", id: "p-path" }
+          ]
+        },
+        { step: 9, label: "5  MaaS → NeMo" },
+        { step: 10, label: "4  NeMo → Gateway" },
+        { step: 11, label: "3  Gateway → inference.local" },
+        { step: 12, label: "2  inference.local → OpenClaw" },
+        { step: 13, label: "7  Landlock →", actions: [{ id: "l-files", style: "highlight" }] },
+        { step: 14, label: "7  ← Landlock" },
+        { step: 15, label: "8  OpenClaw → Gateway", actions: [{ id: "l-net", style: "highlight" }, { id: "l-gw", style: "highlight" }] },
+        { step: 16, label: "8  Gateway → Internet" },
+        { step: 17, label: "8  Internet → Gateway" },
+        { step: 18, label: "8  Gateway → OpenClaw" },
+        { step: 19, label: "1  OpenClaw → Gateway" },
+        { step: 20, label: "1  Gateway → Usuario" },
+        { step: 21, label: "9  OpenClaw → Gateway", actions: [{ id: "l-mlflow", style: "highlight" }] },
+        { step: 22, label: "9  Gateway → MLflow" }
+      ]
+    }
+  },
+  legend: [
+    { label: "Usuario", color: "#79c0ff" },
+    { label: "Internet", color: "#f78166" },
+    { label: "Customer (BYOA)", color: "#f0883e" },
+    { label: "Agent Sandbox", color: "#d2a8ff" },
+    { label: "Inference hop", color: "#58a6ff" },
+    { label: "OpenShell GW", color: "#1f6feb" },
+    { label: "Guardrails", color: "#2dd4bf" },
+    { label: "MaaS / LLM", color: "#3fb950" },
+    { label: "Observability", color: "#e3b341" }
+  ],
+  flowOrder: ["layers"],
+  defaultFlow: "layers"
+};
+
+const viz = new FlowStory(document.getElementById('fs-canvas'), {
+  panelElement: document.querySelector('.fs-panel'),
+  stepsContainer: document.getElementById('fs-steps-container'),
+  inspectorTitle: document.getElementById('fs-inspector-title'),
+  inspectorContent: document.getElementById('fs-inspector-content'),
+  overlay: document.getElementById('fs-overlay'),
+  overlayCard: document.getElementById('fs-overlay-card'),
+  overlayTitle: document.getElementById('fs-overlay-title'),
+  overlayDesc: document.getElementById('fs-overlay-desc'),
+  overlayDetails: document.getElementById('fs-overlay-details'),
+  overlayAccent: document.getElementById('fs-overlay-accent'),
+  overlayClose: document.getElementById('fs-overlay-close'),
+  overlayResume: document.getElementById('fs-overlay-resume'),
+  highlightBox: document.getElementById('fs-highlight-box'),
+  brand: document.getElementById('fs-brand'),
+  title: document.getElementById('fs-title'),
+  legend: document.getElementById('fs-legend'),
+  flowSelect: document.getElementById('fs-flow-select'),
+  playBtn: document.getElementById('fs-play'),
+  speedBtn: document.getElementById('fs-speed'),
+  loopBtn: document.getElementById('fs-loop'),
+  resetBtn: document.getElementById('fs-reset'),
+  themeBtn: document.getElementById('fs-theme'),
+});
+
+window.__flowstory = viz;
+
+function relabelInspector() {
+  const title = document.getElementById('fs-inspector-title');
+  if (title && (title.textContent === 'Request' || title.textContent === 'Response' || title.textContent === 'Error Response')) {
+    title.textContent = 'Layer board';
+    title.style.color = '#58a6ff';
+  }
+  document.querySelectorAll('.fs-inspector-section').forEach((el) => {
+    if (el.textContent === 'Headers:') el.textContent = 'Layers';
+    if (el.textContent === 'Body:') el.textContent = 'Inference path';
+  });
+}
+
+function stepCount() {
+  const flowId = viz.state.activeFlow || diagram.defaultFlow;
+  return diagram.flows[flowId].steps.length;
+}
+
+function syncPlayLabel() {
+  const btn = document.getElementById('fs-play');
+  if (!btn) return;
+  const s = viz.state;
+  btn.innerHTML = s.running && !s.paused ? '&#9646;&#9646; Pause' : '&#9654; Start';
+}
+
+function goNext() {
+  viz.closeOverlay?.();
+  const shown = viz.state.currentStepDone || 0;
+  if (shown >= stepCount()) return;
+  viz.jumpTo(shown);
+  syncPlayLabel();
+}
+
+function goPrev() {
+  viz.closeOverlay?.();
+  const shown = viz.state.currentStepDone || 0;
+  if (shown <= 0) return;
+  if (shown === 1) viz.reset();
+  else viz.jumpTo(shown - 2);
+  syncPlayLabel();
+}
+
+function isTypingTarget(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+}
+
+try {
+  attachLogos(diagram);
+  installLogoRenderer(viz);
+  await preloadLogos(diagram);
+  await viz.load(diagram);
+  relabelInspector();
+  document.getElementById('fs-next').addEventListener('click', goNext);
+  document.getElementById('fs-prev').addEventListener('click', goPrev);
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (isTypingTarget(e.target)) return;
+    const nextKeys = new Set(['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Spacebar', 'Enter', '.', 'n', 'N']);
+    const prevKeys = new Set(['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace', 'p', 'P']);
+    if (nextKeys.has(e.key) || e.code === 'Space') {
+      e.preventDefault();
+      goNext();
+    } else if (prevKeys.has(e.key)) {
+      e.preventDefault();
+      goPrev();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      viz.closeOverlay?.();
+      viz.reset();
+      syncPlayLabel();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      viz.closeOverlay?.();
+      viz.jumpTo(stepCount() - 1);
+      syncPlayLabel();
+    }
+  }, true);
+  const insp = document.getElementById('fs-inspector-content');
+  if (insp) {
+    new MutationObserver(relabelInspector).observe(insp, { childList: true, subtree: true });
+  }
+  const titleEl = document.getElementById('fs-inspector-title');
+  if (titleEl) {
+    new MutationObserver(relabelInspector).observe(titleEl, { childList: true, characterData: true, subtree: true });
+  }
+} catch (e) {
+  console.error('FlowStory load error:', e);
+  document.body.innerHTML = `<pre style="padding:24px;color:#f85149">FlowStory load error\n${e.message}\n\n${e.stack || ''}</pre>`;
+}
+</script>
+</body>
+</html>
