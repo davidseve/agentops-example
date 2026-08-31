@@ -4,12 +4,15 @@
   "private": true,
   "description": "Playwright E2E tests for OpenClaw + MLflow on RHOAI",
   "scripts": {
-    "test": "npx playwright test",
-    "test:ui": "npx playwright test --ui",
-    "test:openclaw": "npx playwright test openclaw-ui.spec.ts",
-    "test:security": "npx playwright test sandbox-security.spec.ts",
-    "test:guardrails": "npx playwright test guardrails-ui.spec.ts",
-    "test:mlflow": "npx playwright test mlflow-ui.spec.ts"
+    "test": "bash ../scripts/run-playwright-tests.sh",
+    "test:ui": "bash ../scripts/run-playwright-tests.sh --ui",
+    "test:openclaw": "bash ../scripts/run-playwright-tests.sh openclaw-ui.spec.ts",
+    "test:security": "bash ../scripts/run-playwright-tests.sh sandbox-security.spec.ts",
+    "test:guardrails": "bash ../scripts/run-playwright-tests.sh guardrails-ui.spec.ts",
+    "test:demo": "bash ../scripts/run-playwright-tests.sh demo-narrative.spec.ts",
+    "test:log-rules": "npx playwright test observability-log-rules.spec.ts",
+    "test:scenario-a": "bash ../scripts/run-playwright-tests.sh scenario-a-regression.spec.ts",
+    "test:mlflow": "bash ../scripts/run-playwright-tests.sh mlflow-ui.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1"

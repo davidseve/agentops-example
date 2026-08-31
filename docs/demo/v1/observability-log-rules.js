@@ -55,7 +55,7 @@ export const SIGNAL_PATTERNS = {
     { re: /apiKey.*unused|"apiKey":\s*"unused"/i, tier: "signal" },
     { re: /LITELLM_API_KEY|apiKey|grep|echo/i, tier: "signal" },
     { re: /inference\.local|inference\/router/i, tier: "signal" },
-    { re: /github\.com|curl/i, tier: "signal" },
+    { re: /google\.com|curl/i, tier: "signal" },
     { re: /\bshell tool\b|tool call|exec tool/i, tier: "signal" },
     { re: /provider=inference|model-fetch/i, tier: "signal" },
     { re: /rail|guardrail|jailbreak|refus/i, tier: "signal" },
@@ -75,16 +75,19 @@ export const SIGNAL_PATTERNS = {
 
 /** Step-specific sandbox overrides applied after global patterns (first match wins). */
 export const STEP_SANDBOX_OVERRIDES = {
-  B: [
-    { re: /OCSF CONFIG:(APPLYING|BUILT).*Landlock/i, tier: "signal" },
-  ],
   "C-pre": [
-    { re: /OCSF NET:OPEN.*ALLOWED.*github\.com/i, tier: "signal" },
-    { re: /OCSF HTTP:(GET|HEAD|POST).*github\.com/i, tier: "signal" },
+    { re: /OCSF NET:OPEN.*DENIED.*google\.com/i, tier: "warn" },
+    { re: /OCSF HTTP:.*DENIED.*google\.com/i, tier: "warn" },
+    { re: /google\.com.*no matching policy/i, tier: "warn" },
+    { re: /OCSF PROC:LAUNCH.*\/usr\/bin\/curl/i, tier: "signal" },
   ],
   "C-post": [
-    { re: /OCSF NET:OPEN.*DENIED.*github\.com/i, tier: "warn" },
-    { re: /github\.com.*no matching policy/i, tier: "warn" },
+    { re: /OCSF NET:OPEN.*ALLOWED.*google\.com/i, tier: "signal" },
+    { re: /OCSF NET:CLOSE.*google\.com/i, tier: "signal" },
+    { re: /OCSF HTTP:(GET|HEAD|POST).*google\.com/i, tier: "signal" },
+    { re: /OCSF HTTP:.*google\.com.*(status|code)[=: ]\s*(200|301|302)/i, tier: "signal" },
+    { re: /OCSF PROC:LAUNCH.*\/usr\/bin\/curl/i, tier: "signal" },
+    { re: /demo_egress_google|demo-permissive-google/i, tier: "signal" },
   ],
 };
 
@@ -93,13 +96,22 @@ export const STEP_SANDBOX_OVERRIDES = {
  * Warn tier is never suppressed (e.g. sk-… leaks stay amber).
  * @type {Record<string, Partial<Record<string, RegExp[]>>>}
  */
+const SANDBOX_C_SUPPRESS = [
+  /OCSF NET:OPEN.*ALLOWED.*inference\.local/i,
+  /policy:mlflow_direct|mlflow\.[a-z0-9.-]+\.svc/i,
+  /routing proxy inference/i,
+  /OCSF API:INFERENCE/i,
+  /OCSF CONFIG:(APPLYING|BUILT).*Landlock/i,
+  /OCSF PROC:LAUNCH.*\bsleep\s*\(/i,
+  /127\.0\.0\.1:18789/i,
+  /GetInferenceBundle/i,
+];
+
 export const STEP_SUPPRESS = {
   B: {
     sandbox: [
-      /OCSF NET:OPEN.*ALLOWED.*inference\.local/i,
-      /policy:mlflow_direct|mlflow\.[a-z0-9.-]+\.svc/i,
-      /routing proxy inference/i,
-      /OCSF API:INFERENCE/i,
+      /OCSF CONFIG:(APPLYING|BUILT).*Landlock/i,
+      /OCSF PROC:LAUNCH.*\bsleep\s*\(/i,
     ],
     openclaw: [
       /^--- /,
@@ -107,7 +119,7 @@ export const STEP_SUPPRESS = {
       /LITELLM_API_KEY|grep|echo/i,
       /TRACE_OK/i,
       /openclaw\.json.*apiKey|grep apiKey/i,
-      /github\.com|curl/i,
+      /google\.com|curl/i,
       /rail|guardrail|jailbreak|refus/i,
       /\[provider-transport-fetch\]|\[model-fetch\]/i,
       /\[agents\/tool-policy\]/i,
@@ -117,6 +129,12 @@ export const STEP_SUPPRESS = {
       /model-fetch|provider=inference/i,
       /oom_score_adj|\/proc\/self\/oom_score_adj/i,
     ],
+  },
+  "C-pre": {
+    sandbox: SANDBOX_C_SUPPRESS,
+  },
+  "C-post": {
+    sandbox: SANDBOX_C_SUPPRESS,
   },
 };
 
@@ -151,15 +169,15 @@ export const STEP_HINTS = {
   },
   B: {
     message:
-      "The agent ran cat /etc/shadow inside the sandbox — Landlock blocked the read at the filesystem layer. No NET: events and no shadow hashes in this log.",
+      "Landlock blocked cat /etc/shadow at the filesystem layer — look for Permission denied in OpenClaw. Sandbox: green inference.local + mlflow_direct (model round-trip); ignore Landlock APPLYING/BUILT startup lines and PROC:LAUNCH sleep.",
   },
   "C-pre": {
-    tab: "Sandbox",
-    terms: ["github.com ALLOWED", "curl", "HTTP:GET"],
+    message:
+      "Default deny egress — Sandbox OCSF should show amber DENIED google.com:443 and no matching policy. PROC:LAUNCH curl may still appear; the block is at the network policy layer.",
   },
   "C-post": {
-    tab: "Sandbox",
-    terms: ["github.com DENIED", "no matching policy"],
+    message:
+      "After demo-allow-google-egress.sh, look for green ALLOWED google.com:443 and demo_egress_google policy. HTTP headers appear in OpenClaw session transcript and Control UI.",
   },
   "D-pre": {
     tab: "OpenClaw",
@@ -279,4 +297,95 @@ export function formatStepHint(stepId) {
 /** @param {string | null} stepId */
 export function stepHintUsesCustomMessage(stepId) {
   return Boolean(stepId && STEP_HINTS[stepId]?.message);
+}
+
+/**
+ * Normalize a raw log line for baseline snapshot/diff (before openclaw display sanitize).
+ * @param {string} line
+ * @returns {string}
+ */
+export function normalizeRawLogLine(line) {
+  return String(line || "").replace(/\x00/g, "").trimEnd();
+}
+
+/**
+ * Build a baseline Set from raw log content (lines present at Clear view activation).
+ * @param {string} content
+ * @returns {Set<string>}
+ */
+export function buildLineBaseline(content) {
+  return new Set(
+    String(content || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .split("\n")
+      .map(normalizeRawLogLine)
+      .filter((line) => line.length > 0)
+  );
+}
+
+/**
+ * Return content with baseline lines removed (clear-view filter).
+ * @param {string} content
+ * @param {Set<string> | null | undefined} baseline
+ * @returns {string}
+ */
+export function filterContentSinceBaseline(content, baseline) {
+  if (!baseline || baseline.size === 0) return String(content || "");
+  const lines = String(content || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n");
+  const kept = [];
+  for (const raw of lines) {
+    const norm = normalizeRawLogLine(raw);
+    if (!norm) continue;
+    if (!baseline.has(norm)) kept.push(raw.trimEnd());
+  }
+  return kept.join("\n");
+}
+
+/**
+ * Stable key for clear-view baseline (must match display identity in observability-panel).
+ * @param {{ traceId?: string, requestId?: string, timestampMs?: number, status?: string, executionTimeMs?: number }} trace
+ * @returns {string}
+ */
+export function traceBaselineKey(trace) {
+  const t = trace ?? {};
+  const id = t.traceId || t.requestId;
+  if (id) return String(id);
+  const ts = t.timestampMs ?? "";
+  const status = t.status ?? "";
+  const exec = t.executionTimeMs ?? "";
+  const composite = `${ts}|${status}|${exec}`;
+  return composite === "||" ? "" : composite;
+}
+
+/**
+ * Build a baseline Set from traces present at Clear view activation.
+ * @param {Array<{ traceId?: string, requestId?: string, timestampMs?: number, status?: string, executionTimeMs?: number }>} traces
+ * @returns {Set<string>}
+ */
+export function buildTraceBaseline(traces) {
+  const baseline = new Set();
+  for (const t of traces ?? []) {
+    const key = traceBaselineKey(t);
+    if (key) baseline.add(key);
+  }
+  return baseline;
+}
+
+/**
+ * Return traces not present in the baseline trace-id set.
+ * @param {Array<{ traceId?: string, requestId?: string, timestampMs?: number, status?: string, executionTimeMs?: number }>} traces
+ * @param {Set<string> | null | undefined} baselineTraceIds
+ * @returns {Array<{ traceId?: string, requestId?: string }>}
+ */
+export function filterTracesSinceBaseline(traces, baselineTraceIds) {
+  if (!baselineTraceIds || baselineTraceIds.size === 0) return traces ?? [];
+  return (traces ?? []).filter((t) => {
+    const key = traceBaselineKey(t);
+    if (!key) return false;
+    return !baselineTraceIds.has(key);
+  });
 }
