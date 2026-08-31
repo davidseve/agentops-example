@@ -86,6 +86,7 @@ make deploy-all && make validate
 - [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) - Agent Sandbox, OpenShell, and OpenClaw launch architecture
 - [docs/stack-decisions.md](docs/stack-decisions.md) - Architecture decisions executive summary
 - [docs/adr/](docs/adr/) - Full Architecture Decision Records
+- [docs/github-actions.md](docs/github-actions.md) - GitHub Actions CI (PR unit tests + Helm lint)
 
 ## Target Environment
 
