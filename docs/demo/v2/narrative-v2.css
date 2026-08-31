@@ -1,0 +1,80 @@
+/* v2 overrides — compact single-column layout (no sidebar) */
+
+.nr-v2 .nr-layout {
+  grid-template-columns: 1fr;
+}
+
+.nr-v2 .nr-header {
+  padding: 10px 16px;
+  gap: 12px;
+}
+
+.nr-v2 .nr-header h1 {
+  font-size: 16px;
+}
+
+.nr-v2 .nr-tagline {
+  font-size: 12px;
+}
+
+.nr-v2 .nr-header a {
+  font-size: 12px;
+}
+
+.nr-v2 .nr-main {
+  padding: 12px 14px 24px;
+}
+
+.nr-v2 .nr-meta {
+  display: none;
+}
+
+.nr-v2 .nr-step-nav {
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.nr-v2 .nr-step-nav button {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.nr-v2 .nr-card {
+  padding: 14px;
+}
+
+.nr-v2 .nr-card h2 {
+  font-size: 18px;
+}
+
+.nr-v2 .nr-diagram {
+  max-width: none;
+}
+
+.nr-v2-step-0 .nr-main {
+  padding: 6px 8px 16px;
+}
+
+.nr-v2-step-0 .nr-card {
+  padding: 8px 6px;
+  border: none;
+  background: transparent;
+}
+
+.nr-v2-step-0 .nr-card h2,
+.nr-v2-step-0 .nr-card > .nr-meta,
+.nr-v2-step-0 .nr-body {
+  display: none;
+}
+
+.nr-v2-step-0 .nr-step-nav {
+  margin-bottom: 8px;
+}
+
+.nr-v2-step-0 .nr-diagram-wrap .nr-diagram-head {
+  display: none;
+}
+
+.nr-v2-step-0 [data-nr-observability] {
+  display: none;
+}

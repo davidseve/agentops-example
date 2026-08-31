@@ -45,7 +45,13 @@ docs/demo/
 │   ├── narrative-ui.js
 │   ├── observability-panel.js
 │   └── observability-log-rules.js
-├── v2/live.html         # Stub — unified panel (future)
+├── v2/                  # Compact panel (no sidebar; in development)
+│   ├── live.html
+│   ├── narrative-v2.css
+│   ├── narrative-v2-ui.js
+│   ├── baseline-diagram.js
+│   ├── baseline-embed.css
+│   └── baseline-layout-variants.css
 └── v3/live.html         # Stub — FlowStory narrative mode (future)
 ```
 
@@ -113,7 +119,9 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 | Flow | URL | When |
 |------|-----|------|
 | v1 | [v1/live.html](v1/live.html) | Recommended — narrative steps, matrix, diagram, YAML, cluster observability |
-| v2 | [v2/live.html](v2/live.html) | Coming soon (unified panel) |
+| v2 | [v2/live.html](v2/live.html) | Compact variant — no sidebar; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); full-width narrative + observability on steps A–MLflow (v1 remains recommended for rehearsal) |
+
+**v2 step 0 layout lab** (compare variants live): dropdown on step 0 or `?layout=<id>`. IDs: `current`, `stack`, `unified`, `legend-footer`, `legend-inset`. Persists in `localStorage` (`v2-baseline-layout`).
 | v3 | [v3/live.html](v3/live.html) | Coming soon (FlowStory narrative) |
 
 Narrative (Spanish): [demo-narrativa-v1.md](../demo-narrativa-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
