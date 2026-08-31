@@ -31,6 +31,7 @@ When a session **adds or modifies** a technology in the stack, the agent MUST cr
 | Architecture decisions (add/swap/remove component) | `adr` skill + `adr-alignment` rule |
 | CRD fields, operator channels, API endpoints | `documentation-sources` rule |
 | Install/verify/troubleshoot procedures | **This rule** + `document-feature` skill |
+| Index docs vs repo layout (README, AGENTS.md trees, ROADMAP links) | `docs-repo-alignment` rule + `sync-repo-docs` skill |
 
 ## Exceptions
 

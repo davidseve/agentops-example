@@ -147,6 +147,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 
 | Skill | When to use |
 |---|---|
+| `sync-repo-docs` | Audit/sync README, AGENTS.md, ROADMAP, and cross-links with actual repo layout, scripts, skills, and Makefile targets |
 | `sync-agent-sandbox-doc` | Keep [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) in sync when sandbox/openshell/launch paths change |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
 | `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/) |
@@ -227,6 +228,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **GitOps**: All configuration as code, no manual cluster changes
 - **Idempotent**: Deploy/teardown must be repeatable with a single command
 - **BYOA principle**: The agent layer is intentionally decoupled from the platform. The platform works regardless of which framework/harness is chosen
+- **Keep index docs aligned with the repo**: The `docs-repo-alignment` rule requires running the `sync-repo-docs` skill when layout, scripts, skills, or Makefile targets change — or when auditing documentation against the filesystem
 - **Document new or modified functionality**: After adding or modifying a stack technology (version, deploy path, prereqs, verify steps), the `technology-usage-docs` rule requires running the `document-feature` skill in the same session — create or update guides in `docs/`, cross-link `ROADMAP.md`, `README.md`, and `AGENTS.md`
 - **Pull requests**: Use the `create-pr` skill — body must follow [PR #1](https://github.com/davidseve/agentops-showcase/pull/1) structure (`Summary`, `Details`, `Test plan`); no default assignee unless the user requests one
 

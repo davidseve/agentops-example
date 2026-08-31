@@ -114,7 +114,7 @@ Add a bullet to the appropriate layer section in `docs/stack-decisions.md`:
 
 - `AGENTS.md` — if the decision affects project conventions, tech stack, or constraints.
 - `docs/ROADMAP.md` — mark "Decide X" tasks as `[x]` with a link to the ADR.
-- `docs/architecture.md` — cite the ADR number when the topology is affected.
+- `docs/AGENT-SANDBOX-AND-OPENSHELL.md` or `docs/stack-decisions.md` — cite the ADR number when the topology is affected.
 
 ### 7. Confirm
 
