@@ -30,7 +30,7 @@ Nada que “encender” en escena salvo el Control UI:
 - **Landlock / política de ficheros** ya aplicada (el agente no debe leer `/etc/shadow` ni secretos).
 - **Egress todavía permisivo** a propósito: un `curl` a un sitio no autorizado **sí puede salir**. Eso permite el primer cambio de config en vivo.
 
-La política “final” de CI ([`policies/openclaw-sandbox.yaml`](../policies/openclaw-sandbox.yaml)) **no** es el estado de arranque de la demo: en CI el egress no autorizado ya está cerrado. Para el relato hace falta una política inicial más abierta en red y luego endurecerla.
+La política “final” de CI ([`config/openshell/default.yaml`](../config/openshell/default.yaml)) **no** es el estado de arranque de la demo: en CI el egress no autorizado ya está cerrado. Para el relato hace falta una política inicial más abierta en red y luego endurecerla.
 
 ## Relato en vivo (capas)
 
@@ -175,7 +175,7 @@ Si aprieta el tiempo: un solo salto a MLflow (live) y el bloque de evals precomp
 - NeMo Guardrails desplegado pero **el provider live empieza en MaaS directo**.
 - Job Garak / eval de sandbox **completados** en el namespace de evaluation.
 - Política inicial de demo: egress abierto salvo lo que ya esté cerrado (ficheros, credenciales).
-- Política CI (`openclaw-sandbox.yaml`): estado **final** endurecido; no usar esa como arranque de la escena.
+- Política CI (`default.yaml`): estado **final** endurecido; no usar esa como arranque de la escena.
 - Video de respaldo si falla el `policy update` o el rewire a NeMo.
 
 ## Relación con el trabajo técnico (no es el script de ensayo)

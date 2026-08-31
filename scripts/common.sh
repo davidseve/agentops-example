@@ -11,11 +11,13 @@ SANDBOX_NAME="${SANDBOX_NAME:-openclaw-gw}"
 GATEWAY_NAME="${GATEWAY_NAME:-ocp}"
 OPENSHELL_RELEASE_NAME="${OPENSHELL_RELEASE_NAME:-openshell}"
 SANDBOX_SA_NAME="${SANDBOX_SA_NAME:-${OPENSHELL_RELEASE_NAME}-sandbox}"
+RHOAI_NS="${RHOAI_NS:-redhat-ods-applications}"
+MLFLOW_EXPERIMENT_NAME="${MLFLOW_EXPERIMENT_NAME:-openclaw-tracing}"
 APPS_DOMAIN="${APPS_DOMAIN:-}"
 
 SECRETS_FILE="${SECRETS_FILE:-${PROJECT_DIR}/secrets/secrets.env}"
-POLICY_DEMO_INITIAL="${POLICY_DEMO_INITIAL:-${PROJECT_DIR}/policies/openclaw-demo-initial.yaml}"
-POLICY_FINAL="${POLICY_FINAL:-${PROJECT_DIR}/policies/openclaw-sandbox.yaml}"
+POLICY_GITHUB_EGRESS="${POLICY_GITHUB_EGRESS:-${PROJECT_DIR}/config/openshell/github-egress.yaml}"
+POLICY_DEFAULT="${POLICY_DEFAULT:-${PROJECT_DIR}/config/openshell/default.yaml}"
 
 PASS_COUNT=0
 FAIL_COUNT=0

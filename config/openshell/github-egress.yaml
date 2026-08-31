@@ -1,8 +1,8 @@
 version: 1
 
-# Demo initial state (v1 narrative): permissive egress to one public host so Prueba C
-# shows curl succeeding before demo-restrict-egress.sh applies openclaw-sandbox.yaml.
-# CI / validate-security use policies/openclaw-sandbox.yaml (final hardened state).
+# Variant of default.yaml with demo_egress_github — curl to github.com for Test C.
+# Apply at sandbox create / demo-reset; demo-restrict-egress.sh switches back to
+# config/openshell/default.yaml.
 
 filesystem_policy:
   include_workdir: false
@@ -28,10 +28,9 @@ network_policies:
         enforcement: enforce
         access: read-write
         tls: skip
+    # node: OpenClaw gateway + mlflow-openclaw trace export (not curl — validation uses oc exec)
     binaries:
       - { path: /usr/bin/node }
-      - { path: /usr/local/bin/node }
-      - { path: /usr/bin/curl }
 
   demo_egress_github:
     name: demo-permissive-github

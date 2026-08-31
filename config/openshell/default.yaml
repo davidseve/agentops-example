@@ -1,5 +1,10 @@
 version: 1
 
+# Default OpenShell sandbox policy: MLflow traces only; no public egress.
+# Default POLICY_FILE in launch-openclaw.sh, CI validate-security, and
+# demo-restrict-egress.sh (Cambio 1). For Test C github egress use
+# config/openshell/github-egress.yaml.
+
 filesystem_policy:
   include_workdir: false
   read_only: [/usr, /lib, /proc, /dev/urandom, /app, /etc, /var/log, /sandbox]
@@ -26,7 +31,6 @@ network_policies:
         enforcement: enforce
         access: read-write
         tls: skip
+    # node: OpenClaw gateway + mlflow-openclaw trace export (not curl — validation uses oc exec)
     binaries:
       - { path: /usr/bin/node }
-      - { path: /usr/local/bin/node }
-      - { path: /usr/bin/curl }
