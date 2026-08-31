@@ -8,11 +8,12 @@
 #   ./scripts/cluster-lifecycle.sh verify      # full validation (Makefile + Playwright)
 #   ./scripts/cluster-lifecycle.sh full        # deploy + verify (one-shot)
 #   ./scripts/cluster-lifecycle.sh teardown    # undeploy everything
-#   ./scripts/cluster-lifecycle.sh status        # cluster + stack summary
+#   ./scripts/cluster-lifecycle.sh status        # demo health (layer-by-layer)
+#   ./scripts/cluster-lifecycle.sh warmup      # fix demo after AWS wake
 #
 # Verify flags (forwarded to verify.sh):
 #   --smoke      fast subset (validate-smoke only)
-#   --demo       demo v1 initial state (permissive egress, no Playwright security)
+#   --demo       demo v1 initial state (default deny egress, no Playwright security)
 #   --skip-e2e   infra Makefile checks without Playwright/traces
 #
 set -euo pipefail
@@ -115,34 +116,11 @@ cmd_teardown() {
 }
 
 cmd_status() {
-  detect_apps_domain || true
+  "${SCRIPT_DIR}/demo-warmup.sh" status "$@"
+}
 
-  step "Cluster"
-  oc whoami --show-server 2>/dev/null && info "User: $(oc whoami 2>/dev/null)" || warn "Not logged in"
-
-  step "Helm releases (rhoai-*)"
-  for rel in rhoai-operators rhoai-platform rhoai-database rhoai-mlflow rhoai-evalhub; do
-    if helm status "$rel" &>/dev/null; then
-      info "  $rel: deployed"
-    else
-      info "  $rel: not deployed"
-    fi
-  done
-
-  step "OpenShell namespace ($NAMESPACE)"
-  if oc get namespace "$NAMESPACE" &>/dev/null; then
-    oc get pods -n "$NAMESPACE" 2>/dev/null || true
-    if [[ -n "${APPS_DOMAIN:-}" ]]; then
-      info "Control UI: https://${SANDBOX_NAME}--openclaw-ui.${APPS_DOMAIN}/"
-    fi
-  else
-    info "Namespace $NAMESPACE not found"
-  fi
-
-  if oc get datasciencecluster default-dsc &>/dev/null; then
-    step "DataScienceCluster"
-    oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}{"\n"}' 2>/dev/null || true
-  fi
+cmd_warmup() {
+  "${SCRIPT_DIR}/demo-warmup.sh" fix "$@"
 }
 
 cmd_full() {
@@ -181,9 +159,10 @@ case "$COMMAND" in
   verify)    cmd_verify ;;
   teardown)  cmd_teardown ;;
   status)    cmd_status ;;
+  warmup)    cmd_warmup ;;
   full)      cmd_full ;;
   help|--help|-h)
-    echo "Usage: $0 {preflight|deploy|verify|full|teardown|status} [--smoke] [--demo] [--skip-e2e]"
+    echo "Usage: $0 {preflight|deploy|verify|full|teardown|status|warmup} [--smoke] [--demo] [--skip-e2e]"
     echo ""
     echo "Commands:"
     echo "  preflight   Verify tools, secrets, cluster clean, Playwright deps"
@@ -191,7 +170,8 @@ case "$COMMAND" in
     echo "  verify      Run verification suite (default: full profile)"
     echo "  full        deploy + verify (one-shot)"
     echo "  teardown    Remove all deployed resources"
-    echo "  status      Show cluster and stack status"
+    echo "  status      Demo cluster health (layer-by-layer via demo-warmup.sh)"
+    echo "  warmup      Fix demo runtime after AWS wake (OpenClaw + reset)"
     echo ""
     echo "Verify flags:"
     echo "  --smoke     Fast subset (validate-smoke only)"
