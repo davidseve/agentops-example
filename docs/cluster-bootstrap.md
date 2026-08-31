@@ -170,7 +170,7 @@ Three ways to deploy the **platform layer**, from easiest to most manual:
 | `demo-backstage-install` | [`.cursor/skills/demo-backstage-install/`](../.cursor/skills/demo-backstage-install/SKILL.md) | Full demo v1 backstage install (OpenShell + OpenClaw demo state) |
 | `demo-verify` | [`.cursor/skills/demo-verify/`](../.cursor/skills/demo-verify/SKILL.md) | Validate demo initial state (`VERIFY_PROFILE=demo`) |
 
-For the live presentation runbook, see [demo-script.md](demo-script.md) and skills `demo-present`, `demo-restrict-egress`, `demo-enable-guardrails`, `demo-reset`.
+For the live presentation runbook, see [demo-script.md](demo-script.md) and skills `demo-present`, `demo-allow-google-egress`, `demo-enable-guardrails`, `demo-reset`.
 
 **Example prompts:**
 

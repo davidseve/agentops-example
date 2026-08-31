@@ -25,7 +25,7 @@
 - [x] Dashboard race fixes: wait-dashboard-crd, adopt-dashboard-config (ADR-0008)
 - [x] MLflow chart: OpenClaw integration RBAC + experiment Job (gated, Phase 5 activates)
 - [x] Document MaaS options available in demo.redhat.com
-- [x] Map each demo feature to Red Hat product/component (study guide / `docs/architecture.md`) — partial mapping in [AGENTS.md](../AGENTS.md) § Technology-to-Product Mapping
+- [x] Map each demo feature to Red Hat product/component — [AGENTS.md](../AGENTS.md) § Technology-to-Product Mapping; topology in [AGENT-SANDBOX-AND-OPENSHELL.md](AGENT-SANDBOX-AND-OPENSHELL.md) and [demo/overall-demo-architecture.html](demo/overall-demo-architecture.html)
 - [x] Document initial pinned versions manifest (operator CSVs, image tags/digests)
 
 
@@ -51,8 +51,8 @@
 
 - [x] Decide agent harness: OpenClaw (validated against a reference deployment)
 - [x] Decide agent use case (what the agent actually does)
-- [x] Create detailed architecture document with deployment topology
-- [x] Define guardrails policies (self-check input/output, jailbreak) — [agent/guardrails/](../agent/guardrails/)
+- [x] Create detailed architecture document with deployment topology — [AGENT-SANDBOX-AND-OPENSHELL.md](AGENT-SANDBOX-AND-OPENSHELL.md) + [demo/overall-demo-architecture.html](demo/overall-demo-architecture.html)
+- [x] Define guardrails policies (self-check input/output, jailbreak) — [deploy/helm/guardrails/files/](../deploy/helm/guardrails/files/)
 - [x] Design the demo narrative and attack scenarios — active script [`demo-narrativa-v1.md`](demo-narrativa-v1.md); EvalHub extension [`demo-narrativa-v2.md`](demo-narrativa-v2.md)
 
 
@@ -76,7 +76,7 @@
 - [x] Refactor OpenShell wrapper chart (`0.3.0`): absorb namespace + SCC RoleBinding into Helm; Agent Sandbox via OLM only (OSC 1.13); retire kustomize + SCC script + raw `v0.5.1` manifest — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
 - [x] Write step-by-step demo script with timing marks (~9–10 min live) — [`demo-script.md`](demo-script.md) (English); narrative [`demo-narrativa-v1.md`](demo-narrativa-v1.md) (Spanish)
 - [x] Create health-check script (`tests/health-check.sh`)
-- [ ] Create warm-up script
+- [x] Create warm-up script — skill `demo-warmup`, script `scripts/demo-warmup.sh`
 - [ ] Record fallback video
 - [ ] Build presentation slides (5-8 min theory)
 - [ ] Rename github proyect.
@@ -90,7 +90,7 @@
 
 ### Progressive network-policy unlock for the Security Attack demo
 
-> **Not the active demo narrative.** The live script ([`demo-narrativa-v1.md`](demo-narrativa-v1.md)) starts with MaaS + MLflow already reachable and **closes** egress on stage (Test C → `demo-restrict-egress.sh`). The reference-demo pattern below (default-deny → live unlock) remains an alternative worth documenting separately.
+> **Active demo narrative.** The live script ([`demo-narrativa-v1.md`](demo-narrativa-v1.md)) starts with MaaS + MLflow already reachable and **default-deny egress** (`default.yaml`). Test C runs blocked first; Cambio 1 applies selective google.com allowlist via `demo-allow-google-egress.sh`.
 
 Found while comparing this project against a related OpenShell/OpenCode reference demo
 ([r3v5/agent-ops,](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing) `opencode-vertex-tracing`).
@@ -98,13 +98,13 @@ That demo's narrative starts from a fully default-deny sandbox, shows a tool cal
 then unlocks endpoints one at a time with `openshell policy update <sandbox> --add-endpoint <host>:443 --binary <path> --wait` — a strong "zero-trust, progressively opened" visual for a
 live audience.
 
-Active v1 demo uses the opposite direction for egress:
+Active v1 demo now aligns with that unlock direction for egress:
 
-- [x] Demo-initial policy with permissive egress — [`config/openshell/github-egress.yaml`](../config/openshell/github-egress.yaml)
-- [x] Live restrict script — [`scripts/demo-restrict-egress.sh`](../scripts/demo-restrict-egress.sh) applies [`config/openshell/default.yaml`](../config/openshell/default.yaml)
+- [x] Demo-initial policy with default deny — [`config/openshell/default.yaml`](../config/openshell/default.yaml)
+- [x] Live allowlist script — [`scripts/demo-allow-google-egress.sh`](../scripts/demo-allow-google-egress.sh) applies [`config/openshell/google-egress.yaml`](../config/openshell/google-egress.yaml)
 - [x] Narrative + timed script — [`demo-narrativa-v1.md`](demo-narrativa-v1.md), [`demo-script.md`](demo-script.md)
-- [ ] Keep `config/openshell/default.yaml` as CI / `validate-security` final state (unchanged)
-- [ ] Optional: document the reference-demo unlock flow as an alternate narrative (deferred)
+- [ ] Keep `config/openshell/default.yaml` as CI / `validate-security` baseline (unchanged)
+- [ ] Optional: document per-endpoint `openshell policy update --add-endpoint` as an alternate Cambio 1 presentation
 
 
 

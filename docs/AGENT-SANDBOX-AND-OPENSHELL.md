@@ -59,7 +59,7 @@ OpenShell creates a dedicated netns inside the sandbox pod.  Processes running i
 
 A [Linux Security Module](https://docs.kernel.org/userspace-api/landlock.html) for filesystem sandboxing.  Instead of relying solely on Unix permissions, a process declares rules like "I can read `/usr` and write `/tmp`; deny everything else."  OpenShell's supervisor configures Landlock from the sandbox policy file.
 
-In our policy (`policies/openclaw-sandbox.yaml`):
+In our policy (`config/openshell/default.yaml`):
 
 ```yaml
 filesystem_policy:
@@ -98,8 +98,8 @@ The `privileged` SCC is granted **only** to the `openshell-sandbox` ServiceAccou
 | OpenShell Gateway | `deploy/helm/openshell/` (wrapper chart with upstream OCI subchart dependency) | `make -C deploy deploy-openshell` |
 | SCC RoleBinding | `deploy/helm/openshell/templates/scc-rolebinding.yaml` | Included in `deploy-openshell` |
 | OpenClaw UI Proxy | `deploy/helm/openclaw-ui-proxy/` (nginx mTLS bridge) | `make -C deploy deploy-openclaw-ui-proxy` |
-| Sandbox Policy (CI / final) | `policies/openclaw-sandbox.yaml` | Applied at `sandbox create` time for `cluster-lifecycle full` |
-| Sandbox Policy (demo v1 initial) | `policies/openclaw-demo-initial.yaml` | Backstage launch via `POLICY_FILE=policies/openclaw-demo-initial.yaml`; restrict live with `./scripts/demo-restrict-egress.sh` |
+| Sandbox Policy (default / CI) | `config/openshell/default.yaml` | Applied at `sandbox create` time for `cluster-lifecycle full` |
+| Sandbox Policy (google egress) | `config/openshell/google-egress.yaml` | Live Cambio 1 via `./scripts/demo-allow-google-egress.sh` |
 
 ### Architecture Diagram
 
@@ -153,7 +153,7 @@ The Makefile target follows this sequence:
 
 1. **Wait for CRD** — polls until `sandboxes.agents.x-k8s.io` is available (installed by the Agent Sandbox Operator in step 0).
 2. **Resolve Helm dependency** — `helm dependency build` fetches the pinned upstream OCI chart (`0.0.83` per `Chart.lock`).
-3. **`helm upgrade --install`** — single release `openshell` in namespace `openshell` with `values-openshift.yaml` overlay (SCC, TLS, SCC-compatible security context).
+3. **`helm upgrade --install`** — single release `openshell` in namespace `openshell` with chart `values.yaml` (SCC, TLS, SCC-compatible security context).
 4. **Namespace label** — `opendatahub.io/dashboard: "true"` so the namespace appears in the RHOAI Dashboard.
 5. **Wait for rollout** — StatefulSet + PKI secrets.
 6. **MLflow RBAC** — grants the sandbox SA access to MLflow for tracing.
@@ -207,7 +207,7 @@ Deploys the OpenShell Gateway StatefulSet.  The wrapper chart (`deploy/helm/open
 ### Phase 3 — Sandbox Creation
 
 ```bash
-openshell sandbox create --from openclaw --name openclaw-gw --policy policies/openclaw-sandbox.yaml
+openshell sandbox create --from openclaw --name openclaw-gw --policy config/openshell/default.yaml
 ```
 
 The CLI sends a `CreateSandbox` gRPC request to the gateway.  The gateway's Kubernetes driver:
@@ -341,7 +341,7 @@ Ensures the local `openshell` CLI points at this cluster's gateway with valid mT
 openshell sandbox create \
   --from openclaw \
   --name openclaw-gw \
-  --policy policies/openclaw-sandbox.yaml \
+  --policy config/openshell/default.yaml \
   --upload .rendered/openclaw.json:/sandbox/.openclaw/config.json
 ```
 
@@ -371,6 +371,7 @@ These steps run **inside the container as root** to prepare the environment. The
 |------|-------------|-----|
 | Install OpenClaw | `npm install -g openclaw@2026.6.34` | Pin to a tested version ([ADR-0006](adr/0006-explicit-version-pinning.md)) |
 | Upload config | `oc cp openclaw.json` + `chown` to sandbox UID | OpenClaw rejects config not owned by the sandbox user |
+| Upload workspace bootstrap | `oc cp agent/workspace/{AGENTS,SOUL,IDENTITY}.md` → `/sandbox/workspace/` | Demo overrides default OpenClaw bootstrap that refuses sensitive probes; `skipBootstrap: true` in config |
 | Install MLflow plugin | `npm install @mlflow/mlflow-openclaw@0.2.0-rc.0` | Traces with full Request/Response content to RHOAI MLflow |
 | Patch plugin | `patch-mlflow-plugin.py` + `chown root:root` | SDK compatibility patches; OpenClaw requires root-owned extensions |
 | Stage CA bundle | Merge OpenShell CA + OpenShift service-ca | TLS trust for MLflow's internal service-ca-signed certificate |
@@ -562,10 +563,19 @@ The sandbox policy controls what the agent can do at runtime:
 
 | Policy file | Egress posture | Used by |
 |-------------|----------------|---------|
-| `policies/openclaw-sandbox.yaml` | MLflow only; GitHub/PyPI denied | CI (`make validate-security`), live demo after Cambio 1 |
-| `policies/openclaw-demo-initial.yaml` | MLflow + `github.com:443` for Test C | Demo backstage (`demo-backstage-install`, `demo-reset`) |
+| `config/openshell/default.yaml` | MLflow only; public egress denied | CI, demo backstage (`demo-backstage-install`, `demo-reset`), C-pre |
+| `config/openshell/google-egress.yaml` | MLflow + `google.com:443` for Test C post–Cambio 1 | Live via `demo-allow-google-egress.sh` |
 
-See [`demo-narrativa-v1.md`](demo-narrativa-v1.md) for the live narrative and [`scripts/demo-restrict-egress.sh`](../scripts/demo-restrict-egress.sh) / [`scripts/demo-reset.sh`](../scripts/demo-reset.sh) for on-stage policy toggles.
+**Per-policy binaries** (which executable may open sockets to that endpoint):
+
+| Policy block | Binaries | Purpose |
+|--------------|----------|---------|
+| `mlflow_direct` | `/usr/bin/node` | OpenClaw gateway + `mlflow-openclaw` trace export |
+| `demo_egress_google` (post–Cambio 1 only) | `/usr/bin/curl` | Test C — agent `curl` to `google.com` |
+
+`curl` is not listed under `mlflow_direct`; MLflow API validation from scripts uses `oc exec` outside the sandbox netns. `inference.local` needs no explicit binary allowlist.
+
+See [`demo-narrativa-v1.md`](demo-narrativa-v1.md) for the live narrative and [`scripts/demo-allow-google-egress.sh`](../scripts/demo-allow-google-egress.sh) / [`scripts/demo-reset.sh`](../scripts/demo-reset.sh) for on-stage policy toggles.
 
 ---
 
@@ -577,13 +587,14 @@ See [`demo-narrativa-v1.md`](demo-narrativa-v1.md) for the live narrative and [`
 # Gateway health (uses sandbox exec, proves netns isolation)
 make -C deploy validate-openclaw
 
-# MLflow trace pipeline
+# MLflow trace pipeline (ensures experiment + checks traces)
+make -C deploy ensure-mlflow-experiment
 make -C deploy validate-traces
 
 # Network policy enforcement (CI hardened policy)
 make -C deploy validate-security
 
-# Demo backstage initial state (permissive egress for Test C)
+# Demo backstage initial state (default deny egress; google blocked)
 make -C deploy validate-demo-initial
 ```
 
@@ -597,10 +608,11 @@ make -C deploy validate-demo-initial
 | Layer | Command | What it proves |
 |-------|---------|----------------|
 | **Infrastructure (CI)** | `make -C deploy validate-security` | nftables/network policy blocks unauthorized egress (`curl` → `000`/`403`) |
-| **Demo backstage** | `make -C deploy validate-demo-initial` | `github.com` reachable before Cambio 1; `inference.local` still OK |
+| **Demo backstage** | `make -C deploy validate-demo-initial` | `google.com` and `github.com` blocked before Cambio 1; `inference.local` still OK |
 | **Control UI (E2E)** | `make -C deploy test-security` | User-facing agent refuses malicious prompts or shows block evidence in chat |
+| **Demo narrative (E2E)** | `make -C deploy test-demo` | Full live script: Tests A–D + Cambio 1/2 in one Control UI session |
 
-Use both: `validate-security` catches policy misconfiguration; Playwright catches regressions in the agent harness or Control UI path. Security and guardrails Playwright suites click **New session** before each test and stay on that session (`askAgentViaUI` must not navigate back to `/`, which reopens Main Session). Assertions read only the latest assistant bubble, not the full chat log.
+Use both: `validate-security` catches policy misconfiguration; Playwright catches regressions in the agent harness or Control UI path. Security and guardrails Playwright suites click **New session** before each test and stay on that session (`askAgentViaUI` must not navigate back to `/`, which reopens Main Session). The demo narrative suite (`demo-narrative.spec.ts`) keeps a **single chat session** across Tests A–D (no `resetChatSession` between steps), matching the live presenter flow. Assertions read only the latest assistant bubble, not the full chat log.
 
 ### Playwright E2E Tests
 
@@ -616,7 +628,8 @@ Copy `secrets/secrets.template.env` to `secrets/secrets.env` and set the **usern
 `verify.sh` warns before Playwright if either OAuth variable is missing.
 
 ```bash
-make -C deploy test-e2e           # full suite
+make -C deploy test-e2e           # full suite (CI hardened policy)
+make -C deploy test-demo          # demo-narrative.spec.ts (Tests A–D + Cambio 1/2)
 make -C deploy test-security    # sandbox-security.spec.ts
 make -C deploy test-ui          # openclaw-ui.spec.ts (browser → gateway → model → traces)
 make -C deploy test-guardrails  # guardrails-ui.spec.ts (NeMo jailbreak blocked in Control UI)
@@ -650,12 +663,15 @@ auth-setup ──┬── ui-tests ──────┬── mlflow-ui-tests
              │                  │
 mlflow-auth-setup ─────────────┘
              │
-             └── security-tests
+             ├── security-tests ── guardrails-tests
+             │
+             └── demo-narrative-tests   (isolated — not part of test-e2e)
 ```
 
 | Project | Parallel-safe with | Why |
 |---|---|---|
 | `auth-setup` | `mlflow-auth-setup` | Different URLs and OAuth flows |
+| `demo-narrative-tests` | — | Serial; single chat session; mutates policy + inference path |
 | `ui-tests` | — | Serial within project; shares Main Session chat + MaaS |
 | `security-tests` | — | Serial within project; same Main Session as UI chat tests |
 | `mlflow-ui-tests` | `security-tests` (after `ui-tests`) | Different host (`rh-ai` MLflow UI vs OpenClaw gateway) |
@@ -664,6 +680,7 @@ mlflow-auth-setup ─────────────┘
 
 - [`tests/openclaw-ui.spec.ts`](../tests/openclaw-ui.spec.ts) — `mode: 'serial'` (chat prompts must not overlap on Main Session)
 - [`tests/sandbox-security.spec.ts`](../tests/sandbox-security.spec.ts) — `mode: 'serial'` (same session; prompts go through the agent LLM)
+- [`tests/demo-narrative.spec.ts`](../tests/demo-narrative.spec.ts) — `mode: 'serial'` (one session for full demo A–D; runs `demo-reset` / Cambio scripts)
 
 **Expected speed-up**
 
@@ -726,13 +743,13 @@ APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 ./scripts/cluster-lifecycle.sh verify
 ```
 
-**Demo v1 backstage** (permissive egress, direct MaaS):
+**Demo v1 backstage** (default deny egress, direct MaaS):
 
 ```bash
-POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+POLICY_FILE=config/openshell/default.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
 VERIFY_PROFILE=demo ./scripts/verify.sh
-# Between rehearsals: ./scripts/demo-reset.sh
-# Live Cambio 1: ./scripts/demo-restrict-egress.sh
+# Before Scenario C: ./scripts/demo-reset.sh
+# Live Cambio 1: ./scripts/demo-allow-google-egress.sh
 ```
 
 ### Key Commands
@@ -748,7 +765,8 @@ VERIFY_PROFILE=demo ./scripts/verify.sh
 | View sandbox policy | `openshell policy get <name> --full` |
 | Update policy live | `openshell policy set <name> --policy <file> --wait` |
 | Reset demo to initial policy | `./scripts/demo-reset.sh` |
-| Restrict demo egress (Cambio 1) | `./scripts/demo-restrict-egress.sh` |
+| Ensure MLflow tracing experiment | `./scripts/ensure-mlflow-experiment.sh` or `make -C deploy ensure-mlflow-experiment` |
+| Allow google.com egress (Cambio 1) | `./scripts/demo-allow-google-egress.sh` |
 | Validate demo backstage | `VERIFY_PROFILE=demo ./scripts/verify.sh` |
 
 ---

@@ -11,14 +11,27 @@ This project demonstrates the **BYOA (Bring Your Own Agent)** approach from the 
 ## Platform Stack
 
 ```
-Customer Agent (any framework) ─── BYOA
-        │
-        ├── NeMo Guardrails ─────── Input/Output security
-        ├── MLflow ──────────────── Tracing + Prompt Registry
-        ├── OpenShell ───────────── Sandboxed execution
-        │
-        └── OpenShift + RHOAI 3.x ───── Infrastructure
+┌─────────────────────────────────────────────────────────────┐
+│ USER LAYER                                                  │
+│ End user → Control UI (openclaw-ui-proxy, nginx mTLS bridge)│
+├─────────────────────────────────────────────────────────────┤
+│ AGENT LAYER (BYOA — demo harness: OpenClaw)                 │
+│ OpenClaw in Agent Sandbox (OpenShell policies: Landlock)  │
+├─────────────────────────────────────────────────────────────┤
+│ PLATFORM LAYER (Red Hat)                                    │
+│ OpenShell Gateway (egress choke point, key injection)       │
+│ MLflow — tracing + prompt registry (background spans)       │
+│ NeMo Guardrails via TrustyAI (enabled live in Cambio 2)     │
+├─────────────────────────────────────────────────────────────┤
+│ INFERENCE LAYER                                             │
+│ inference.local → [NeMo] → MaaS → LLM (external MaaS)       │
+├─────────────────────────────────────────────────────────────┤
+│ INFRASTRUCTURE                                              │
+│ OpenShift + RHOAI 3.x · Agent Sandbox Operator (OLM)        │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+The agent harness is interchangeable (BYOA); the platform stack works regardless of framework. Interactive architecture map: [overall-demo-architecture.html](docs/demo/overall-demo-architecture.html). Deep dive: [Agent Sandbox and OpenShell — How It Works](docs/AGENT-SANDBOX-AND-OPENSHELL.md).
 
 ## Understanding the Platform
 
@@ -58,28 +71,26 @@ make deploy-all && make validate
 ## Project Structure
 
 ```
+├── Makefile               # Wrapper → deploy/Makefile (make demo, deploy-all, …)
 ├── AGENTS.md              # AI agent context (for Cursor/Claude)
 ├── README.md              # This file
-├── docs/                  # Documentation
-│   ├── ROADMAP.md         # Task tracking
-│   ├── stack-decisions.md # Architecture decisions (executive summary)
-│   ├── adr/               # Architecture Decision Records
-│   ├── cluster-bootstrap.md   # RHOAI platform deploy on OpenShift
-│   ├── openshell-installation.md  # OpenShell install (local + cluster)
-│   └── AGENT-SANDBOX-AND-OPENSHELL.md  # Sandbox architecture + launch flow
-├── deploy/                # Deployment manifests (Helm, Kustomize)
-│   ├── Makefile           # Cluster deploy targets (deploy-all, deploy-openshell, …)
-│   └── helm/              # RHOAI platform + OpenShell wrapper charts
-├── agent/                 # Agent source code and prompts
-├── tests/                 # Health checks, red teaming
-└── scripts/               # Utility scripts
+├── config/                # OpenClaw template + OpenShell sandbox policies
+├── docs/                  # Guides, ADRs, demo narrative, ROADMAP
+├── deploy/                # Helm charts + deploy/Makefile
+│   └── helm/              # operators, platform, mlflow, guardrails, openshell, …
+├── agent/workspace/       # OpenClaw workspace identity files
+├── tests/                 # Playwright E2E + health-check.sh
+├── scripts/               # cluster-lifecycle, demo-*, launch-openclaw, …
+└── secrets/               # secrets.env (gitignored)
 ```
 
 ## Documentation
 
 - [NeMo Guardrails Installation](docs/nemo-guardrails-installation.md)
 - [Demo script (live, ~9–10 min)](docs/demo-script.md) — Cursor skills in [AGENTS.md](AGENTS.md) § Demo v1
+- [Demo scenario logs runbook](docs/demo/demo-scenario-logs.md) — per-test log evidence and [Sandbox panel highlight rules](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules)
 - [Demo narrative v1 (Spanish)](docs/demo-narrativa-v1.md)
+- [Demo presenter UI](docs/demo/README.md) — `v1/live.html` observability panel
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap and task tracking
 - [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)

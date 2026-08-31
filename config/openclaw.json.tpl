@@ -28,7 +28,8 @@
       "models": {
         "inference/router": { "alias": "Router" }
       },
-      "workspace": "/sandbox/workspace"
+      "workspace": "/sandbox/workspace",
+      "skipBootstrap": true
     }
   },
   "tools": {

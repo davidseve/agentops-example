@@ -70,6 +70,7 @@ Tail line limits are tuned in `LOG_LINES_BY_COMPONENT` in [`v1/observability-pan
 **Runbook:** [demo-scenario-logs.md](demo-scenario-logs.md) — what to search for in each component during Tests A–D; [§ Sandbox panel highlight rules](demo-scenario-logs.md#sandbox-panel-highlight-rules) documents green/amber/gray tiers and step-aware overrides.
 
 **Panel controls (per tab):**
+- **Clear** — snapshot current tail; show only new lines/traces after click (toggle off to restore full log). Does not modify cluster logs.
 - **Filter** — focus mode: show signal (green) and warn (amber) only (default ON); disable to see full log in gray
 - **↓** — pause/resume live updates (each tab remembers its own state)
 
@@ -127,7 +128,7 @@ Living analysis of what each scenario proves, gaps vs narrative, and live-demo v
 |---|---|
 | Serve panels | `demo-presenter-panel` |
 | Live runbook (A–D) | `demo-present` |
-| Cambio 1 / 2 / reset | `demo-restrict-egress`, `demo-enable-guardrails`, `demo-reset` |
+| Cambio 1 / 2 / reset | `demo-allow-google-egress`, `demo-enable-guardrails`, `demo-reset` |
 
 See [AGENTS.md](../AGENTS.md) § Demo v1 skills.
 

@@ -95,9 +95,7 @@ Qué debería mostrar, siempre visible o a un clic:
 
 Así el público no pierde el mapa cuando saltamos al chat, a `oc`/`openshell policy`, o a MLflow. Las “slides” son el propio panel actualizándose.
 
-**Intro (lista):** panel FlowStory en [`docs/demo/layers.html`](demo/layers.html). Abrir con `python3 -m http.server` desde `docs/demo/`. OpenClaw y Landlock van en **Agent Sandbox**; eso, `inference.local` y el gateway van en **OpenShell**. El presentador recorre: Usuario → OpenClaw → `inference.local` → Gateway → NeMo → MaaS → LLM; la respuesta vuelve por el gateway; **entonces** Landlock; las trazas salen OpenClaw → Gateway → MLflow. Detalle en [`docs/demo/README.md`](demo/README.md).
-
-**Siguiente:** `docs/demo/live.html` (pruebas A–D + prompts para copiar en OpenClaw, pantalla partida). Aún no está.
+**Intro (lista):** panel FlowStory en [`docs/demo/overall-demo-architecture.html`](demo/overall-demo-architecture.html). Abrir con `python3 -m http.server` desde `docs/demo/`.
 
 ### 1. Configuración inicial — sin tocar nada
 
@@ -197,4 +195,4 @@ El ítem deferred del ROADMAP (“default-deny y ir **abriendo** MaaS/MLflow”)
 - Host concreto del `curl` (debe verse el 200 y luego el bloqueo).
 - Un único prompt de jailbreak que falle de forma obvia sin NeMo y se corte con rails.
 - Nombres de namespaces live vs evaluation (cuando existan).
-- Dónde vive el panel: intro en HTML estático [`docs/demo/layers.html`](demo/layers.html). Companion en vivo (`live.html`, pantalla partida con OpenClaw) pendiente. Enganchar al estado real del sandbox sigue siendo opcional.
+- Dónde vive el panel: arquitectura general en [`overall-demo-architecture.html`](demo/overall-demo-architecture.html); companion en [`v1/live.html`](demo/v1/live.html).

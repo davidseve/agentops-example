@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>AgentOps — Demo UI launcher</title>
+<link rel="stylesheet" href="./v1/narrative.css">
+<style>
+.launcher { max-width: 920px; margin: 0 auto; padding: 24px; }
+.launcher h2 { font-family: var(--nr-display); font-size: 16px; margin: 28px 0 12px; }
+.launcher table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.launcher th, .launcher td { border: 1px solid var(--nr-border); padding: 10px 12px; text-align: left; }
+.launcher th { background: var(--nr-panel); color: var(--nr-dim); font-weight: 500; }
+.launcher tr.recommended td:first-child { border-left: 3px solid var(--nr-ok); }
+.launcher tr.stub td { color: var(--nr-dim); }
+.launcher code { font-family: var(--nr-mono); font-size: 12px; background: var(--nr-panel); padding: 2px 6px; border-radius: 4px; }
+.launcher pre { background: var(--nr-panel); border: 1px solid var(--nr-border); border-radius: 8px; padding: 14px; font-family: var(--nr-mono); font-size: 13px; }
+.checklist { list-style: none; padding: 0; margin: 0; }
+.checklist li { padding: 8px 0; border-bottom: 1px solid var(--nr-border); font-size: 14px; }
+.badge { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--nr-ok); color: var(--nr-ok); margin-left: 8px; }
+.badge-soon { border-color: var(--nr-dim); color: var(--nr-dim); }
+</style>
+</head>
+<body class="nr-page">
+
+<header class="nr-header">
+  <h1>AgentOps — Demo UI launcher</h1>
+  <span class="nr-tagline">UI flows v1–v3 · narrative content in demo-narrativa-v1.md</span>
+</header>
+
+<div class="launcher">
+  <h2>Start the server</h2>
+  <pre>cd docs/demo && python3 -m http.server 8765</pre>
+
+  <h2>Overall demo architecture (phase 0)</h2>
+  <table>
+    <tbody>
+      <tr>
+        <td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a></td>
+        <td>FlowStory walk-through — 7 flows in dropdown; shortcuts <code>0</code>, <code>a</code>–<code>d</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Scenario diagrams (tests A–D)</h2>
+  <p class="nr-meta" style="margin:0 0 8px;font-size:13px">
+    Security-focused FlowStory pages (~6–8 hops). Use the overall map above for the complete stack path.
+  </p>
+  <table>
+    <thead>
+      <tr><th>Test</th><th>Diagram</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>A</td>
+        <td><a href="./scenarios/test-a-credentials.html">test-a-credentials</a></td>
+        <td>API key probe — credentials locked at gateway</td>
+      </tr>
+      <tr>
+        <td>B</td>
+        <td><a href="./scenarios/test-b-files.html">test-b-files</a></td>
+        <td><code>/etc/shadow</code> — Landlock already active</td>
+      </tr>
+      <tr>
+        <td>C</td>
+        <td><a href="./scenarios/test-c-egress.html">test-c-egress</a></td>
+        <td>Unauthorized curl — Before / After toggle (<code>1</code>/<code>2</code> or <code>b</code>/<code>a</code>)</td>
+      </tr>
+      <tr>
+        <td>D</td>
+        <td><a href="./scenarios/test-d-guardrails.html">test-d-guardrails</a></td>
+        <td>Jailbreak — Before / After toggle</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Live companion flows</h2>
+  <table>
+    <thead>
+      <tr><th>Flow</th><th>Panel</th><th>Description</th><th>Open</th></tr>
+    </thead>
+    <tbody>
+      <tr class="recommended">
+        <td>v1 <span class="badge">recommended</span></td>
+        <td><code>v1/live.html</code></td>
+        <td>Split panel: narrative steps, matrix, mini-diagram, YAML diff</td>
+        <td><a href="./v1/live.html">Open</a></td>
+      </tr>
+      <tr class="stub">
+        <td>v2 <span class="badge badge-soon">soon</span></td>
+        <td><code>v2/live.html</code></td>
+        <td>Unified single-page panel (alternative B)</td>
+        <td><a href="./v2/live.html">Open</a></td>
+      </tr>
+      <tr class="stub">
+        <td>v3 <span class="badge badge-soon">soon</span></td>
+        <td><code>v3/live.html</code></td>
+        <td>FlowStory narrative mode (alternative C)</td>
+        <td><a href="./v3/live.html">Open</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Recommended split-screen (v1)</h2>
+  <table>
+    <tbody>
+      <tr><td>Primary</td><td>OpenClaw Control UI</td></tr>
+      <tr><td>Secondary</td><td><a href="./v1/live.html">v1/live.html</a></td></tr>
+      <tr><td>Phase 0 only</td><td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Keyboard shortcuts (v1)</h2>
+  <table>
+    <tbody>
+      <tr><td><code>→</code> / <code>Page Down</code></td><td>Next narrative step</td></tr>
+      <tr><td><code>←</code> / <code>Page Up</code></td><td>Previous step</td></tr>
+      <tr><td>Before / After</td><td>Sub-steps within C and D</td></tr>
+      <tr><td>URL hash</td><td><code>#step-C-pre</code>, <code>#step-D-post</code>, etc.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Winner checklist</h2>
+  <ul class="checklist">
+    <li>Can the audience follow the map without extra verbal explanation?</li>
+    <li>Is copying prompts smooth alongside the Control UI?</li>
+    <li>Do layer states update automatically as you advance?</li>
+    <li>Does the YAML panel help during Cambio 1/2 without distracting?</li>
+    <li>Do arrow keys / clicker feel natural on stage?</li>
+  </ul>
+
+  <p class="nr-meta" style="margin-top:24px">
+    Narrative: <a href="../demo-narrativa-v1.md">demo-narrativa-v1.md</a> ·
+    Script: <a href="../demo-script.md">demo-script.md</a>
+  </p>
+</div>
+
+</body>
+</html>

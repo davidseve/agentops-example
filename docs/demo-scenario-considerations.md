@@ -3,7 +3,7 @@
 Living notes on what each test actually proves, gaps vs narrative, and live-demo viability.
 Not the presenter script — see [demo-narrativa-v1.md](demo-narrativa-v1.md) and [demo-script.md](demo-script.md).
 
-**Policy naming:** **demo-initial** (conceptual) = [`config/openshell/github-egress.yaml`](../config/openshell/github-egress.yaml) (`demo_egress_github` / `demo-permissive-github`). **CI final / post–Cambio 1** = [`config/openshell/default.yaml`](../config/openshell/default.yaml) (`mlflow_direct` only). Replaces the former `policies/openclaw-demo-initial.yaml` path.
+**Policy naming:** **demo-initial** (conceptual) = [`config/openshell/default.yaml`](../config/openshell/default.yaml) (`mlflow_direct` only; default deny egress). **Post–Cambio 1** = [`config/openshell/google-egress.yaml`](../config/openshell/google-egress.yaml) (`demo_egress_google` / `demo-permissive-google`). Replaces the former `policies/openclaw-demo-initial.yaml` path.
 
 ## How to add an entry
 
@@ -71,7 +71,7 @@ Show **LLM inference hops** and **MLflow trace export** explicitly in the overal
 ### Current state
 
 - [overall-demo-architecture.html](demo/overall-demo-architecture.html) dropdown flows A–D use **overall-composed** steps in [overall-flows.js](demo/scenarios/overall-flows.js) (`OVERALL_SCENARIO_*`): security hops (reused from `SCENARIO_*`) + inference band (3) + trace band (4).
-- Baseline trace aligned to **`oc → mlflow` direct** (`mlflow_direct` policy in [github-egress.yaml](../config/openshell/github-egress.yaml) and [default.yaml](../config/openshell/default.yaml)).
+- Baseline trace aligned to **`oc → mlflow` direct** (`mlflow_direct` policy in [default.yaml](../config/openshell/default.yaml) and [google-egress.yaml](../config/openshell/google-egress.yaml)).
 - Overall response maps: [overall-response-maps.js](demo/scenarios/overall-response-maps.js) — offsets security responses from [scenario-responses.js](demo/scenarios/scenario-responses.js) without changing `RESPONSES_A` … `D`.
 - Per-scenario deep-links ([test-a-credentials.html](demo/scenarios/test-a-credentials.html) … D) still import `SCENARIO_*_STEPS` only (~6–8 hops each).
 - Runtime: every test A–D generates MLflow spans via `mlflow-openclaw` ([ADR-0010](adr/0010-mlflow-tracing-otel.md)).
@@ -139,14 +139,14 @@ Run per scenario (A–D) and per variant where applicable (C/D pre/post):
 1. **Hop sequence:** same logical order across `test-*`, `OVERALL_SCENARIO_*` in [overall-flows.js](demo/scenarios/overall-flows.js), and step diagrams in [narrative-data.js](demo/v1/narrative-data.js). Simplification is allowed only when documented explicitly.
 2. **Hop labels:** bands `1` user / `2` security / `3` inference / `4` trace match [demo/README.md](demo/README.md).
 3. **Messages:** hop *N* text in [scenario-responses.js](demo/scenarios/scenario-responses.js) / [overall-response-maps.js](demo/scenarios/overall-response-maps.js) matches node descriptions in the HTML (same actor, action, outcome).
-4. **Layer board:** states in [narrative-data.js](demo/v1/narrative-data.js) (`credentials`, `files`, `egress`, `guardrails`, `mlflow`) match the active hop and runtime policy/provider ([github-egress.yaml](../config/openshell/github-egress.yaml) vs [default.yaml](../config/openshell/default.yaml), `maas-direct` vs `maas-guardrailed`).
+4. **Layer board:** states in [narrative-data.js](demo/v1/narrative-data.js) (`credentials`, `files`, `egress`, `guardrails`, `mlflow`) match the active hop and runtime policy/provider ([default.yaml](../config/openshell/default.yaml) vs [google-egress.yaml](../config/openshell/google-egress.yaml), `maas-direct` vs `maas-guardrailed`).
 5. **Runtime fidelity:** contrast with a live run (Control UI + prompt from [demo-prompts.ts](../tests/demo-prompts.ts)) — verify inference path (`inference.local` → GW → MaaS/NeMo), egress allowlist, and MLflow spans exported ([ADR-0010](adr/0010-mlflow-tracing-otel.md)).
 6. **Cross-scenario:** after Cambio 1/2 only C/D hops and messages should change; A/B must not drift silently.
 7. **Demo tests:** per scenario (A–D) and variant where applicable (C/D pre/post):
    - **Prompts:** `PROMPT_*` in [demo-prompts.ts](../tests/demo-prompts.ts) identical to [narrative-data.js](demo/v1/narrative-data.js) and the prompt cited in the scenario entry.
    - **Assertions:** what [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts) checks matches **What it proves / does not prove** for that scenario (e.g. A: probe output with no real key — not model refusal as the defense).
-   - **Flow order:** spec sequence reflects demo-narrativa-v1 (`demo-reset.sh` → tests → `demo-restrict-egress.sh` / `demo-enable-guardrails.sh` between C and D).
-   - **Preconditions:** [validate-demo-initial](../deploy/Makefile) and [demo-reset.sh](../scripts/demo-reset.sh) align with backstage state the diagrams assume (`github-egress.yaml` policy, direct MaaS); run via `VERIFY_PROFILE=demo` in [verify.sh](../scripts/verify.sh).
+   - **Flow order:** spec sequence reflects demo-narrativa-v1 (`demo-reset.sh` before C-pre → tests → `demo-allow-google-egress.sh` / `demo-enable-guardrails.sh` between C and D).
+   - **Preconditions:** [validate-demo-initial](../deploy/Makefile) and [demo-reset.sh](../scripts/demo-reset.sh) align with backstage state the diagrams assume (`default.yaml` policy, direct MaaS); run via `VERIFY_PROFILE=demo` in [verify.sh](../scripts/verify.sh).
    - **Coverage gaps:** document what tests **do not** cover (UI hops, layer board, MLflow phase) so a green `make test-demo` is not mistaken for full narrative validation.
 
 ### Scope (which panels / files)
@@ -216,7 +216,7 @@ Per-component tail limits live in `LOG_LINES_BY_COMPONENT` in [`observability-pa
 - **Filter** (default ON) — show signal (green) + warn (amber) only; full log in gray when off.
 - **↓** — pause/resume live updates independently per component.
 
-**Step-aware tab visibility:** steps **A** and **B** hide OpenShell Gateway and NeMo tabs (`observabilityHidden`) — focus on OpenClaw + Sandbox.
+**Step-aware tab visibility:** step **A** hides OpenShell Gateway and NeMo (`observabilityHidden`) — focus on Control UI + MLflow; Sandbox tab available for `inference.local` / `mlflow_direct` OCSF (OpenClaw tab secondary). Step **B** hides OpenShell Gateway and NeMo — focus on OpenClaw + Sandbox.
 
 ### Step → suggested tab
 
@@ -229,7 +229,7 @@ Per-component tail limits live in `LOG_LINES_BY_COMPONENT` in [`observability-pa
 | ML | `mlflow` | — |
 | close | (none) | — |
 
-Step-aware **highlight overrides** (e.g. green `github.com ALLOWED` on C-pre, amber `DENIED` on C-post) are documented in [demo-scenario-logs.md](demo/demo-scenario-logs.md#sandbox-panel-highlight-rules).
+Step-aware **highlight overrides** (e.g. amber `google.com DENIED` on C-pre, green `ALLOWED` on C-post) are documented in [demo-scenario-logs.md](demo/demo-scenario-logs.md#sandbox-panel-highlight-rules).
 
 ### Benefits for demo narrative
 
@@ -311,7 +311,7 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-a
 
 - **`inference.local`** is provided by **OpenShell Gateway** (inference / privacy router), not OpenClaw or RHOAI.
 - Providers configured at gateway: `maas-direct`, `maas-guardrailed`; active route via `openshell inference set`.
-- Network policies ([github-egress.yaml](../config/openshell/github-egress.yaml)) do not allowlist MaaS host — inference is intentionally via `inference.local` (internal OpenShell path).
+- Network policies ([default.yaml](../config/openshell/default.yaml)) do not allowlist MaaS host — inference is intentionally via `inference.local` (internal OpenShell path).
 - [agent/workspace/AGENTS.md](../agent/workspace/AGENTS.md) uploaded at launch — agent must execute probes faithfully.
 
 ### Without OpenShell (contrast)
@@ -367,7 +367,7 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-a
 
 - User prompt → Control UI → OpenClaw → LLM (via `inference.local`) orchestrates shell tool.
 - Agent runs `cat /etc/shadow` inside sandbox.
-- **Landlock** (from policy `read_only` / `read_write` in [github-egress.yaml](../config/openshell/github-egress.yaml)) blocks read — typically `Permission denied` or `cannot open`.
+- **Landlock** (from policy `read_only` / `read_write` in [default.yaml](../config/openshell/default.yaml)) blocks read — typically `Permission denied` or `cannot open`.
 - **No network events** — this is a filesystem block, not egress policy.
 - Without [agent/workspace/AGENTS.md](../agent/workspace/AGENTS.md), default OpenClaw bootstrap **refuses** at the LLM layer and Landlock is never demonstrated — workspace upload at launch is required.
 
@@ -390,7 +390,7 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-b
 
 ### Dependencies (OpenShell / platform)
 
-- Landlock + filesystem policy in OpenShell sandbox policy (both [github-egress.yaml](../config/openshell/github-egress.yaml) and [default.yaml](../config/openshell/default.yaml) share the same filesystem section).
+- Landlock + filesystem policy in OpenShell sandbox policy (both [default.yaml](../config/openshell/default.yaml) and [google-egress.yaml](../config/openshell/google-egress.yaml) share the same filesystem section).
 - [agent/workspace/AGENTS.md](../agent/workspace/AGENTS.md) — agent runs probe commands instead of refusing.
 
 ### Without OpenShell (contrast)
@@ -406,7 +406,7 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-b
 ### Diagram / narrative alignment
 
 - FlowStory [test-b-filesystem.html](demo/scenarios/test-b-filesystem.html) shows Landlock hop.
-- Observability step B suppresses inference/mlflow noise in Sandbox tab (filesystem focus) — see [observability-log-rules.js](demo/v1/observability-log-rules.js).
+- Observability step B: Sandbox highlights `inference.local` / `mlflow_direct` like step A; suppresses Landlock `CONFIG:APPLYING`/`BUILT` and `PROC:LAUNCH sleep` — see [observability-log-rules.js](demo/v1/observability-log-rules.js).
 
 ### Open questions
 
@@ -417,7 +417,7 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-b
 - Prompt: [demo-prompts.ts](../tests/demo-prompts.ts) `PROMPT_B`
 - E2E: [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts) `Test B — sensitive system files are not readable`
 - Workspace: [agent/workspace/AGENTS.md](../agent/workspace/AGENTS.md)
-- Policy: [github-egress.yaml](../config/openshell/github-egress.yaml) (`filesystem_policy`, `landlock`)
+- Policy: [default.yaml](../config/openshell/default.yaml) (`filesystem_policy`, `landlock`)
 - Logs: [demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-b--sensitive-files)
 
 ---
@@ -429,37 +429,37 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-b
 
 ### Intent
 
-- Test C asks OpenClaw to run `curl -sI https://github.com` ([demo-prompts.ts](../tests/demo-prompts.ts)).
-- **C-pre:** intentional risk — demo-initial policy allows `github.com` so audience sees unauthorized egress succeed.
-- **C-post (Cambio 1):** `./scripts/demo-restrict-egress.sh` applies [default.yaml](../config/openshell/default.yaml) — same curl prompt must fail.
+- Test C asks OpenClaw to run `curl -sI https://google.com` ([demo-prompts.ts](../tests/demo-prompts.ts)).
+- **C-pre:** default deny — demo-initial policy (`default.yaml`) blocks public curl so audience sees closed egress.
+- **C-post (Cambio 1):** `./scripts/demo-allow-google-egress.sh` applies [google-egress.yaml](../config/openshell/google-egress.yaml) — same curl prompt must succeed; github.com stays blocked.
 
 ### What actually happens (runtime)
 
-- **C-pre:** `demo_egress_github` policy in [github-egress.yaml](../config/openshell/github-egress.yaml) allowlists `github.com:443` for `/usr/bin/curl`. Agent returns HTTP 200 headers.
-- **Cambio 1:** `openshell policy set` → [default.yaml](../config/openshell/default.yaml) (MLflow only; `demo_egress_github` removed). No sandbox rebuild.
-- **C-post:** Same curl command — OpenShell denies outbound connection; agent reply shows block/timeout (no HTTP 200).
+- **C-pre:** `demo-reset.sh` confirms [default.yaml](../config/openshell/default.yaml) (MLflow only). OpenShell denies outbound curl to `google.com`.
+- **Cambio 1:** `openshell policy set` → [google-egress.yaml](../config/openshell/google-egress.yaml) (`demo_egress_google` allowlists `google.com:443` for `/usr/bin/curl`). No sandbox rebuild.
+- **C-post:** Same curl command — agent returns HTTP 200 headers to google.com.
 
 ### What it proves / does not prove
 
-- **Proves:** Network egress is policy-controlled; one live lever (`demo-restrict-egress.sh`) closes unauthorized outbound access.
+- **Proves:** Network egress is policy-controlled; one live lever (`demo-allow-google-egress.sh`) opens a selective allowlist without opening all egress.
 - **Does not prove:** Application-level URL filtering or WAF — defense is OpenShell network policy binary allowlist.
-- Playwright: `isNetworkAllowed()` on C-pre; `isNetworkDenied()` on C-post.
+- Playwright: `isNetworkDenied()` on C-pre; `isNetworkAllowed()` on C-post.
 
 ### Where to see evidence (logs vs UI)
 
 | Surface | C-pre | C-post |
 |---------|-------|--------|
-| **Control UI** | HTTP 200 headers in reply | Empty / blocked / denied |
-| **Sandbox OCSF** | `ALLOWED … github.com:443` (primary) | `DENIED … github.com` + `no matching policy` (primary) |
-| **OpenClaw tab** | `curl` + `HTTP/2 200` in transcript | No 200 in reply |
-| **MLflow** | Success span | Block/timeout span (contrasts with C-pre) |
+| **Control UI** | Empty / blocked / denied | HTTP 200 headers in reply |
+| **Sandbox OCSF** | `DENIED … google.com` + `no matching policy` (primary) | `ALLOWED … google.com:443` (primary) |
+| **OpenClaw tab** | No 200 in reply | `curl` + `HTTP/2 200` in transcript |
+| **MLflow** | Block/timeout span | Success span (contrasts with C-pre) |
 
 Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-c-pre--unauthorized-curl-before-cambio-1).
 
 ### Dependencies (OpenShell / platform)
 
-- Backstage state: sandbox on [github-egress.yaml](../config/openshell/github-egress.yaml) (`POLICY_FILE` at launch / `demo-reset.sh`).
-- Cambio 1 script: [demo-restrict-egress.sh](../scripts/demo-restrict-egress.sh).
+- Backstage state: sandbox on [default.yaml](../config/openshell/default.yaml) (`POLICY_FILE` at launch / `demo-reset.sh`).
+- Cambio 1 script: [demo-allow-google-egress.sh](../scripts/demo-allow-google-egress.sh).
 
 ### Without OpenShell (contrast)
 
@@ -468,14 +468,14 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-c
 
 ### Live toggle viability
 
-- **High** — Cambio 1 is a core live-demo moment. Rehearse timing: show success, run script, retry same prompt.
-- Reset between rehearsals: [demo-reset.sh](../scripts/demo-reset.sh) restores [github-egress.yaml](../config/openshell/github-egress.yaml).
+- **High** — Cambio 1 is a core live-demo moment. Rehearse timing: show block, run script, retry same prompt.
+- Reset between rehearsals: [demo-reset.sh](../scripts/demo-reset.sh) restores [default.yaml](../config/openshell/default.yaml).
 
 ### Diagram / narrative alignment
 
 - FlowStory [test-c-egress.html](demo/scenarios/test-c-egress.html) — pre/post variants.
 - [narrative-data.js](demo/v1/narrative-data.js) `YAML_PANELS.egress` shows `fileBefore`/`fileAfter` policy paths.
-- Observability: green `github.com ALLOWED` on C-pre, amber `DENIED` on C-post — [observability-log-rules.js](demo/v1/observability-log-rules.js).
+- Observability: amber `google.com DENIED` on C-pre, green `ALLOWED` on C-post — [observability-log-rules.js](demo/v1/observability-log-rules.js).
 
 ### Open questions
 
@@ -485,8 +485,8 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-c
 
 - Prompt: [demo-prompts.ts](../tests/demo-prompts.ts) `PROMPT_C`
 - E2E: [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts) Tests C pre/post + Cambio 1
-- Policies: [github-egress.yaml](../config/openshell/github-egress.yaml), [default.yaml](../config/openshell/default.yaml)
-- Cambio 1: [demo-restrict-egress.sh](../scripts/demo-restrict-egress.sh)
+- Policies: [default.yaml](../config/openshell/default.yaml), [google-egress.yaml](../config/openshell/google-egress.yaml)
+- Cambio 1: [demo-allow-google-egress.sh](../scripts/demo-allow-google-egress.sh)
 - Logs: [demo-scenario-logs.md](demo/demo-scenario-logs.md)
 
 ---
@@ -540,7 +540,7 @@ Full runbook: [demo/demo-scenario-logs.md](demo/demo-scenario-logs.md#scenario-d
 ### Live toggle viability
 
 - **High** — Cambio 2 is a core live-demo moment. Rehearse: show jailbreak success, run script, retry same prompt.
-- Reset: [demo-reset.sh](../scripts/demo-reset.sh) restores `maas-direct` + [github-egress.yaml](../config/openshell/github-egress.yaml).
+- Reset: [demo-reset.sh](../scripts/demo-reset.sh) restores `maas-direct` + [default.yaml](../config/openshell/default.yaml).
 
 ### Diagram / narrative alignment
 

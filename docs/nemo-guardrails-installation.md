@@ -11,7 +11,7 @@ OpenClaw → inference.local → [maas-direct | maas-guardrailed] → MaaS
 
 For the live demo narrative, inference starts on **direct MaaS** (`INFERENCE_BACKEND=direct`). NeMo is deployed in backstage; the presenter runs `./scripts/demo-enable-guardrails.sh` for Cambio 2 (jailbreak blocked by self-check rails).
 
-Demo sandbox policy: create with [`config/openshell/github-egress.yaml`](../config/openshell/github-egress.yaml) (permissive egress for Test C). Restrict live with `./scripts/demo-restrict-egress.sh`. Reset between rehearsals: `./scripts/demo-reset.sh`. See [`demo-narrativa-v1.md`](../docs/demo-narrativa-v1.md).
+Demo sandbox policy: create with [`config/openshell/default.yaml`](../config/openshell/default.yaml) (MLflow-only egress). Allow google.com live with `./scripts/demo-allow-google-egress.sh`. Reset between rehearsals: `./scripts/demo-reset.sh`. See [`demo-narrativa-v1.md`](../docs/demo-narrativa-v1.md).
 
 ### Install via Cursor skills
 
@@ -78,7 +78,7 @@ After OpenShell is up:
 make -C deploy launch-openclaw   # creates maas-direct + maas-guardrailed providers
 ./scripts/demo-enable-guardrails.sh   # live demo: switch to NeMo path
 ./scripts/demo-disable-guardrails.sh  # reset to direct MaaS
-./scripts/demo-restrict-egress.sh     # live demo Cambio 1: block unauthorized egress
+./scripts/demo-allow-google-egress.sh  # live demo Cambio 1: allowlist google.com egress
 ./scripts/demo-reset.sh               # full demo reset (MaaS direct + demo-initial policy)
 ```
 

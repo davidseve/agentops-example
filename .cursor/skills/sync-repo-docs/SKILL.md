@@ -64,13 +64,12 @@ agentops-showcase/
 ├── assets/                      # Diagrams (e.g. strategy-image.png)
 ├── config/
 │   ├── openclaw.json.tpl
-│   └── openshell/               # Sandbox policies (default.yaml, github-egress.yaml)
+│   └── openshell/               # Sandbox policies (default.yaml, google-egress.yaml)
 ├── docs/                        # Guides, ADRs, demo narrative, ROADMAP
 ├── deploy/
 │   ├── Makefile
 │   ├── helm/                    # operators, platform, database, mlflow, evalhub,
 │   │                            # guardrails, openshell, openclaw-ui-proxy
-│   └── openshift/
 ├── agent/workspace/             # OpenClaw workspace identity (not app source)
 ├── tests/                       # Playwright specs, health-check.sh
 ├── scripts/                     # cluster-lifecycle, demo-*, openshift-*, launch-openclaw, …

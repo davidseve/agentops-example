@@ -99,14 +99,14 @@ This maps demo features to specific Red Hat products/components:
 
 Active live script (~9–10 min): [`docs/demo-narrativa-v1.md`](docs/demo-narrativa-v1.md) (Spanish) + [`docs/demo-script.md`](docs/demo-script.md) (English).
 
-1. **Context** (1–2 min): Architecture map via [`docs/demo/layers.html`](docs/demo/layers.html) — skill: `demo-presenter-panel`
+1. **Context** (1–2 min): Architecture map via [`docs/demo/overall-demo-architecture.html`](docs/demo/overall-demo-architecture.html) — skill: `demo-presenter-panel`
 2. **Tests A & B** (2–3 min): API key not in sandbox; `/etc/shadow` blocked — skill: `demo-present`
-3. **Test C + Cambio 1** (2 min): Unauthorized `curl` succeeds, then restrict egress — skill: `demo-restrict-egress`
+3. **Test C + Cambio 1** (2 min): Unauthorized `curl` blocked, then allow google.com egress — skill: `demo-allow-google-egress`
 4. **Test D + Cambio 2** (2–3 min): Jailbreak on direct MaaS, then NeMo blocks — skill: `demo-enable-guardrails`
 5. **MLflow** (1–2 min): Same session trace — skill: `mlflow-tracing-validate`
 6. **Close**: *Your Agent. Our Platform. Production-Ready.* — skill: `demo-present`
 
-Backstage install (before stage): `demo-backstage-install` → `demo-backstage-prep` → `demo-verify`. Reset between rehearsals: `demo-reset`.
+Backstage install (before stage): `demo-backstage-install` → `demo-backstage-prep` → `demo-verify`. After AWS sleep: `demo-warmup` (not full reinstall). Reset between rehearsals: `demo-reset`.
 
 EvalHub/Garak extension (second namespace, precomputed evals): [`docs/demo-narrativa-v2.md`](docs/demo-narrativa-v2.md) — nice-to-have, not part of the active script.
 
@@ -127,20 +127,21 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `openshell-cluster-install` | Deploy OpenShell gateway on OpenShift via `make -C deploy deploy-openshell` |
 | `openshell-cluster-cleanup` | Remove OpenShell Helm release from OpenShift |
 | `guardrails-cluster-install` | Deploy/validate/undeploy NeMo Guardrails (TrustyAI) — see [nemo-guardrails-installation.md](docs/nemo-guardrails-installation.md) |
-| `launch-openclaw` | Launch OpenClaw in sandbox — use demo-initial policy for v1 narrative |
+| `launch-openclaw` | Launch OpenClaw in sandbox — demo v1 uses `config/openshell/default.yaml` (MLflow-only egress) |
 
 ### Demo v1 ([demo-narrativa-v1.md](docs/demo-narrativa-v1.md))
 
 | Skill | When to use |
 |---|---|
 | `demo-backstage-install` | One-shot backstage install (RHOAI + OpenShell + OpenClaw demo state) |
+| `demo-warmup` | **Revisa estado del cluster** — diagnose + auto-fix after AWS shutdown (`./scripts/demo-warmup.sh`) |
 | `demo-backstage-prep` | Pre-stage checklist before going live |
 | `demo-verify` | Validate demo initial state (`VERIFY_PROFILE=demo`) |
 | `demo-present` | Master live runbook (phases 0–5) |
-| `demo-presenter-panel` | Serve `layers.html` + `live.html` panels |
-| `demo-restrict-egress` | Live Cambio 1 — block unauthorized egress |
+| `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v1/live.html` panel — log highlight rules: [demo-scenario-logs.md](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules) |
+| `demo-allow-google-egress` | Live Cambio 1 — allowlist google.com egress for Test C |
 | `demo-enable-guardrails` | Live Cambio 2 — switch inference to NeMo |
-| `demo-reset` | Reset between rehearsals (direct MaaS + demo-initial policy) |
+| `demo-reset` | Reset between rehearsals (direct MaaS + MLflow-only egress policy) |
 | `mlflow-tracing-validate` | MLflow traces block (phase 4) |
 
 ### Docs, governance, utilities
@@ -158,50 +159,67 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 ## Project Structure
 
 ```
-agentops-example/
-├── .cursor/skills/            # Project-level Cursor agent skills
-│   ├── document-feature/      # Document new components after implementation
-├── AGENTS.md                  # This file - AI agent context
-├── README.md                  # Project overview, quick start
+agentops-showcase/
+├── Makefile                       # Wrapper → deploy/Makefile (make demo, deploy-all, …)
+├── .cursor/
+│   ├── rules/                     # Agent rules (adr-alignment, docs-repo-alignment, …)
+│   └── skills/                    # Project-level Cursor agent skills
+├── AGENTS.md                      # This file — AI agent context
+├── README.md                      # Project overview, quick start
+├── assets/                        # Diagrams (e.g. strategy-image.png)
+├── config/
+│   ├── openclaw.json.tpl          # OpenClaw harness config template
+│   └── openshell/                 # OpenShell sandbox policies (Landlock, egress)
+│       ├── default.yaml           # Default: MLflow only (CI, demo backstage, C-pre)
+│       └── google-egress.yaml     # Demo Test C post–Cambio 1: allows curl → google.com
 ├── docs/
 │   ├── ROADMAP.md                 # Phased task list
 │   ├── cluster-bootstrap.md       # RHOAI platform deploy on OpenShift
 │   ├── openshell-installation.md  # OpenShell install (local + OpenShift Helm)
-│   ├── adr/                       # Architecture Decision Records
-│   │   ├── README.md              # ADR index (technical)
-│   │   └── NNNN-<slug>.md         # Individual ADRs
+│   ├── nemo-guardrails-installation.md
+│   ├── AGENT-SANDBOX-AND-OPENSHELL.md  # Sandbox architecture + launch flow
 │   ├── stack-decisions.md         # ADR executive summary (by layer)
-│   ├── architecture.md            # Detailed architecture (Phase 2)
+│   ├── adr/                       # Architecture Decision Records
+│   ├── demo/                      # Presenter UI + overall-demo-architecture.html
+│   ├── demo-script.md             # Live demo script (English)
 │   ├── demo-narrativa-v1.md       # Active live demo narrative (Spanish)
-│   ├── demo-narrativa-v2.md       # EvalHub/Garak extension (future)
-│   └── demo-script.md             # Step-by-step demo script with timing (English)
+│   ├── demo-narrativa-v2.md       # EvalHub/Garak extension (nice-to-have)
+│   └── github-actions.md          # CI workflows
 ├── deploy/
-│   ├── helm/guardrails/       # NemoGuardrails CR (TrustyAI); rails in files/
-│   ├── Makefile               # make deploy-all, validate, deploy-openshell, …
-│   ├── helm/                  # RHOAI platform + OpenShell wrapper charts
-│   ├── kustomize/             # Kustomize overlays (Phase 4)
-│   └── openshift/             # OpenShift-specific manifests (non-Helm)
+│   ├── Makefile                   # deploy-all, deploy-openshell, validate, demo, …
+│   ├── helm/
+│   │   ├── operators/             # RHOAI + Agent Sandbox OLM
+│   │   ├── platform/              # DataScienceCluster
+│   │   ├── database/              # PostgreSQL (maas-db)
+│   │   ├── mlflow/
+│   │   ├── evalhub/
+│   │   ├── guardrails/            # NemoGuardrails CR; rails in files/
+│   │   ├── openshell/             # OpenShell wrapper chart
+│   │   └── openclaw-ui-proxy/     # nginx mTLS bridge for Control UI
 ├── agent/
-│   ├── src/                   # Agent source code (Phase 3)
-│   └── prompts/               # Versioned prompts (Phase 3)
-├── tests/
-│   ├── health-check.sh        # Pre-demo health verification
-│   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
-├── .github/workflows/         # CI (PR unit tests + Helm lint) — docs/github-actions.md
-└── scripts/
-    ├── cluster-lifecycle.sh           # deploy / verify / full / teardown / status / preflight
-    ├── verify.sh                      # Layered validation (Makefile + Playwright); .verify-status.json
-    ├── common.sh                      # Shared helpers (APPS_DOMAIN, secrets, logging)
-    ├── install-openshell.sh          # OpenShell CLI/gateway + Podman stack (macOS, Linux)
-    ├── uninstall-openshell.sh        # Remove local OpenShell stack (macOS, Linux)
-    ├── openshift-openshell-register-gateway.sh # Register CLI gateway + mTLS (auto from deploy-openshell)
-    ├── openshift-openshell-sync-mtls.sh # Sync openshell-client-tls → local CLI mTLS bundle
-    ├── launch-openclaw.sh             # Create sandbox if needed + start OpenClaw gateway
-    ├── demo-enable-guardrails.sh      # Live demo Cambio 2: NeMo inference path
-    ├── demo-disable-guardrails.sh     # Reset to direct MaaS
-    ├── demo-restrict-egress.sh        # Live demo Cambio 1: apply final sandbox policy
-    ├── demo-reset.sh                  # Reset demo (direct MaaS + demo-initial policy)
-    └── openshift-openshell-scc.sh    # DEPRECATED — SCC managed by Helm chart
+│   └── workspace/                 # OpenClaw workspace identity (AGENTS.md, SOUL.md, …)
+├── tests/                         # Playwright specs + health-check.sh (smoke → verify)
+├── scripts/
+│   ├── cluster-lifecycle.sh       # deploy / verify / full / teardown / status / preflight
+│   ├── verify.sh                  # Layered validation (Makefile + Playwright)
+│   ├── common.sh                  # Shared helpers (APPS_DOMAIN, secrets, logging)
+│   ├── install-openshell.sh       # OpenShell CLI/gateway + Podman stack (macOS, Linux)
+│   ├── uninstall-openshell.sh     # Remove local OpenShell stack (macOS, Linux)
+│   ├── openshift-openshell-register-gateway.sh  # Register CLI gateway + mTLS
+│   ├── openshift-openshell-sync-mtls.sh       # Sync openshell-client-tls → local CLI
+│   ├── launch-openclaw.sh         # Create sandbox + start OpenClaw gateway
+│   ├── ensure-mlflow-experiment.sh
+│   ├── patch-mlflow-plugin.py     # mlflow-openclaw SDK compatibility patch
+│   ├── demo-presenter-serve.sh    # Serve demo architecture + live panels
+│   ├── demo-observability-proxy.py
+│   ├── demo-enable-guardrails.sh  # Live demo Cambio 2: NeMo inference path
+│   ├── demo-disable-guardrails.sh # Reset to direct MaaS
+│   ├── demo-allow-google-egress.sh # Live demo Cambio 1: allowlist google.com egress
+│   ├── demo-reset.sh              # Reset demo (direct MaaS + MLflow-only egress)
+│   ├── run-playwright-tests.sh
+│   └── openshift-openshell-scc.sh # DEPRECATED — SCC managed by Helm chart
+├── secrets/                       # secrets.env (gitignored)
+└── .github/workflows/             # CI — docs/github-actions.md
 ```
 
 ## Architecture Decisions (ADRs)
@@ -228,8 +246,8 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **GitOps**: All configuration as code, no manual cluster changes
 - **Idempotent**: Deploy/teardown must be repeatable with a single command
 - **BYOA principle**: The agent layer is intentionally decoupled from the platform. The platform works regardless of which framework/harness is chosen
-- **Keep index docs aligned with the repo**: The `docs-repo-alignment` rule requires running the `sync-repo-docs` skill when layout, scripts, skills, or Makefile targets change — or when auditing documentation against the filesystem
 - **Document new or modified functionality**: After adding or modifying a stack technology (version, deploy path, prereqs, verify steps), the `technology-usage-docs` rule requires running the `document-feature` skill in the same session — create or update guides in `docs/`, cross-link `ROADMAP.md`, `README.md`, and `AGENTS.md`
+- **Keep index docs aligned with the repo**: The `docs-repo-alignment` rule requires running the `sync-repo-docs` skill when layout, scripts, skills, or Makefile targets change — or when auditing documentation against the filesystem
 - **Pull requests**: Use the `create-pr` skill — body must follow [PR #1](https://github.com/davidseve/agentops-showcase/pull/1) structure (`Summary`, `Details`, `Test plan`); no default assignee unless the user requests one
 
 ## Open Questions
