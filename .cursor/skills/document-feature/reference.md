@@ -10,7 +10,8 @@ agentops-showcase/
 │   │   ├── README.md                 # ADR index (technical)
 │   │   └── NNNN-<slug>.md           # Individual ADR files
 │   ├── stack-decisions.md            # ADR executive summary (by layer)
-│   ├── architecture.md               # topology diagrams (Phase 2+)
+│   ├── AGENT-SANDBOX-AND-OPENSHELL.md  # sandbox topology + launch (canonical)
+│   ├── demo/overall-demo-architecture.html  # interactive architecture map
 │   ├── demo-script.md                # demo steps with timing (Phase 4)
 │   └── <component>-installation.md   # install, deploy, verify, troubleshoot
 │       OR docs/<component>/
@@ -19,8 +20,7 @@ agentops-showcase/
 │           └── 03-operations.md
 ├── deploy/
 │   ├── helm/<component>/values*.yaml
-│   ├── kustomize/<component>/
-│   └── Makefile                      # make <component>-install targets
+│   └── Makefile                      # make deploy-<component> targets
 ├── scripts/
 │   └── <component>-*.sh
 ├── tests/

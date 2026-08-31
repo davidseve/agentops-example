@@ -1,0 +1,61 @@
+---
+description: >-
+  Keep README, AGENTS.md, ROADMAP, and index docs aligned with the actual
+  repository layout, scripts, skills, and Makefile targets.
+alwaysApply: true
+---
+
+# Documentation–Repository Alignment
+
+Project index docs (`README.md`, `AGENTS.md`, `docs/ROADMAP.md`) must reflect
+**what exists in the repo today**, not planned or retired paths.
+
+## Canonical sources of truth
+
+| Concern | Source of truth | Index docs (summarize + link) |
+|---|---|---|
+| Directory layout | Filesystem (`ls`, `find`, `glob`) | `AGENTS.md` § Project Structure, `README.md` § Project Structure |
+| Make targets | `Makefile` (root) + `deploy/Makefile` `help` | `README.md` Quick Start, component guides |
+| Scripts | `scripts/` | `AGENTS.md` § Project Structure (`scripts/` list) |
+| Cursor skills | `.cursor/skills/*/SKILL.md` | `AGENTS.md` § Cursor Skills |
+| Cursor rules | `.cursor/rules/*.mdc` | Mention in `AGENTS.md` § Constraints when user-facing |
+| ADRs | `docs/adr/*.md` | `docs/adr/README.md`, `docs/stack-decisions.md` |
+| Helm charts | `deploy/helm/*/` | `docs/cluster-bootstrap.md`, component guides |
+| Architecture topology | `docs/AGENT-SANDBOX-AND-OPENSHELL.md`, `docs/demo/overall-demo-architecture.html`, ADRs | Do **not** invent `docs/architecture.md` unless created |
+
+## When this rule fires
+
+Run the **`sync-repo-docs`** skill in the **same session** when you:
+
+| Trigger | Examples |
+|---|---|
+| User asks to audit or align documentation | "revisa la documentación", "align docs with repo" |
+| Add, remove, or rename top-level paths | New `scripts/*.sh`, new Helm chart, retired `kustomize/` |
+| Add or remove a Cursor skill | New `.cursor/skills/<name>/` |
+| Change Makefile targets referenced in docs | `make demo`, `deploy-agent`, validate targets |
+| ROADMAP task completes with wrong link | Checked item points to a path that does not exist |
+
+**Also** run `document-feature` (per `technology-usage-docs` rule) when stack
+technology behavior changes — that skill covers component guides; this rule
+covers **index and structure** docs.
+
+## Required checks (audit checklist)
+
+1. **Paths** — Every path in `AGENTS.md` / `README.md` trees exists; no retired paths (`deploy/kustomize/`, `agent/src/`, `agent/prompts/`, `docs/architecture.md` unless added).
+2. **Skills** — Every folder under `.cursor/skills/` appears in `AGENTS.md` § Cursor Skills; no table entries for deleted skills.
+3. **Scripts** — Demo- and deploy-critical scripts under `scripts/` are listed in `AGENTS.md` or linked from a guide (dev-only Cursor backup scripts are optional).
+4. **ROADMAP links** — Completed `[x]` items link to real files; fix stale paths immediately.
+5. **Cross-links** — `README.md` § Documentation lists primary guides; broken relative links are fixed.
+6. **ADR index** — New ADR files appear in `docs/adr/README.md` and `docs/stack-decisions.md` (see `adr-alignment` rule).
+
+## Do not
+
+- List planned Phase N paths as if they already exist
+- Duplicate long procedures in `README.md` / `AGENTS.md` — link to `docs/`
+- Leave "partial mapping in AGENTS.md" ROADMAP items pointing at non-existent `docs/architecture.md`
+
+## Exceptions
+
+- Typo-only fixes with no structural impact
+- Session notes under `docs/sessions/` (not indexed in README)
+- `agent/workspace/` identity files (OpenClaw workspace; not application source)
