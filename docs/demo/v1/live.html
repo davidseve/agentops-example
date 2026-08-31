@@ -32,13 +32,17 @@
     </p>
     <nav class="nr-step-nav" data-nr-nav aria-label="Demo steps"></nav>
     <div data-nr-card></div>
+    <div data-nr-observability></div>
   </main>
 </div>
 
 <script type="module">
 import { initNarrativeUI } from "./narrative-ui.js";
+import { initObservabilityPanel } from "./observability-panel.js?v=23";
 
-initNarrativeUI({ root: document.getElementById("nr-root") });
+const root = document.getElementById("nr-root");
+initObservabilityPanel({ root });
+initNarrativeUI({ root });
 </script>
 </body>
 </html>
