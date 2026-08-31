@@ -354,11 +354,11 @@ export function traceBaselineKey(trace) {
   const t = trace ?? {};
   const id = t.traceId || t.requestId;
   if (id) return String(id);
-  const ts = t.timestampMs ?? "";
+  const ts = t.timestampMs;
+  if (ts == null || ts === "") return "";
   const status = t.status ?? "";
   const exec = t.executionTimeMs ?? "";
-  const composite = `${ts}|${status}|${exec}`;
-  return composite === "||" ? "" : composite;
+  return `${ts}|${status}|${exec}`;
 }
 
 /**
