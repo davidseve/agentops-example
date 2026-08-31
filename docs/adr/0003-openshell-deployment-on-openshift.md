@@ -53,8 +53,8 @@ Deploy OpenShell on OpenShift using the wrapper Helm chart (`deploy/helm/openshe
 1. Declares the upstream OCI chart (`oci://ghcr.io/nvidia/openshell`, chart `helm-chart`) as
    a real Helm subchart dependency, aliased `openshell` in `Chart.yaml`. `global.appsDomain`
    (a single Helm value, set once via `HELM_OPTS` or `APPS_DOMAIN`) and every other upstream
-   value live directly under the `openshell:` key in this chart's own
-   `values.yaml`/`values-openshift.yaml` and flow straight into the subchart via the alias —
+   value live directly under the `openshell:` key in `values.yaml` and flow straight into
+   the subchart via the alias —
    this is how a single value replaces every `__APPS_DOMAIN__` placeholder the reference
    project rendered with bash instead. No `ConfigMap` round-trip, no second `helm install`.
 2. Installs with `--create-namespace` (see "Chart architecture" below for why the chart does
@@ -150,7 +150,8 @@ each masked by the others or by that leftover state:
    both default to `false`, so neither the `openshell` namespace nor the
    privileged SCC RoleBinding were ever created by this chart. Fixed the
    Makefile target to always pass `-f values-openshift.yaml` (this chart has
-   no non-OpenShift use case).
+   no non-OpenShift use case). *Later: OpenShift settings were merged into
+   `values.yaml` and the separate overlay file was removed.*
 7. **`namespace.yaml` and `scc-rolebinding.yaml` used `{{ .Release.Namespace
    }}`** instead of the fixed `{{ .Values.namespace }}` ("openshell") — since
    this release (`openshell-infra`) isn't installed with `--namespace`, that

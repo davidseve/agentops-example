@@ -59,10 +59,11 @@ Runs: wait for `sandboxes.agents.x-k8s.io` CRD from the Red Hat build of Agent
 Sandbox Operator (OLM, sole source — ADR-0003 / OSC 1.13) → `helm dependency build`
 (resolves the pinned OCI chart per `Chart.lock`) →
 one `helm upgrade --install openshell deploy/helm/openshell --namespace openshell
---create-namespace -f values-openshift.yaml` (namespace extras + the actual gateway
+--create-namespace` (namespace extras + the actual gateway
 StatefulSet together, pinned `0.0.83` in `Chart.yaml`) → `oc label namespace` (RHOAI
 Dashboard opt-in) → wait for rollout/PKI secrets → MLflow RBAC wiring
-(`deploy-mlflow-openclaw-integration`) → **CLI gateway register + mTLS**
+(`deploy-mlflow-openclaw-integration`, which also runs `ensure-mlflow-experiment`
+for the `openclaw-tracing` workspace experiment) → **CLI gateway register + mTLS**
 (`openshell-register-gateway`, alias `GATEWAY_NAME` default `ocp`).
 
 4. **Deploy the browser UI proxy** (nginx mTLS bridge — required for the Control UI, see ADR-0011):
@@ -74,10 +75,10 @@ APPS_DOMAIN=<apps-domain> make -C deploy deploy-openclaw-ui-proxy
 5. **Launch OpenClaw** (creates the sandbox if missing, then starts the gateway).
    Requires `MAAS_API_KEY` and `OPENCLAW_GATEWAY_PASSWORD` in `secrets/secrets.env`.
 
-   **Demo v1** (permissive egress for Test C — use `launch-openclaw` skill):
+   **Demo v1** (default deny egress — use `launch-openclaw` skill):
 
 ```bash
-POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+POLICY_FILE=config/openshell/default.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
 ```
 
    **CI / hardened policy** (default):
@@ -118,7 +119,7 @@ make -C deploy openshell-register-gateway   # GATEWAY_NAME=ocp by default
 | `server.disableTls` | `false` |
 | `pkiInitJob.enabled` | `true` (default — do not disable) |
 | `server.auth.allowUnauthenticatedUsers` | `true` (mTLS-only endpoint; means no *additional* bearer token) |
-| `openshift.scc.privilegedSandbox` | `true` (in `values-openshift.yaml`) |
+| `openshift.scc.privilegedSandbox` | `true` (in `values.yaml`) |
 | `openshift.scc.serviceAccount` | unset — resolves automatically to `openshell-sandbox` since the release is always named `openshell` |
 
 ## Safety rules

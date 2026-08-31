@@ -509,7 +509,7 @@ This target:
 
 1. Waits for the `sandboxes.agents.x-k8s.io` CRD (from the OLM operator).
 2. Runs `helm dependency build` (resolves upstream chart per `Chart.lock`).
-3. Installs one Helm release with `values-openshift.yaml` (SCC RoleBinding, Route, gateway StatefulSet).
+3. Installs one Helm release with chart `values.yaml` (SCC RoleBinding, Route, gateway StatefulSet).
 4. Labels the namespace for the RHOAI Dashboard (`opendatahub.io/dashboard=true`).
 5. Waits for rollout and PKI secrets.
 6. Enables MLflow RBAC for OpenClaw tracing (`deploy-mlflow-openclaw-integration`).
