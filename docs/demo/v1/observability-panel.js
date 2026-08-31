@@ -6,10 +6,14 @@
 import {
   COMPONENT_LABELS,
   DEFAULT_HIDE_NOISE,
+  buildLineBaseline,
+  buildTraceBaseline,
+  filterContentSinceBaseline,
+  filterTracesSinceBaseline,
   formatStepHint,
   processLogLines,
   stepHintUsesCustomMessage,
-} from "./observability-log-rules.js?v=23";
+} from "./observability-log-rules.js?v=27";
 
 const DEFAULT_PROXY_URL = "http://127.0.0.1:8766";
 const POLL_MS = 4000;
@@ -102,6 +106,10 @@ export function initObservabilityPanel({
   let refreshInFlight = false;
   let mlflowBaseUrl = "";
   const stateByComponent = new Map();
+  let clearViewActive = false;
+  const baselineByComponent = new Map();
+  const baselineTraceIds = new Set();
+  const baselinePending = new Set();
 
   host.innerHTML = `
     <section class="nr-obs" aria-label="Cluster observability">
@@ -117,6 +125,7 @@ export function initObservabilityPanel({
         <div class="nr-obs-tabrow">
           <nav class="nr-obs-tabs" data-obs-tabs role="tablist" aria-label="Components"></nav>
           <div class="nr-obs-tabrow-actions">
+            <button type="button" class="nr-obs-clear" title="Clear view — show only new lines" aria-pressed="false" aria-label="Clear view — show only new lines">Clear</button>
             <button type="button" class="nr-obs-filter active" title="Show signal and warn only" aria-pressed="true" aria-label="Focus filter">Filter</button>
             <button type="button" class="nr-obs-follow active" title="Pause live updates" aria-pressed="true" aria-label="Pause live updates">↓</button>
           </div>
@@ -135,6 +144,7 @@ export function initObservabilityPanel({
   const viewerWrapEl = host.querySelector(".nr-obs-viewer-wrap");
   const followBtn = host.querySelector(".nr-obs-follow");
   const filterBtn = host.querySelector(".nr-obs-filter");
+  const clearBtn = host.querySelector(".nr-obs-clear");
   const refreshBtn = host.querySelector(".nr-obs-refresh");
   const collapseBtn = host.querySelector(".nr-obs-collapse");
 
@@ -183,6 +193,77 @@ export function initObservabilityPanel({
     const label = on ? "Show all lines" : "Focus: signal and warn only";
     filterBtn.title = label;
     filterBtn.setAttribute("aria-label", label);
+  }
+
+  function syncClearButton() {
+    clearBtn.classList.toggle("active", clearViewActive);
+    clearBtn.setAttribute("aria-pressed", String(clearViewActive));
+    const label = clearViewActive
+      ? "Clear view active — click to show full log"
+      : "Clear view — show only new lines";
+    clearBtn.title = label;
+    clearBtn.setAttribute("aria-label", label);
+  }
+
+  function snapshotLogBaseline(componentId, content) {
+    baselineByComponent.set(componentId, buildLineBaseline(content));
+  }
+
+  function snapshotTraceBaseline(traces) {
+    baselineTraceIds.clear();
+    for (const key of buildTraceBaseline(traces)) {
+      baselineTraceIds.add(key);
+    }
+  }
+
+  function snapshotComponentFromPayload(componentId, payload, componentType) {
+    if (componentType === "traces") {
+      snapshotTraceBaseline(payload?.traces);
+    } else {
+      snapshotLogBaseline(componentId, payload?.content ?? "");
+    }
+  }
+
+  function applyClearView(activate) {
+    if (!activate) {
+      clearViewActive = false;
+      baselineByComponent.clear();
+      baselineTraceIds.clear();
+      baselinePending.clear();
+      syncClearButton();
+      const current = components.find((c) => c.id === activeId) ?? { id: activeId };
+      renderViewer({ stickToBottom: isFollowScroll() });
+      updateStatusForComponent(current);
+      return;
+    }
+
+    clearViewActive = true;
+    baselineByComponent.clear();
+    baselineTraceIds.clear();
+    baselinePending.clear();
+
+    const fetchedIds = new Set();
+    for (const comp of components) {
+      const state = getState(comp.id);
+      if (state.lastPayload) {
+        snapshotComponentFromPayload(comp.id, state.lastPayload, comp.type);
+        fetchedIds.add(comp.id);
+      }
+    }
+    for (const comp of components) {
+      if (!fetchedIds.has(comp.id)) {
+        baselinePending.add(comp.id);
+      }
+    }
+    syncClearButton();
+    const current = components.find((c) => c.id === activeId) ?? { id: activeId };
+    renderViewer({ stickToBottom: isFollowScroll() });
+    updateStatusForComponent(current);
+  }
+
+  function getFilteredLogContent(content, componentId) {
+    if (!clearViewActive) return content;
+    return filterContentSinceBaseline(content, baselineByComponent.get(componentId));
   }
 
   function isTabHidden(id) {
@@ -271,15 +352,16 @@ export function initObservabilityPanel({
     const state = getState(current.id);
     const link = statusSuffix(current);
     const statsPart = statsSuffix(state.lastStats, state.hideNoise);
+    const clearPart = clearViewActive ? " · clear view" : "";
     if (state.lastError) {
-      setStatus(`proxy: error · ${state.lastError} · updated ${relativeTime(state.lastUpdated)}${link}`, "error");
+      setStatus(`proxy: error · ${state.lastError} · updated ${relativeTime(state.lastUpdated)}${statsPart}${clearPart}${link}`, "error");
     } else if (!state.followScroll) {
       setStatus(
-        `proxy: connected · paused (frozen snapshot) · fetched ${relativeTime(state.lastUpdated)}${statsPart}${link}`,
+        `proxy: connected · paused (frozen snapshot) · fetched ${relativeTime(state.lastUpdated)}${statsPart}${clearPart}${link}`,
         "ok"
       );
     } else {
-      setStatus(`proxy: connected · updated ${relativeTime(state.lastUpdated)}${statsPart}${link}`, "ok");
+      setStatus(`proxy: connected · updated ${relativeTime(state.lastUpdated)}${statsPart}${clearPart}${link}`, "ok");
     }
   }
 
@@ -308,6 +390,7 @@ export function initObservabilityPanel({
         clearTabSuggestions();
         syncFollowButton();
         syncFilterButton();
+        syncClearButton();
         renderTabs();
         updateHintsBar();
         const state = getState(activeId);
@@ -328,8 +411,12 @@ export function initObservabilityPanel({
   }
 
   function renderLogHtml(content, componentId, hideNoise) {
-    const text = content || "(no output)";
-    if (text.startsWith("(sandbox log not found") || text.startsWith("(openclaw.log not found")) {
+    const filtered = getFilteredLogContent(content, componentId);
+    const text = filtered || "(no output)";
+    if (
+      text.startsWith("(sandbox log not found") ||
+      text.startsWith("(openclaw.log not found")
+    ) {
       return escapeHtml(text);
     }
 
@@ -337,6 +424,9 @@ export function initObservabilityPanel({
     getState(componentId).lastStats = stats;
 
     if (!visible.length) {
+      if (clearViewActive && !String(filtered || "").trim()) {
+        return `<span class="obs-line obs-noise">${escapeHtml("(no new lines since clear — run the demo step or click Clear to show full log)")}</span>`;
+      }
       return `<span class="obs-line obs-noise">${escapeHtml("(no signal lines — disable Filter to see full log, or run the demo step)")}</span>`;
     }
 
@@ -346,8 +436,16 @@ export function initObservabilityPanel({
   }
 
   function renderTraces(payload) {
-    const traces = payload?.traces ?? [];
+    const allTraces = payload?.traces ?? [];
+    const traces = clearViewActive
+      ? filterTracesSinceBaseline(allTraces, baselineTraceIds)
+      : allTraces;
     if (!traces.length) {
+      if (clearViewActive && allTraces.length > 0) {
+        return escapeHtml(
+          "(no new traces since clear — run the demo step or click Clear to show all traces)"
+        );
+      }
       return escapeHtml("No traces found yet. Run Tests A–D in the same chat session.");
     }
     const lines = traces.map((t, i) => {
@@ -390,7 +488,7 @@ export function initObservabilityPanel({
 
   function logsFetchUrl(componentId) {
     let lines = logLinesFor(componentId);
-    if (componentId === "sandbox" && activeStepId === "B") {
+    if (componentId === "sandbox" && (activeStepId === "B" || activeStepId === "C-pre" || activeStepId === "C-post")) {
       lines = 500;
     }
     let url = `${proxyUrl}/api/logs/${encodeURIComponent(componentId)}?lines=${lines}`;
@@ -423,6 +521,7 @@ export function initObservabilityPanel({
     refreshInFlight = true;
     refreshBtn.disabled = true;
     filterBtn.disabled = true;
+    clearBtn.disabled = true;
     try {
       const component = components.find((c) => c.id === requestedId);
       if (!component) {
@@ -448,6 +547,11 @@ export function initObservabilityPanel({
       componentState.lastError = payload.ok === false ? payload.error : null;
       mlflowBaseUrl = payload.mlflowBaseUrl || mlflowBaseUrl;
 
+      if (clearViewActive && baselinePending.has(current.id)) {
+        snapshotComponentFromPayload(current.id, payload, current.type);
+        baselinePending.delete(current.id);
+      }
+
       updateStatusForComponent(current);
       renderTabs();
       if (shouldUpdateView) {
@@ -466,6 +570,7 @@ export function initObservabilityPanel({
       refreshInFlight = false;
       refreshBtn.disabled = false;
       filterBtn.disabled = false;
+      clearBtn.disabled = false;
     }
   }
 
@@ -487,6 +592,7 @@ export function initObservabilityPanel({
     activeId = resolveActiveTabId(focusId);
     syncFollowButton();
     syncFilterButton();
+    syncClearButton();
     components = components.map((c) => ({
       ...c,
       suggested: c.id === focusId && !isTabHidden(c.id),
@@ -501,6 +607,7 @@ export function initObservabilityPanel({
       activeId = nextId;
       syncFollowButton();
       syncFilterButton();
+      syncClearButton();
       restartPolling();
     }
     if (components.length) {
@@ -547,6 +654,10 @@ export function initObservabilityPanel({
     } else {
       renderViewer({ stickToBottom: false });
     }
+  });
+
+  clearBtn.addEventListener("click", () => {
+    applyClearView(!clearViewActive);
   });
 
   followBtn.addEventListener("click", () => {
@@ -608,6 +719,7 @@ export function initObservabilityPanel({
     await loadComponents();
     syncFollowButton();
     syncFilterButton();
+    syncClearButton();
     updateHintsBar();
     await refreshActive({ updateView: true });
     startPolling();

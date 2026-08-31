@@ -178,8 +178,9 @@ PY
 SANDBOX_SIGNAL_GREP = (
     r"ssh relay|OCSF SSH:OPEN|OCSF NET:CLOSE.*ssh|OCSF CONFIG:(APPLYING|BUILT).*Landlock"
 )
-SANDBOX_STEP_B_SIGNAL_GREP = (
-    r"PROC:LAUNCH|CONFIG:(ENABLED|APPLYING|BUILT).*Landlock|/etc/shadow"
+SANDBOX_C_SIGNAL_GREP = (
+    r"google\.com|/usr/bin/curl|OCSF HTTP:|OCSF PROC:LAUNCH.*curl|"
+    r"demo_egress_google|demo-permissive-google|no matching policy|OCSF NET:.*DENIED"
 )
 OPENCLAW_STEP_B_GREP = (
     r"/etc/shadow|Permission denied|operation not permitted|cannot open"
@@ -291,11 +292,17 @@ def main(limit):
     import re
     step = os.environ.get("DEMO_OBS_STEP", "").strip().upper()
     step_b = step == "B"
+    step_c = step in ("C-PRE", "C-POST")
     step_b_re = re.compile(
         r"/etc/shadow|Permission denied|operation not permitted|cannot open"
         r"|\[session tool exec\]|\[session tool result\]",
         re.I,
     ) if step_b else None
+    step_c_re = re.compile(
+        r"curl|github\.com|HTTP/\d|200 OK|no matching policy|DENIED|blocked|timeout|"
+        r"\[session tool exec\]|\[session tool result\]",
+        re.I,
+    ) if step_c else None
     path = session_path()
     if not path:
         return
@@ -315,6 +322,8 @@ def main(limit):
         formatted = formatted.replace("\n", " ").replace("\r", " ")
         if step_b_re and not step_b_re.search(formatted):
             continue
+        if step_c_re and not step_c_re.search(formatted):
+            continue
         print(formatted)
 
 if __name__ == "__main__":
@@ -329,6 +338,14 @@ def openclaw_fetch_inner(lines: int, demo_step: str = "") -> str:
 session_lines={session_lines}
 echo "--- session transcript (Test B — shell tool calls & Landlock) ---"
 DEMO_OBS_STEP=B python3 - "$session_lines" <<'PY'
+{_OPENCLAW_SESSION_TAIL_PY}
+PY
+"""
+    if demo_step in ("C-pre", "C-post"):
+        return f"""
+session_lines={session_lines}
+echo "--- session transcript (Test C — curl egress) ---"
+DEMO_OBS_STEP={demo_step.upper()} python3 - "$session_lines" <<'PY'
 {_OPENCLAW_SESSION_TAIL_PY}
 PY
 """
@@ -361,12 +378,9 @@ def fetch_component_logs(
         # Tail pod log file for ISO timestamps. Do NOT use `openshell logs --tail` (streams forever).
         tail_cmd = f'tail -n {lines} "$log"'
         if log_filter == "signal":
-            if demo_step == "B":
-                # Positive filter only — do not grep -v Landlock APPLYING/BUILT first
-                # (SANDBOX_SIGNAL_GREP strips them before the step-B include can match).
-                tail_cmd += f' | grep -E "{SANDBOX_STEP_B_SIGNAL_GREP}" || true'
-            else:
-                tail_cmd += f' | grep -vE "{SANDBOX_SIGNAL_GREP}" || true'
+            tail_cmd += f' | grep -vE "{SANDBOX_SIGNAL_GREP}" || true'
+            if demo_step in ("C-pre", "C-post"):
+                tail_cmd += f' | grep -Ei "{SANDBOX_C_SIGNAL_GREP}" || true'
         inner = (
             'log="/var/log/openshell.$(date -u +%Y-%m-%d).log"; '
             'if [[ -f "$log" ]]; then '
