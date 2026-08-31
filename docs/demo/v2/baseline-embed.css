@@ -1,0 +1,253 @@
+/* FlowStory baseline embed — tall vertical stack for narrow companion panel */
+
+/* vendor/style.css sets overflow:hidden on body — breaks the companion panel */
+body.nr-v2.nr-page {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  min-height: 100vh;
+}
+
+.nr-v2-baseline-mounted.nr-diagram-wrap {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.nr-v2-baseline-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Controls on top — single compact row */
+.nr-v2-baseline-inner .v2-fs-panel {
+  order: 1;
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  z-index: auto !important;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  overflow: visible;
+}
+
+.nr-v2-baseline-inner .fs-flow-bar {
+  order: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 0;
+  border: none;
+  margin: 0;
+}
+
+.nr-v2-baseline-inner .fs-flow-nav {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nr-v2-baseline-inner .fs-flow-nav button,
+.nr-v2-baseline-inner .fs-reset,
+.nr-v2-baseline-inner .v2-fs-popup-toggle,
+.nr-v2-baseline-inner .v2-fs-legend-highlight-toggle {
+  font-size: 12px;
+  padding: 7px 10px;
+  min-width: 32px;
+  border: 1px solid var(--fs-border, #30363d);
+  border-radius: 6px;
+  background: var(--fs-bg, #0d1117);
+  color: var(--fs-text, #c9d1d9);
+  cursor: pointer;
+}
+
+.nr-v2-baseline-inner .v2-fs-popup-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.nr-v2-baseline-inner .v2-fs-legend-highlight-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.nr-v2-baseline-inner .v2-fs-popup-toggle.fs-response-mode-on,
+.nr-v2-baseline-inner .v2-fs-legend-highlight-toggle.fs-response-mode-on {
+  border-color: #3fb950;
+  color: #3fb950;
+}
+
+.nr-v2-baseline-inner .fs-flow-nav .fs-start {
+  flex: 1;
+  min-width: 72px;
+}
+
+.nr-v2-baseline-inner .fs-reset {
+  flex-shrink: 0;
+}
+
+/* Tall canvas — height set by JS */
+.nr-v2-baseline-canvas-wrap {
+  order: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--nr-border, #30363d);
+  border-radius: 8px;
+  background: #0d1117;
+}
+
+.nr-v2-baseline-canvas-wrap .v2-fs-canvas {
+  display: block;
+  max-width: 100%;
+}
+
+/* Legend with colored dots (icons) */
+.nr-v2-baseline-inner .v2-fs-legend.fs-legend {
+  order: 3;
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 0;
+  border: 1px solid var(--nr-border, #30363d);
+  border-radius: 8px;
+  background: var(--nr-panel, #161b22);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.nr-v2-baseline-inner .v2-fs-legend .fs-legend-title {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--nr-dim, #8b949e);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nr-v2-baseline-inner .v2-fs-legend .fs-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+  font-size: 10px;
+  color: var(--nr-text, #c9d1d9);
+  transition:
+    opacity 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.nr-v2-baseline-inner .v2-fs-legend .fs-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nr-v2-baseline-inner .v2-fs-legend .fs-legend-item.v2-fs-legend-item--dim {
+  opacity: 0.42;
+}
+
+.nr-v2-baseline-inner .v2-fs-legend .fs-legend-item.v2-fs-legend-item--active {
+  opacity: 1;
+  font-weight: 600;
+  color: var(--nr-text, #e6edf3);
+  background: rgba(88, 166, 255, 0.14);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-left: -4px;
+  margin-right: -4px;
+  box-shadow: inset 0 0 0 1px rgba(88, 166, 255, 0.35);
+}
+
+.nr-v2-baseline-inner .v2-fs-legend .fs-legend-item.v2-fs-legend-item--active .fs-legend-dot {
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.45);
+  transform: scale(1.12);
+}
+
+/* Layer board at bottom — hide hop list (use ← →) */
+.nr-v2-baseline-inner .fs-steps {
+  display: none;
+}
+
+.nr-v2-baseline-inner .fs-inspector {
+  order: 4;
+  max-height: 140px;
+  overflow-y: auto;
+  border: 1px solid var(--nr-border, #30363d);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--nr-panel, #161b22);
+}
+
+.nr-v2-baseline-inner .fs-inspector-title {
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.nr-v2-baseline-inner .fs-inspector-line {
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* Overlay */
+.nr-v2-baseline-inner .v2-fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.nr-v2-baseline-inner .v2-fs-overlay-card {
+  position: relative;
+  background: #161b22ee;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  max-width: min(100%, 360px);
+  padding: 16px 18px;
+  margin-top: 6vh;
+}
+
+.nr-v2-baseline-inner .v2-fs-overlay-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.nr-v2-baseline-inner .v2-fs-highlight-box:not([hidden]) {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+}

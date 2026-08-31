@@ -137,7 +137,7 @@ export const NARRATIVE = {
         "Framing: we will use each layer and progressively open what the platform allows — not install anything live.",
       ],
       prompt: null,
-      expected: "Audience sees the full map before any attack.",
+      expected: null,
       expectedFail: null,
       command: null,
       layers: { ...LAYERS_INITIAL },

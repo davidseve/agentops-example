@@ -3,24 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
 <title>AgentOps — Live companion (v2)</title>
+<link rel="stylesheet" href="../shared/vendor/style.css">
 <link rel="stylesheet" href="../v1/narrative.css">
-<style>
-.stub { max-width: 560px; margin: 48px auto; padding: 0 24px; }
-.stub h1 { font-family: var(--nr-display); font-size: 22px; }
-.stub p { color: var(--nr-dim); }
-.stub a { color: var(--nr-accent); }
-</style>
+<link rel="stylesheet" href="./narrative-v2.css">
+<link rel="stylesheet" href="../shared/demo.css">
+<link rel="stylesheet" href="./baseline-embed.css">
+<link rel="stylesheet" href="./baseline-layout-variants.css">
 </head>
-<body class="nr-page">
-<div class="stub">
-  <h1>v2 — Unified panel</h1>
-  <p>Alternative B (single-page diagram + narrative). Coming soon.</p>
-  <p>
-    <a href="../index.html">Launcher</a> ·
-    <a href="../v1/live.html">Try v1 (split)</a> ·
-    <a href="../overall-demo-architecture.html">Overall demo architecture</a>
-  </p>
+<body class="nr-page nr-v2">
+
+<header class="nr-header">
+  <h1>AgentOps — Live companion (v2)</h1>
+  <span class="nr-tagline">Compact · Your Agent. Our Platform. Production-Ready.</span>
+  <a href="../overall-demo-architecture.html">Architecture</a>
+  <a href="../v1/live.html">v1</a>
+  <a href="../index.html">Launcher</a>
+</header>
+
+<div class="nr-layout" id="nr-root">
+  <main class="nr-main">
+    <p class="nr-meta" style="margin-top:0">
+      Phases 1–5: navigate with ← → or the step buttons. Sub-steps C/D: Before / After.
+    </p>
+    <nav class="nr-step-nav" data-nr-nav aria-label="Demo steps"></nav>
+    <div data-nr-card></div>
+    <div data-nr-observability></div>
+  </main>
 </div>
+
+<script type="module">
+import { initNarrativeV2UI } from "./narrative-v2-ui.js";
+import { initObservabilityPanel } from "../v1/observability-panel.js?v=25";
+
+const root = document.getElementById("nr-root");
+initObservabilityPanel({ root });
+initNarrativeV2UI({ root });
+</script>
 </body>
 </html>
