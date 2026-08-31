@@ -58,7 +58,7 @@ export const SIGNAL_PATTERNS = {
     { re: /google\.com|curl/i, tier: "signal" },
     { re: /\bshell tool\b|tool call|exec tool/i, tier: "signal" },
     { re: /provider=inference|model-fetch/i, tier: "signal" },
-    { re: /rail|guardrail|jailbreak|refus/i, tier: "signal" },
+    { re: /rail|guardrail|recon|refus/i, tier: "signal" },
   ],
   openshell: [
     { re: /maas-guardrailed/i, tier: "signal" },
@@ -68,7 +68,7 @@ export const SIGNAL_PATTERNS = {
     { re: /DENIED|error/i, tier: "warn" },
   ],
   nemo: [
-    { re: /rail|guardrail|block|refus|jailbreak/i, tier: "signal" },
+    { re: /rail|guardrail|block|refus|recon/i, tier: "signal" },
     { re: /error|fail/i, tier: "warn" },
   ],
 };
@@ -120,7 +120,7 @@ export const STEP_SUPPRESS = {
       /TRACE_OK/i,
       /openclaw\.json.*apiKey|grep apiKey/i,
       /google\.com|curl/i,
-      /rail|guardrail|jailbreak|refus/i,
+      /rail|guardrail|recon|refus/i,
       /\[provider-transport-fetch\]|\[model-fetch\]/i,
       /\[agents\/tool-policy\]/i,
       /\[ws\]/i,
@@ -181,7 +181,7 @@ export const STEP_HINTS = {
   },
   "D-pre": {
     tab: "OpenClaw",
-    terms: ["maas-direct", "inference.local", "jailbreak"],
+    terms: ["maas-direct", "inference.local", "recon"],
   },
   "D-post": {
     tab: "NeMo",
