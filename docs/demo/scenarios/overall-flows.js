@@ -169,6 +169,25 @@ export const BASELINE_STEPS = [
   },
 ];
 
+/**
+ * Legend item indices (buildLegend order) to highlight per baseline hop (1-based step).
+ * 0 End user · Control UI · 1 Public egress · 2 OpenClaw · 3 Agent Sandbox
+ * 4 Inference request · 5 OpenShell Gateway · 6 NeMo · 7 Inference response
+ * 8 Landlock · 9 MLflow traces
+ */
+export const BASELINE_LEGEND_HOP_HIGHLIGHTS = {
+  1: [0, 5],
+  2: [5, 2],
+  3: [2, 3, 4],
+  4: [4, 5],
+  5: [5, 4],
+  6: [4],
+  7: [7, 2],
+  8: [7, 2, 5],
+  9: [7, 0, 5],
+  10: [9, 2],
+};
+
 // --- Scenario A ---
 
 export const SCENARIO_A_MUTATIONS = [
