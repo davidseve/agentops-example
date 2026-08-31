@@ -368,16 +368,22 @@ export function writeResponseMode(mode, storageKey = RESPONSE_MODE_KEY) {
   localStorage.setItem(storageKey, mode);
 }
 
-export function syncResponseModeButton(btn, mode) {
+export function syncResponseModeButton(btn, mode, labels, isActive) {
   if (!btn) return;
-  const labels = {
+  const defaultLabels = {
     popup: "Msgs: Popup",
     panel: "Msgs: Panel",
     both: "Msgs: Both",
   };
-  btn.textContent = labels[mode] ?? labels.popup;
-  btn.classList.toggle("fs-response-mode-on", mode !== "popup");
-  btn.setAttribute("aria-pressed", mode !== "popup" ? "true" : "false");
+  const L = labels ?? defaultLabels;
+  const active = isActive ? isActive(mode) : mode !== "popup";
+  btn.textContent = L[mode] ?? L.popup ?? defaultLabels.popup;
+  btn.classList.toggle("fs-response-mode-on", active);
+  btn.setAttribute("aria-pressed", active ? "true" : "false");
+}
+
+export function getActiveResponseMode() {
+  return activeResponseMode;
 }
 
 /** Merge panel response lines into inspector mutations (1-based step keys). */
@@ -400,8 +406,10 @@ export function mergeResponseBodies(mutations, responseMap) {
 let activeResponseMode = "panel";
 let inspectorBodyLabelDefault = "Scenario";
 
-function relabelInspector() {
-  const title = document.getElementById("fs-inspector-title");
+function relabelInspector(scope = document) {
+  const title =
+    scope.querySelector?.(".v2-fs-inspector-title, #fs-inspector-title") ??
+    document.getElementById("fs-inspector-title");
   if (
     title &&
     (title.textContent === "Request" ||
@@ -411,7 +419,10 @@ function relabelInspector() {
     title.textContent = "Layer board";
     title.style.color = "#58a6ff";
   }
-  document.querySelectorAll(".fs-inspector-section").forEach((el) => {
+  const sections =
+    scope.querySelectorAll?.(".fs-inspector-section") ??
+    document.querySelectorAll(".fs-inspector-section");
+  sections.forEach((el) => {
     if (el.textContent === "Headers:") el.textContent = "Layers";
     const useResponses =
       activeResponseMode === "panel" || activeResponseMode === "both";
@@ -704,7 +715,7 @@ function showNodePopup(viz, diagram, cfg, lines) {
   });
 }
 
-function wireResponseComparison(viz, diagram, config) {
+export function wireResponseComparison(viz, diagram, config) {
   const isMulti = config.flows != null;
   let activeFlowId = isMulti
     ? config.defaultFlowId ?? Object.keys(config.flows)[0]
@@ -719,11 +730,20 @@ function wireResponseComparison(viz, diagram, config) {
   if (!initialFc?.baseMutations || !initialFc?.mergedMutations) return null;
   if (!isMulti && !config.flowId) return null;
 
+  const cycleModes = config.cycleModes ?? RESPONSE_MODES;
+  const inspectorRoot = config.inspectorRoot ?? document;
+  const modeLabels = config.modeLabels;
+  const modeActive = config.modeActive;
+
   let mode = readResponseMode(config.modeKey ?? RESPONSE_MODE_KEY);
+  if (!cycleModes.includes(mode)) mode = cycleModes[0];
   activeResponseMode = mode;
 
-  const modeBtn = document.getElementById("fs-response-mode");
-  syncResponseModeButton(modeBtn, mode);
+  const modeBtn = config.modeButton ?? document.getElementById("fs-response-mode");
+  const syncModeBtn = () =>
+    syncResponseModeButton(modeBtn, mode, modeLabels, modeActive);
+
+  syncModeBtn();
 
   function mutationsForMode(m, fc) {
     return m === "popup" ? fc.baseMutations : fc.mergedMutations;
@@ -769,7 +789,7 @@ function wireResponseComparison(viz, diagram, config) {
     if (stepOneBased > 0 && viz._inspector?.step) {
       viz._inspector.step(stepOneBased);
     }
-    relabelInspector();
+    relabelInspector(inspectorRoot);
     refreshPopup();
   }
 
@@ -783,7 +803,8 @@ function wireResponseComparison(viz, diagram, config) {
 
   applyMutationSet();
 
-  const stepsContainer = document.getElementById("fs-steps-container");
+  const stepsContainer =
+    config.stepsContainer ?? document.getElementById("fs-steps-container");
   if (stepsContainer) {
     const syncPopupFromActiveStep = () => {
       const active = stepsContainer.querySelector(".fs-step.active");
@@ -820,10 +841,10 @@ function wireResponseComparison(viz, diagram, config) {
   }
 
   modeBtn?.addEventListener("click", () => {
-    const idx = RESPONSE_MODES.indexOf(mode);
-    mode = RESPONSE_MODES[(idx + 1) % RESPONSE_MODES.length];
+    const idx = cycleModes.indexOf(mode);
+    mode = cycleModes[(idx + 1) % cycleModes.length];
     writeResponseMode(mode, config.modeKey ?? RESPONSE_MODE_KEY);
-    syncResponseModeButton(modeBtn, mode);
+    syncModeBtn();
     const step = viz.state.currentStepDone || 0;
     syncStepPresentation(step);
   });
@@ -831,27 +852,34 @@ function wireResponseComparison(viz, diagram, config) {
   viz._playback?.onChange?.((event) => {
     if (event === "reset") {
       mode = readResponseMode(config.modeKey ?? RESPONSE_MODE_KEY);
+      if (!cycleModes.includes(mode)) mode = cycleModes[0];
       activeResponseMode = mode;
-      syncResponseModeButton(modeBtn, mode);
+      syncModeBtn();
       applyMutationSet();
       hideNodePopup();
       viz.closeOverlay?.();
-      relabelInspector();
+      relabelInspector(inspectorRoot);
     }
   });
 
-  window.addEventListener(
-    "resize",
-    () => {
-      const step = viz.state.currentStepDone || 0;
-      if (step > 0 && (mode === "popup" || mode === "both")) {
-        showPopupForStep(step);
-      }
-    },
-    { passive: true }
-  );
+  const onResizePopup = () => {
+    const step = viz.state.currentStepDone || 0;
+    if (step > 0 && (mode === "popup" || mode === "both")) {
+      showPopupForStep(step);
+    }
+  };
+  window.addEventListener("resize", onResizePopup, { passive: true });
 
-  return { syncStepPresentation, refreshPopup, hideNodePopup, onFlowChange };
+  return {
+    syncStepPresentation,
+    refreshPopup,
+    hideNodePopup,
+    onFlowChange,
+    teardown: () => {
+      window.removeEventListener("resize", onResizePopup);
+      hideNodePopup();
+    },
+  };
 }
 
 /** FlowStory requires badge on lightup steps; empty string satisfies validator without drawing a label. */
