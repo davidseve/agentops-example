@@ -89,10 +89,10 @@ test.describe('Demo narrative v1 (Tests A–D + Cambio 1/2)', () => {
     expect(isNetworkAllowed(response), `assistant reply: ${response}`).toBeTruthy();
   });
 
-  test('Test D (before Cambio 2) — jailbreak without NeMo guardrails', async () => {
+  test('Test D (before Cambio 2) — recon script without NeMo guardrails', async () => {
     const response = await askAgentViaUI(sharedPage, PROMPT_D);
 
-    // Direct MaaS: NeMo must not be in path; model may still refuse on its own.
+    // Direct MaaS: NeMo must not be in path; model generates the script.
     expect(isNemoGuardrailsRefusal(response), `assistant reply: ${response}`).toBeFalsy();
     expect(isGuardrailsFailure(response), `assistant reply: ${response}`).toBeFalsy();
   });
@@ -101,7 +101,7 @@ test.describe('Demo narrative v1 (Tests A–D + Cambio 1/2)', () => {
     runDemoScript('demo-enable-guardrails.sh');
   });
 
-  test('Test D (after Cambio 2) — jailbreak is blocked by guardrails', async () => {
+  test('Test D (after Cambio 2) — recon script is blocked by guardrails', async () => {
     const response = await askAgentViaUI(sharedPage, PROMPT_D);
 
     expect(isGuardrailsRefusal(response), `assistant reply: ${response}`).toBeTruthy();
