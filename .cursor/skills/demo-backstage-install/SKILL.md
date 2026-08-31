@@ -2,7 +2,7 @@
 name: demo-backstage-install
 description: >-
   One-shot backstage install of the full AgentOps demo v1 stack on OpenShift:
-  RHOAI, NeMo, OpenShell, UI proxy, OpenClaw with demo-initial policy and
+  RHOAI, NeMo, OpenShell, UI proxy, OpenClaw with default.yaml policy and
   direct MaaS. Use when deploying the demo, instalar demo completa, backstage
   setup, or preparing demo-narrativa-v1 before going on stage.
 ---
@@ -49,7 +49,9 @@ APPS_DOMAIN=$APPS_DOMAIN make -C deploy deploy-openclaw-ui-proxy
 
 make -C deploy validate-guardrails
 
-POLICY_FILE=policies/openclaw-demo-initial.yaml \
+./scripts/ensure-mlflow-experiment.sh
+
+POLICY_FILE=config/openshell/default.yaml \
 INFERENCE_BACKEND=direct \
 APPS_DOMAIN=$APPS_DOMAIN \
 make -C deploy launch-openclaw
@@ -65,7 +67,7 @@ VERIFY_PROFILE=demo ./scripts/verify.sh
 | RHOAI + MLflow + EvalHub | Deployed |
 | NeMo Guardrails CR | Ready (not in live inference path) |
 | OpenShell gateway | Connected |
-| OpenClaw sandbox | Demo-initial policy; github.com reachable |
+| OpenClaw sandbox | `default.yaml` — MLflow-only egress; google.com blocked |
 | Inference | `inference.local` → MaaS direct |
 | MLflow tracing | On from first token |
 
@@ -75,10 +77,19 @@ Control UI: `https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/`
 
 | Target | Policy | Verify profile |
 |---|---|---|
-| Demo backstage | `openclaw-demo-initial.yaml` | `VERIFY_PROFILE=demo` |
-| CI / `make demo` | `openclaw-sandbox.yaml` | `VERIFY_PROFILE=full` |
+| Demo backstage | `default.yaml` (MLflow only) | `VERIFY_PROFILE=demo` |
+| CI / `make demo` | `default.yaml` | `VERIFY_PROFILE=full` |
 
-Do **not** use `./scripts/cluster-lifecycle.sh full` alone for demo v1 — it launches with the hardened default policy.
+Both use the same baseline policy; demo verify runs the narrative E2E (`test-demo`) instead of the full hardened suite.
+
+## After AWS shutdown
+
+If the cluster was stopped overnight (AWS) but Helm releases are still present:
+
+1. Use skill **`demo-warmup`** — `./scripts/demo-warmup.sh` (status + auto-fix OpenClaw)
+2. Do **not** re-run `deploy-all` unless `demo-warmup status` exits 2 (platform broken)
+
+Then continue with `demo-backstage-prep` before going on stage.
 
 ## Teardown
 

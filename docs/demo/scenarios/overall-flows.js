@@ -774,23 +774,23 @@ export const LAYER_BOARDS = {
   "scenario-c-before": {
     headers: [
       ...INSPECTOR_HEADERS_C.slice(0, 4),
-      { value: "Egress          open  (github.com allowed)", style: "highlight", id: "l-egress" },
+      { value: "Egress          closed (default deny)", style: "highlight", id: "l-egress" },
       ...INSPECTOR_HEADERS_C.slice(4),
     ],
     body: [
-      { value: "curl -sI https://github.com", style: "add", id: "p-probe" },
-      { value: "Expected: may succeed (HTTP 200)", style: "add", id: "p-expect" },
+      { value: "curl -sI https://google.com", style: "add", id: "p-probe" },
+      { value: "Expected: blocked (timeout / denied)", style: "add", id: "p-expect" },
     ],
   },
   "scenario-c-after": {
     headers: [
       ...INSPECTOR_HEADERS_C.slice(0, 4),
-      { value: "Egress          blocked", style: "highlight", id: "l-egress" },
+      { value: "Egress          open (google.com)", style: "highlight", id: "l-egress" },
       ...INSPECTOR_HEADERS_C.slice(4),
     ],
     body: [
-      { value: "Cambio 1: ./scripts/demo-restrict-egress.sh", style: "add", id: "p-cmd" },
-      { value: "Same curl → timeout / denied", style: "add", id: "p-expect" },
+      { value: "Cambio 1: ./scripts/demo-allow-google-egress.sh", style: "add", id: "p-cmd" },
+      { value: "Same curl → HTTP 200 to google.com", style: "add", id: "p-expect" },
     ],
   },
   "scenario-d-before": {

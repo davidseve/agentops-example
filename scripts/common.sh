@@ -16,7 +16,7 @@ MLFLOW_EXPERIMENT_NAME="${MLFLOW_EXPERIMENT_NAME:-openclaw-tracing}"
 APPS_DOMAIN="${APPS_DOMAIN:-}"
 
 SECRETS_FILE="${SECRETS_FILE:-${PROJECT_DIR}/secrets/secrets.env}"
-POLICY_GITHUB_EGRESS="${POLICY_GITHUB_EGRESS:-${PROJECT_DIR}/config/openshell/github-egress.yaml}"
+POLICY_GOOGLE_EGRESS="${POLICY_GOOGLE_EGRESS:-${PROJECT_DIR}/config/openshell/google-egress.yaml}"
 POLICY_DEFAULT="${POLICY_DEFAULT:-${PROJECT_DIR}/config/openshell/default.yaml}"
 
 PASS_COUNT=0

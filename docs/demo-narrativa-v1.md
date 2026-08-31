@@ -5,13 +5,13 @@
 >
 > Duración objetivo: **~9–10 minutos** en vivo.
 
-Estado: guion activo. NeMo Guardrails desplegado en backstage; el provider live empieza en MaaS directo. Política inicial de demo con egress permisivo a propósito (Prueba C).
+Estado: guion activo. NeMo Guardrails desplegado en backstage; el provider live empieza en MaaS directo. Política inicial de demo con egress cerrado (solo MLflow) — Prueba C empieza con `curl` bloqueado.
 
 Extensión futura con EvalHub/Garak (segundo namespace, evals precomputadas): [`demo-narrativa-v2.md`](demo-narrativa-v2.md).
 
 ## Mensaje
 
-El agente (en esta demo, OpenClaw) es el de cliente (**BYOA**: el cliente trae el agente, sea un harness o no). Red Hat pone la plataforma: sandbox OpenShell, inferencia vía `inference.local` → MaaS, trazas MLflow, y (cuando toque) NeMo Guardrails. Vamos **añadiendo restricciones** delante del público, no partimos del bunker cerrado.
+El agente (en esta demo, OpenClaw) es el de cliente (**BYOA**: el cliente trae el agente, sea un harness o no). Red Hat pone la plataforma: sandbox OpenShell, inferencia vía `inference.local` → MaaS, trazas MLflow, y (cuando toque) NeMo Guardrails. Vamos **añadiendo controles** delante del público: egress cerrado al inicio, allowlist selectiva en vivo, Guardrails al final.
 
 ## Estado inicial (antes del primer prompt)
 
@@ -21,9 +21,9 @@ Nada que “encender” en escena salvo el Control UI:
 - **MLflow tracing** activo (plugin `mlflow-openclaw`). Cada intento deja traza.
 - **Credenciales de MaaS no están en el sandbox** (`apiKey: unused`; el router de OpenShell inyecta la key).
 - **Landlock / política de ficheros** ya aplicada (el agente no debe leer `/etc/shadow` ni secretos).
-- **Egress todavía permisivo** a propósito: un `curl` a un sitio no autorizado **sí puede salir**. Eso permite el primer cambio de config en vivo.
+- **Egress cerrado** a propósito: un `curl` a Internet **no sale** (solo MLflow permitido). Eso permite el primer cambio de config en vivo.
 
-La política “final” de CI ([`config/openshell/default.yaml`](../config/openshell/default.yaml)) **no** es el estado de arranque de la demo: en CI el egress no autorizado ya está cerrado. Para el relato hace falta [`config/openshell/github-egress.yaml`](../config/openshell/github-egress.yaml) y luego endurecerla en vivo.
+La política de arranque es [`config/openshell/default.yaml`](../config/openshell/default.yaml) (MLflow only). Antes de Prueba C, `demo-reset.sh` confirma ese estado. Cambio 1 aplica [`config/openshell/google-egress.yaml`](../config/openshell/google-egress.yaml) en vivo.
 
 Reset entre ensayos: `./scripts/demo-reset.sh`.
 
@@ -32,7 +32,7 @@ Reset entre ensayos: `./scripts/demo-reset.sh`.
 ```text
 MLflow ON ──────────────────────────────────────────────► (todas las trazas)
 inference.local → MaaS  ──────────────►  → NeMo → MaaS     (2º cambio)
-egress abierto  ──►  egress restringido                   (1º cambio)
+egress cerrado  ──►  egress selectivo (google.com)         (1º cambio)
 ficheros / credenciales ya cerrados desde el minuto 0
 ```
 
@@ -49,7 +49,7 @@ Qué contar, en este orden:
 5. **MaaS** — el modelo. Último salto de inferencia.
 6. **MLflow** — observabilidad: **todas** las trazas desde el primer token (live). Aquí volveremos tras cada prueba.
 
-Frase: “Esto es lo que hay montado. Ahora no vamos a instalar nada: vamos a **usar** cada capa y a **cerrar** las que todavía están abiertas.”
+Frase: “Esto es lo que hay montado. Ahora no vamos a instalar nada: vamos a **usar** cada capa y a **controlar** las que todavía están cerradas.”
 
 ```mermaid
 flowchart TB
@@ -77,15 +77,15 @@ Qué debería mostrar, siempre visible o a un clic:
 | Zona del panel | Comportamiento |
 |---|---|
 | **Arquitectura** | El flujo agente → sandbox → `inference.local` → (NeMo) → MaaS. NeMo en gris hasta el 2º cambio; luego en verde |
-| **Capas de seguridad** | Credenciales, ficheros, egress, Guardrails. Cada una: *ya activa* / *aún abierta* / *recién cerrada* |
+| **Capas de seguridad** | Credenciales, ficheros, egress, Guardrails. Cada una: *ya activa* / *aún cerrada* / *recién abierta* |
 | **Qué puede / no puede el agente** | Tras cada prueba: key, `/etc/shadow`, `curl`, jailbreak — permitido vs bloqueado |
 | **Observabilidad** | Enlace o embed a la traza MLflow del turno que acabamos de hacer |
 
 Así el público no pierde el mapa cuando saltamos al chat, a `oc`/`openshell policy`, o a MLflow. Las “slides” son el propio panel actualizándose.
 
-**Intro:** panel FlowStory en [`docs/demo/layers.html`](demo/layers.html). Abrir con `python3 -m http.server` desde `docs/demo/`. Detalle en [`docs/demo/README.md`](demo/README.md).
+**Intro:** panel FlowStory en [`docs/demo/overall-demo-architecture.html`](demo/overall-demo-architecture.html). Abrir con `python3 -m http.server` desde `docs/demo/`. Detalle en [`docs/demo/README.md`](demo/README.md). Durante A–D, paneles enfocados enlazados desde el mapa global: [`scenarios/test-a-credentials.html`](demo/scenarios/test-a-credentials.html) … D (C y D con Before/After).
 
-**En vivo:** [`docs/demo/live.html`](demo/live.html) — pruebas A–D + prompts para copiar en OpenClaw, pantalla partida con el Control UI.
+**En vivo:** [`docs/demo/v1/live.html`](demo/v1/live.html) — pruebas A–D + prompts para copiar en OpenClaw, pantalla partida con el Control UI. Launcher: [`docs/demo/index.html`](demo/index.html).
 
 ### 1. Configuración inicial — sin tocar nada
 
@@ -105,13 +105,15 @@ Hasta aquí: cero cambios de configuración.
 
 ### 2. Primer cambio — egress
 
-**Prueba C — `curl` a un sitio que no debería** (p. ej. GitHub, un host público).
+Antes de Prueba C: `./scripts/demo-reset.sh` (confirma política MLflow-only).
 
-Esperado **antes del cambio**: **sale** (la política de red aún no lo prohíbe). Eso duele: el agente puede exfiltrar o hablar con Internet.
+**Prueba C — `curl` a un sitio que no debería** (`curl -sI https://google.com`).
 
-**Cambio 1 (en vivo):** endurecer network policy del sandbox (allowlist: `inference.local` + MLflow; el resto deny). Misma prueba C otra vez → **bloqueado**.
+Esperado **antes del cambio**: **bloqueado** (default deny — solo MLflow permitido). El agente no puede hablar con Internet.
 
-Una palanca visible: `./scripts/demo-restrict-egress.sh` (`openshell policy set`, no un rebuild).
+**Cambio 1 (en vivo):** allowlist selectiva — `google.com:443` para `/usr/bin/curl`. Misma prueba C otra vez → **sale** (HTTP 200). `github.com` sigue bloqueado.
+
+Una palanca visible: `./scripts/demo-allow-google-egress.sh` (`openshell policy set`, no un rebuild).
 
 ### 3. Segundo cambio — NeMo Guardrails
 
@@ -142,7 +144,7 @@ Según fluidez en ensayos:
 - **Opción A:** un vistazo rápido después de A/B y otro después de C/D.
 - **Opción B:** un bloque único al final del en vivo.
 
-Qué enseñar: la **misma conversación** en GenAI Studio — intentos de key, fichero, curl que funcionó, curl que falló, jailbreak sucio, jailbreak cortado. Fallos y éxitos en el mismo sitio. MLflow no es un extra: es el hilo.
+Qué enseñar: la **misma conversación** en GenAI Studio — intentos de key, fichero, curl bloqueado, curl permitido, jailbreak sucio, jailbreak cortado. Fallos y éxitos en el mismo sitio. MLflow no es un extra: es el hilo.
 
 ### 5. Cierre
 
@@ -154,7 +156,7 @@ Qué enseñar: la **misma conversación** en GenAI Studio — intentos de key, f
 |---|---|---|
 | Contexto: mapa arquitectura + panel (MLflow, NeMo en el dibujo) | 1–2 | En vivo, solo recorre el panel |
 | Key + ficheros | 2–3 | En vivo, config inicial |
-| Curl que sale + policy egress | 2 | En vivo, 1er cambio |
+| Curl bloqueado + allowlist google | 2 | En vivo, 1er cambio |
 | Jailbreak + rewire a NeMo | 2–3 | En vivo, 2º cambio |
 | MLflow trazas del sandbox live | 1–2 | En vivo (momento flexible) |
 | Cierre | 0.5–1 | — |
@@ -164,8 +166,8 @@ Si aprieta el tiempo: un solo salto a MLflow (live). No recortar key + ficheros 
 ## Backstage (no se ve)
 
 - NeMo Guardrails desplegado pero **el provider live empieza en MaaS directo**.
-- Política inicial de demo: [`github-egress.yaml`](../config/openshell/github-egress.yaml) — egress abierto hacia host de prueba (p. ej. GitHub) además de MLflow.
-- Política CI (`default.yaml`): estado **final** endurecido; aplicar en vivo con `demo-restrict-egress.sh`.
+- Política inicial de demo: [`default.yaml`](../config/openshell/default.yaml) — egress cerrado (solo MLflow).
+- Política post–Cambio 1: [`google-egress.yaml`](../config/openshell/google-egress.yaml); aplicar en vivo con `demo-allow-google-egress.sh`.
 - Video de respaldo si falla el `policy update` o el rewire a NeMo.
 
 ## Relación con el trabajo técnico (no es el script de ensayo)
@@ -175,15 +177,15 @@ Si aprieta el tiempo: un solo salto a MLflow (live). No recortar key + ficheros 
 | MLflow desde el minuto 0 | Ya está ([ADR-0010](adr/0010-mlflow-tracing-otel.md)); no desactivar traces para “simplificar” |
 | Key no está en el sandbox | Inference router; no reintroducir la key en el agente |
 | Ficheros ya bloqueados | Landlock / `tools.fs.workspaceOnly` en la config inicial |
-| Curl que **sí** sale, luego se cierra | `github-egress.yaml` al crear sandbox; `demo-restrict-egress.sh` en vivo |
+| Curl **bloqueado**, luego allowlist google | `default.yaml` al crear sandbox; `demo-allow-google-egress.sh` en vivo |
 | Jailbreak que **sí** pasa, luego NeMo | `demo-enable-guardrails.sh` ([ADR-0004](adr/0004-nemo-guardrails-via-trustyai.md)) |
-| Reset entre ensayos | `demo-reset.sh` → MaaS directo + política inicial |
+| Reset entre ensayos | `demo-reset.sh` → MaaS directo + `default.yaml` |
 
-El ítem deferred del ROADMAP (“default-deny y ir **abriendo** MaaS/MLflow”) **no** es este relato. Aquí MaaS y MLflow están desde el principio; lo progresivo es **cerrar egress** y **poner Guardrails**.
+El relato activo usa default-deny egress al inicio y **abre** google.com en vivo (allowlist selectiva). MaaS y MLflow están desde el principio; lo progresivo es **controlar egress** y **poner Guardrails**.
 
 ## Pendiente de decidir en ensayos
 
 - MLflow: ¿cortes intermedios o un bloque al final? El panel puede llevar el enlace en ambos casos.
-- Host concreto del `curl` (debe verse el 200 y luego el bloqueo).
+- Host concreto del `curl` (debe verse el bloqueo y luego el 200 a google.com).
 - Un único prompt de jailbreak que falle de forma obvia sin NeMo y se corte con rails.
-- Dónde vive el panel: intro en [`layers.html`](demo/layers.html); companion en [`live.html`](demo/live.html). Enganchar al estado real del sandbox sigue siendo opcional.
+- Dónde vive el panel: arquitectura general en [`overall-demo-architecture.html`](demo/overall-demo-architecture.html); companion en [`v1/live.html`](demo/v1/live.html). Enganchar al estado real del sandbox sigue siendo opcional.

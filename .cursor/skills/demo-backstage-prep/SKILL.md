@@ -17,8 +17,8 @@ Final checks after `demo-backstage-install`, before opening to the audience.
 ```
 Pre-stage prep:
 - [ ] 1. Confirm direct MaaS (no NeMo in path)
-- [ ] 2. Confirm demo-initial egress (github reachable)
-- [ ] 3. Start presenter HTTP server
+- [ ] 2. Ensure MLflow experiment + demo-initial egress (default.yaml)
+- [ ] 3. Start presenter panels (UI + observability proxy)
 - [ ] 4. Open Control UI + panels (split screen)
 - [ ] 5. Optional rehearsal reset
 ```
@@ -31,18 +31,32 @@ Pre-stage prep:
 
 Expected: `Inference route: maas-direct / <model> (direct MaaS)`
 
-### 2. Confirm demo-initial policy
+### 2. MLflow experiment + demo-initial policy
+
+Ensure the `openclaw-tracing` experiment exists in your workspace (ids are per-workspace — never assume `id=1`):
+
+```bash
+./scripts/ensure-mlflow-experiment.sh
+```
+
+Re-launch OpenClaw so `openclaw.json` carries the resolved experiment id (fixes `No Experiment with id=1` trace export errors):
+
+```bash
+POLICY_FILE=config/openshell/default.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+```
+
+Confirm demo-initial egress (default deny):
 
 ```bash
 make -C deploy validate-demo-initial
 ```
 
-Expected: `github.com reachable for demo Test C`
+Expected: `google.com blocked` and `github.com blocked`
 
-If sandbox was created with hardened policy, re-launch:
+If sandbox was created with wrong policy, re-launch with demo policy:
 
 ```bash
-POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
+POLICY_FILE=config/openshell/default.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
 ```
 
 ### 3. Start presenter panels
@@ -50,11 +64,20 @@ POLICY_FILE=policies/openclaw-demo-initial.yaml INFERENCE_BACKEND=direct make -C
 Use `demo-presenter-panel` skill or:
 
 ```bash
-cd docs/demo && python3 -m http.server 8765
+# Optional: verify cluster + ports without starting servers
+./scripts/demo-presenter-serve.sh --check-only
+
+# Start static UI (:8765) + observability proxy (:8766)
+./scripts/demo-presenter-serve.sh
 ```
 
-- Intro: `http://127.0.0.1:8765/layers.html`
-- Live companion: `http://127.0.0.1:8765/live.html`
+The script prints URLs when ready:
+
+- Overall demo architecture: `http://127.0.0.1:8765/overall-demo-architecture.html`
+- Live companion (v1): `http://127.0.0.1:8765/v1/live.html`
+- Launcher: `http://127.0.0.1:8765/index.html`
+
+If port `8765` or `8766` is already in use: `lsof -ti :8765 | xargs kill` (or `:8766`).
 
 ### 4. Open Control UI
 
@@ -62,7 +85,7 @@ cd docs/demo && python3 -m http.server 8765
 https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/
 ```
 
-Split screen: Control UI + `live.html`.
+Split screen: Control UI + `v1/live.html`.
 
 ### 5. Optional rehearsal reset
 
@@ -70,13 +93,13 @@ Split screen: Control UI + `live.html`.
 ./scripts/demo-reset.sh
 ```
 
-Then **New session** in Control UI before running tests A–D.
+Then **New session** in Control UI before running tests A–D. Run `demo-reset.sh` again immediately before Scenario C (C-pre).
 
 ## Expected result
 
-- Three browser targets ready: layers (optional recap), live companion, Control UI
-- Sandbox on demo-initial policy with direct MaaS
-- No live config changes needed until Test C (egress) and Test D (NeMo)
+- Three browser targets ready: `overall-demo-architecture.html` (optional phase 0 recap), `v1/live.html`, Control UI
+- Sandbox on `default.yaml` (MLflow-only egress) with direct MaaS
+- No live config changes needed until Test C (`demo-allow-google-egress.sh`) and Test D (NeMo)
 
 ## Related skills
 

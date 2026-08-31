@@ -1,9 +1,7 @@
 version: 1
 
-# Default OpenShell sandbox policy: MLflow traces only; no public egress.
-# Default POLICY_FILE in launch-openclaw.sh, CI validate-security, demo-reset,
-# and demo backstage (Test C before Cambio 1). Post–Cambio 1 google egress:
-# config/openshell/google-egress.yaml via demo-allow-google-egress.sh.
+# Variant of default.yaml with demo_egress_google — curl to google.com for Test C (post–Cambio 1).
+# Apply live via demo-allow-google-egress.sh; demo-reset.sh switches back to default.yaml.
 
 filesystem_policy:
   include_workdir: false
@@ -19,8 +17,6 @@ process:
 
 network_policies:
   # LLM inference: handled by OpenShell's inference router (inference.local).
-  # No explicit network policy needed — inference.local traffic is internal
-  # to the OpenShell proxy. Provider credentials injected at the gateway layer.
 
   mlflow_direct:
     name: rhoai-mlflow-direct-traces
@@ -34,3 +30,14 @@ network_policies:
     # node: OpenClaw gateway + mlflow-openclaw trace export (not curl — validation uses oc exec)
     binaries:
       - { path: /usr/bin/node }
+
+  demo_egress_google:
+    name: demo-permissive-google
+    endpoints:
+      - host: "google.com"
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+    binaries:
+      - { path: /usr/bin/curl }

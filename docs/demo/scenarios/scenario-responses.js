@@ -132,22 +132,22 @@ export const OVERLAYS_B = {
   },
 };
 
-/** Test C — Before (egress open) */
+/** Test C — Before (default deny egress) */
 export const RESPONSES_C_BEFORE = {
-  1: [`${LAYER_NAMES.controlUI} prompt — curl github.com`],
+  1: [`${LAYER_NAMES.controlUI} prompt — curl google.com`],
   2: ["GW forwards curl prompt to OpenClaw"],
-  4: ["GW forwards curl to github.com", "demo-initial policy allows this host"],
-  7: ["OpenClaw reports HTTP 200 headers"],
-  8: ["Control UI shows curl output — egress risk visible"],
+  4: ["GW denies unauthorized egress", "default.yaml — MLflow only"],
+  7: ["OpenClaw reports blocked / timeout"],
+  8: ["Control UI shows no HTTP 200 — egress closed"],
 };
 
 export const OVERLAYS_C_BEFORE = {
   1: {
     node: "user",
     title: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`,
-    description: "Auditor asks for curl -sI https://github.com via the Control UI.",
+    description: "Auditor asks for curl -sI https://google.com via the Control UI.",
     details: [
-      ["Prompt", "curl -sI https://github.com"],
+      ["Prompt", "curl -sI https://google.com"],
       ["Path", "Control UI → GW → OpenClaw"],
     ],
     color: COLORS.endUser,
@@ -157,78 +157,89 @@ export const OVERLAYS_C_BEFORE = {
     title: `${LAYER_NAMES.openClaw} — curl probe`,
     description: "Agent runs the shell tool inside the sandbox. Egress leaves through the gateway.",
     details: [
-      ["Command", "curl -sI https://github.com"],
+      ["Command", "curl -sI https://google.com"],
       ["Sandbox", "OpenShell Agent Sandbox"],
     ],
     color: COLORS.oc,
   },
   4: {
     node: "gw",
-    title: `${LAYER_NAMES.gw} → ${LAYER_NAMES.internet}`,
-    description: "Gateway forwards the outbound curl — github.com is allowed in demo-initial policy.",
+    title: `${LAYER_NAMES.gw} — deny egress`,
+    description: "Gateway blocks outbound curl — default deny policy (MLflow only).",
     details: [
-      ["Request", "curl -sI https://github.com"],
-      ["Policy", "demo-initial — github.com allowed"],
+      ["Request", "curl -sI https://google.com"],
+      ["Policy", "default.yaml — public egress denied"],
     ],
-    color: COLORS.warn,
+    color: COLORS.denied,
   },
   7: {
     node: "oc",
-    title: `${LAYER_NAMES.openClaw} — curl OK`,
-    description: "HTTP 200 response returns through the gateway. Audience should feel the risk.",
+    title: `${LAYER_NAMES.openClaw} — curl blocked`,
+    description: "No HTTP 200 — connection denied or timeout.",
     details: [
-      ["Result", "HTTP/2 200 — headers visible"],
-      ["Egress", "Still permissive"],
+      ["Result", "blocked / timeout"],
+      ["Egress", "closed (default deny)"],
     ],
-    color: COLORS.warn,
+    color: COLORS.denied,
   },
   8: {
     node: "user",
-    title: `${LAYER_NAMES.endUser} · egress open`,
-    description: "Chat shows curl succeeded — Cambio 1 will close unauthorized egress.",
+    title: `${LAYER_NAMES.endUser} · egress closed`,
+    description: "Chat shows curl failed — Cambio 1 will allowlist google.com.",
     details: [
-      ["Control UI", "HTTP 200 visible"],
-      ["Next", "demo-restrict-egress.sh"],
+      ["Control UI", "no HTTP 200"],
+      ["Next", "demo-allow-google-egress.sh"],
     ],
     color: COLORS.risk,
   },
 };
 
-/** Test C — After (egress restricted) */
+/** Test C — After (selective google allowlist) */
 export const RESPONSES_C_AFTER = {
   1: ["Same curl prompt after Cambio 1"],
-  4: ["GW denies unauthorized egress", "Policy enforced at gateway"],
-  6: ["Control UI: curl blocked / timeout"],
+  4: ["GW forwards curl to google.com", "demo_egress_google policy allows this host"],
+  7: ["OpenClaw reports HTTP 200 headers"],
+  8: ["Control UI shows curl output — selective egress open"],
 };
 
 export const OVERLAYS_C_AFTER = {
   1: {
     node: "user",
     title: `${LAYER_NAMES.endUser} · retry`,
-    description: "Same curl prompt after running demo-restrict-egress.sh.",
+    description: "Same curl prompt after running demo-allow-google-egress.sh.",
     details: [
-      ["Command", "./scripts/demo-restrict-egress.sh"],
-      ["Prompt", "curl -sI https://github.com (again)"],
+      ["Command", "./scripts/demo-allow-google-egress.sh"],
+      ["Prompt", "curl -sI https://google.com (again)"],
     ],
     color: COLORS.endUser,
   },
   4: {
     node: "gw",
-    title: `${LAYER_NAMES.gw} — deny egress`,
-    description: "After Cambio 1, the gateway blocks unauthorized outbound curl.",
+    title: `${LAYER_NAMES.gw} → ${LAYER_NAMES.internet}`,
+    description: "After Cambio 1, the gateway allowlists google.com for curl.",
     details: [
-      ["Egress layer", "blocked"],
-      ["Result", "timeout / connection denied"],
+      ["Request", "curl -sI https://google.com"],
+      ["Policy", "google-egress.yaml — google.com allowed"],
     ],
-    color: COLORS.denied,
+    color: COLORS.warn,
+  },
+  7: {
+    node: "oc",
+    title: `${LAYER_NAMES.openClaw} — curl OK`,
+    description: "HTTP 200 response returns through the gateway.",
+    details: [
+      ["Result", "HTTP/2 200 — headers visible"],
+      ["Egress", "selective allowlist"],
+    ],
+    color: COLORS.warn,
   },
   6: {
     node: "user",
     title: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`,
-    description: "No successful public egress — same prompt fails after Cambio 1.",
+    description: "Successful curl to google.com — github.com remains blocked.",
     details: [
-      ["Control UI", "No github.com headers"],
-      ["Audience sees", "Cambio 1 held"],
+      ["Control UI", "HTTP 200 to google.com"],
+      ["Audience sees", "selective allowlist"],
     ],
     color: COLORS.secure,
   },

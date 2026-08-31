@@ -1,8 +1,8 @@
 ---
 name: demo-reset
 description: >-
-  Reset the live demo to initial v1 state: direct MaaS inference and permissive
-  demo-initial egress policy. Use between rehearsals, ensayo, reset demo, or
+  Reset the live demo to initial v1 state: direct MaaS inference and MLflow-only
+  egress policy (default.yaml). Use between rehearsals, ensayo, reset demo, or
   before re-running tests A-D after a full presentation run.
 ---
 
@@ -17,6 +17,7 @@ Restore backstage initial state for [`demo-narrativa-v1.md`](../../docs/demo-nar
 - Between rehearsal runs
 - After completing full A–D presentation
 - Before starting a fresh timed run
+- Before Scenario C (confirms default deny egress)
 
 ## Run
 
@@ -27,20 +28,20 @@ Restore backstage initial state for [`demo-narrativa-v1.md`](../../docs/demo-nar
 This calls:
 
 1. `demo-disable-guardrails.sh` → direct MaaS
-2. `openshell policy set` → [`config/openshell/github-egress.yaml`](../../config/openshell/github-egress.yaml)
+2. `openshell policy set` → [`config/openshell/default.yaml`](../../config/openshell/default.yaml)
 
 ## Required follow-up
 
 **New session** in OpenClaw Control UI before re-running tests A–D.
 
-The script reminds: `start New session in Control UI before re-running A–D`
+The script reminds: `start New session in Control UI before Scenario C`
 
 ## Expected result
 
 | Setting | Value |
 |---|---|
 | Inference | `maas-direct` / `INFERENCE_MODEL` |
-| Egress policy | Permissive (github.com reachable for Test C) |
+| Egress policy | MLflow only (`default.yaml`); google.com and github.com blocked |
 | NeMo | Deployed but not in inference path |
 
 Optional verify:
@@ -53,4 +54,4 @@ VERIFY_PROFILE=demo SKIP_E2E=1 ./scripts/verify.sh
 
 - Full install: `demo-backstage-install`
 - Present: `demo-present`
-- Cambio 1 only undo | Re-run reset (no partial undo for egress alone)
+- Cambio 1 only | Run `demo-allow-google-egress` (no partial undo for egress alone except reset)

@@ -102,7 +102,7 @@ SKIP_E2E ?=
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub
 .PHONY: wait-nemoguardrails-crd deploy-guardrails undeploy-guardrails validate-guardrails deploy-all
 .PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration ensure-mlflow-experiment validate-openshell
-.PHONY: validate-openclaw validate-traces validate-security validate-demo-initial validate-scenario-a-baseline
+.PHONY: validate-openclaw validate-traces validate-security validate-demo-initial validate-demo-google-egress validate-scenario-a-baseline
 .PHONY: test-e2e test-ui test-security test-mlflow test-guardrails test-demo test-scenario-a
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
@@ -426,7 +426,6 @@ deploy-openshell: helm-env
 	@# value. Found 2026-08-05 while wiring this up.
 	$(HELM) upgrade --install $(OPENSHELL_RELEASE) $(OPENSHELL_CHART) \
 		--namespace $(OPENSHELL_NAMESPACE) --create-namespace \
-		-f $(OPENSHELL_CHART)/values-openshift.yaml \
 		$(if $(APPS_DOMAIN),--set global.appsDomain=$(APPS_DOMAIN)) \
 		$(if $(APPS_DOMAIN),--set "openshell.pkiInitJob.serverDnsNames[0]=openshell-gw-$(OPENSHELL_NAMESPACE).$(APPS_DOMAIN)") \
 		$(if $(APPS_DOMAIN),--set "openshell.pkiInitJob.serverDnsNames[1]=*.$(APPS_DOMAIN)") \
@@ -638,15 +637,51 @@ validate-security:
 	fi
 
 validate-demo-initial:
-	@echo "=== Demo Initial Sandbox Policy (permissive egress for Test C) ==="
+	@echo "=== Demo Initial Sandbox Policy (MLflow-only egress — Test C before Cambio 1) ==="
 	@openshell gateway select $(GATEWAY_NAME) >/dev/null 2>&1 || true
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
 		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null; echo'); \
 	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "000" ] || [ "$$RESULT" = "403" ] || [ -z "$$RESULT" ]; then \
+		echo "OK: github.com blocked (code: $${RESULT:-timeout})"; \
+	else \
+		echo "FAIL: github.com reachable (HTTP $$RESULT) — run demo-reset.sh"; exit 1; \
+	fi
+	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://google.com 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "000" ] || [ "$$RESULT" = "403" ] || [ -z "$$RESULT" ]; then \
+		echo "OK: google.com blocked (code: $${RESULT:-timeout})"; \
+	else \
+		echo "FAIL: google.com reachable (HTTP $$RESULT) — run demo-reset.sh"; exit 1; \
+	fi
+	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://inference.local/v1/models 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "200" ]; then \
+		echo "OK: inference.local reachable (HTTP $$RESULT)"; \
+	else \
+		echo "FAIL: inference.local not reachable (HTTP $$RESULT)"; exit 1; \
+	fi
+
+validate-demo-google-egress:
+	@echo "=== Demo Post–Cambio 1 Sandbox Policy (google.com allowlisted) ==="
+	@openshell gateway select $(GATEWAY_NAME) >/dev/null 2>&1 || true
+	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://google.com 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
 	case "$$RESULT" in \
-		200|301|302) echo "OK: github.com reachable for demo Test C (HTTP $$RESULT)" ;; \
-		*) echo "FAIL: github.com not reachable (HTTP $${RESULT:-timeout}) — use config/openshell/github-egress.yaml at sandbox create"; exit 1 ;; \
+		200|301|302) echo "OK: google.com reachable for demo Test C (HTTP $$RESULT)" ;; \
+		*) echo "FAIL: google.com not reachable (HTTP $${RESULT:-timeout}) — run demo-allow-google-egress.sh"; exit 1 ;; \
 	esac
+	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
+		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null; echo'); \
+	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
+	if [ "$$RESULT" = "000" ] || [ "$$RESULT" = "403" ] || [ -z "$$RESULT" ]; then \
+		echo "OK: github.com still blocked (code: $${RESULT:-timeout})"; \
+	else \
+		echo "FAIL: github.com reachable (HTTP $$RESULT) — policy too permissive"; exit 1; \
+	fi
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
 		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://inference.local/v1/models 2>/dev/null; echo'); \
 	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
