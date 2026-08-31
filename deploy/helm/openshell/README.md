@@ -11,9 +11,8 @@ upstream gateway itself, rendered together.
 `Chart.yaml`). The pinned `dependencies[].version` + the committed `Chart.lock` are the
 single source of truth for the deployed OpenShell version (see
 [ADR-0006](../../../docs/adr/0006-explicit-version-pinning.md)) — not a Makefile variable.
-Upstream values are set directly under the `openshell:` key in this chart's own
-`values.yaml`/`values-openshift.yaml`, which Helm passes straight through to the subchart
-via the alias.
+Upstream values are set directly under the `openshell:` key in `values.yaml`, which Helm
+passes straight through to the subchart via the alias.
 
 > History: this chart went through two earlier, abandoned designs on 2026-08-05 — first an
 > unused `dependencies:` declaration that no template ever rendered (dead weight, broke
@@ -32,8 +31,8 @@ APPS_DOMAIN=apps.example.com make -C deploy deploy-openshell   # single helm upg
 APPS_DOMAIN=apps.example.com make -C deploy deploy-openclaw-ui-proxy  # nginx mTLS bridge for Control UI (ADR-0011)
 ```
 
-`deploy-openshell` always renders with `-f values-openshift.yaml` — there is no
-non-OpenShift use case for this chart, so that overlay isn't optional. It also runs
+`deploy-openshell` uses the chart's default `values.yaml` (OpenShift-only — SCC
+RoleBinding, SCC-compatible security context, Route, gateway StatefulSet). It also runs
 `helm dependency build` first (pulls the pinned OCI chart per `Chart.lock`, cached locally
 after the first run) and installs with `--create-namespace` (the chart does **not** template
 its own `Namespace` object — see "Namespace" below for why). It additionally passes two
@@ -59,12 +58,12 @@ Then launch OpenClaw (creates the sandbox if missing):
 ./scripts/launch-openclaw.sh
 ```
 
-## Values files
+## Values
 
-| File | Purpose |
-|---|---|
-| `values.yaml` | This chart's own defaults, plus upstream overrides under `openshell:` (image tags — keep in sync with `Chart.yaml`'s `dependencies[].version`) |
-| `values-openshift.yaml` | OpenShift overlay: SCC RoleBinding, UID/fsGroup left to SCC admission — always applied by `deploy-openshell` |
+`values.yaml` holds all chart defaults: wrapper settings (`openshift.scc`, `route`),
+upstream overrides under `openshell:` (image tags — keep in sync with `Chart.yaml`'s
+`dependencies[].version`), and OpenShift SCC-compatible `podSecurityContext` /
+`securityContext` (`runAsUser` / `fsGroup` left `null` for SCC admission).
 
 ## Namespace
 
