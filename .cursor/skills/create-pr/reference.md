@@ -1,6 +1,6 @@
 # PR Template Reference
 
-Canonical example: [PR #1 — feat: add RHOAI installation Helm charts](https://github.com/davidseve/agentops-example/pull/1)
+Canonical example: [PR #1 — feat: add RHOAI installation Helm charts](https://github.com/davidseve/agentops-showcase/pull/1)
 
 ## Full body (PR #1)
 

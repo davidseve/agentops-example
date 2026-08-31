@@ -3,7 +3,7 @@
 ## File placement map
 
 ```
-agentops-example/
+agentops-showcase/
 ├── docs/
 │   ├── ROADMAP.md                    # check off completed tasks
 │   ├── adr/                          # Architecture Decision Records (one file per decision)

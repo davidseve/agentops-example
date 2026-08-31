@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Cluster lifecycle manager for AgentOps demo (agentops-example).
+# Cluster lifecycle manager for AgentOps demo (agentops-showcase).
 #
 # Usage:
 #   ./scripts/cluster-lifecycle.sh preflight   # tools, secrets, cluster clean, playwright deps

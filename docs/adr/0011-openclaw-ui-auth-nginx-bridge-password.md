@@ -247,7 +247,7 @@ Pinned version today: see `OPENCLAW_PIN` in
 Against a candidate OpenShell chart version:
 
 ```bash
-# From agentops-example after helm dependency build / against OpenShell clone:
+# From agentops-showcase after helm dependency build / against OpenShell clone:
 rg -n 'client_ca_path' deploy/helm/openshell/charts/*/templates/gateway-config.yaml \
   ../OpenShell/deploy/helm/openshell/templates/gateway-config.yaml
 

@@ -6,7 +6,7 @@
 ## Project Overview
 
 **Name**: Enterprise Secure Agent Platform - AgentOps Demo  
-**Repo**: https://github.com/davidseve/agentops-example  
+**Repo**: https://github.com/davidseve/agentops-showcase  
 **Target Platform**: Red Hat OpenShift AI (RHOAI) 3.x  
 **Language**: English  
 **Presentation Format**: 20 min total (5-8 min theory + 10-13 min live demo)
@@ -150,7 +150,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `sync-agent-sandbox-doc` | Keep [docs/AGENT-SANDBOX-AND-OPENSHELL.md](docs/AGENT-SANDBOX-AND-OPENSHELL.md) in sync when sandbox/openshell/launch paths change |
 | `document-feature` | After adding or validating a component — document in `docs/`, update ROADMAP, README, AGENTS.md |
 | `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/) |
-| `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure |
+| `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-showcase/pull/1) structure |
 | `no-secrets` | Scan for credentials before commit or PR |
 | `redhat-kb` | Search Red Hat Knowledge Base for official troubleshooting |
 
@@ -227,7 +227,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **Idempotent**: Deploy/teardown must be repeatable with a single command
 - **BYOA principle**: The agent layer is intentionally decoupled from the platform. The platform works regardless of which framework/harness is chosen
 - **Document new or modified functionality**: After adding or modifying a stack technology (version, deploy path, prereqs, verify steps), the `technology-usage-docs` rule requires running the `document-feature` skill in the same session — create or update guides in `docs/`, cross-link `ROADMAP.md`, `README.md`, and `AGENTS.md`
-- **Pull requests**: Use the `create-pr` skill — body must follow [PR #1](https://github.com/davidseve/agentops-example/pull/1) structure (`Summary`, `Details`, `Test plan`); no default assignee unless the user requests one
+- **Pull requests**: Use the `create-pr` skill — body must follow [PR #1](https://github.com/davidseve/agentops-showcase/pull/1) structure (`Summary`, `Details`, `Test plan`); no default assignee unless the user requests one
 
 ## Open Questions
 
