@@ -1,0 +1,282 @@
+/**
+ * Log noise/signal classification for the v1 observability panel.
+ *
+ * Three tiers: signal (green), warn (amber), noise (gray).
+ * Filter ON → only signal + warn. Filter OFF → all lines (noise in gray).
+ *
+ * Sandbox rules: docs/demo/demo-scenario-logs.md § Sandbox panel highlight rules
+ */
+
+/** @typedef {"signal" | "warn" | "noise"} LineTier */
+
+/**
+ * @typedef {{ re: RegExp, tier: LineTier }} PatternRule
+ */
+
+/** Default focus filter per component tab (signal + warn only). */
+export const DEFAULT_HIDE_NOISE = {
+  sandbox: true,
+  openclaw: true,
+  openshell: true,
+  nemo: true,
+};
+
+/** Highlight tiers when a line matches (first match wins). Everything else is noise. */
+export const SIGNAL_PATTERNS = {
+  sandbox: [
+    { re: /OCSF NET:OPEN.*DENIED/i, tier: "warn" },
+    { re: /OCSF HTTP:.*DENIED/i, tier: "warn" },
+    { re: /no matching policy/i, tier: "warn" },
+    { re: /sk-[a-zA-Z0-9]{8,}/i, tier: "warn" },
+    {
+      re: /OCSF NET:OPEN.*ALLOWED.*(maas|anthropic|openai|bedrock|redhatworkshops)/i,
+      tier: "warn",
+    },
+    { re: /OCSF NET:OPEN.*DENIED.*inference\.local/i, tier: "warn" },
+    { re: /OCSF NET:OPEN.*ALLOWED.*inference\.local/i, tier: "signal" },
+    { re: /policy:mlflow_direct|mlflow\.[a-z0-9.-]+\.svc/i, tier: "signal" },
+    { re: /routing proxy inference/i, tier: "signal" },
+    { re: /OCSF API:INFERENCE/i, tier: "signal" },
+    {
+      re: /OCSF PROC:LAUNCH.*(echo|grep|cat|curl|\/bin\/sh|\/usr\/bin\/)/i,
+      tier: "signal",
+    },
+    { re: /OCSF PROC:LAUNCH/i, tier: "signal" },
+    { re: /OCSF CONFIG:ENABLED.*Landlock/i, tier: "signal" },
+  ],
+  openclaw: [
+    { re: /sk-[a-zA-Z0-9]{8,}/i, tier: "warn" },
+    { re: /key-[a-zA-Z0-9]{8,}/i, tier: "warn" },
+    { re: /Permission denied|operation not permitted|cannot open/i, tier: "signal" },
+    { re: /\/etc\/shadow/i, tier: "signal" },
+    { re: /\[session tool exec\]/i, tier: "signal" },
+    { re: /\[session tool result\]/i, tier: "signal" },
+    { re: /\[session user\]/i, tier: "signal" },
+    { re: /apiKey.*unused|"apiKey":\s*"unused"/i, tier: "signal" },
+    { re: /LITELLM_API_KEY|apiKey|grep|echo/i, tier: "signal" },
+    { re: /inference\.local|inference\/router/i, tier: "signal" },
+    { re: /github\.com|curl/i, tier: "signal" },
+    { re: /\bshell tool\b|tool call|exec tool/i, tier: "signal" },
+    { re: /provider=inference|model-fetch/i, tier: "signal" },
+    { re: /rail|guardrail|jailbreak|refus/i, tier: "signal" },
+  ],
+  openshell: [
+    { re: /maas-guardrailed/i, tier: "signal" },
+    { re: /maas-direct/i, tier: "signal" },
+    { re: /policy.*reload|inference route/i, tier: "signal" },
+    { re: /routing proxy inference/i, tier: "signal" },
+    { re: /DENIED|error/i, tier: "warn" },
+  ],
+  nemo: [
+    { re: /rail|guardrail|block|refus|jailbreak/i, tier: "signal" },
+    { re: /error|fail/i, tier: "warn" },
+  ],
+};
+
+/** Step-specific sandbox overrides applied after global patterns (first match wins). */
+export const STEP_SANDBOX_OVERRIDES = {
+  B: [
+    { re: /OCSF CONFIG:(APPLYING|BUILT).*Landlock/i, tier: "signal" },
+  ],
+  "C-pre": [
+    { re: /OCSF NET:OPEN.*ALLOWED.*github\.com/i, tier: "signal" },
+    { re: /OCSF HTTP:(GET|HEAD|POST).*github\.com/i, tier: "signal" },
+  ],
+  "C-post": [
+    { re: /OCSF NET:OPEN.*DENIED.*github\.com/i, tier: "warn" },
+    { re: /github\.com.*no matching policy/i, tier: "warn" },
+  ],
+};
+
+/**
+ * Per-step patterns downgraded to noise even when a global rule matched.
+ * Warn tier is never suppressed (e.g. sk-… leaks stay amber).
+ * @type {Record<string, Partial<Record<string, RegExp[]>>>}
+ */
+export const STEP_SUPPRESS = {
+  B: {
+    sandbox: [
+      /OCSF NET:OPEN.*ALLOWED.*inference\.local/i,
+      /policy:mlflow_direct|mlflow\.[a-z0-9.-]+\.svc/i,
+      /routing proxy inference/i,
+      /OCSF API:INFERENCE/i,
+    ],
+    openclaw: [
+      /^--- /,
+      /apiKey.*unused|"apiKey":\s*"unused"/i,
+      /LITELLM_API_KEY|grep|echo/i,
+      /TRACE_OK/i,
+      /openclaw\.json.*apiKey|grep apiKey/i,
+      /github\.com|curl/i,
+      /rail|guardrail|jailbreak|refus/i,
+      /\[provider-transport-fetch\]|\[model-fetch\]/i,
+      /\[agents\/tool-policy\]/i,
+      /\[ws\]/i,
+      /\[gateway\]/i,
+      /inference\.local|inference\/router/i,
+      /model-fetch|provider=inference/i,
+      /oom_score_adj|\/proc\/self\/oom_score_adj/i,
+    ],
+  },
+};
+
+/** Step B OpenClaw: only these patterns stay green after global classify + suppress. */
+const STEP_B_OPENCLAW_ALLOW =
+  /\/etc\/shadow|\[session tool exec\]|cat:\s*\/etc\/shadow:\s*Permission denied/i;
+
+/** Shell exec stderr noise from sandbox init — not Landlock / Test B evidence. */
+export const OPENCLAW_EXEC_OOM_NOISE =
+  /\/bin\/bash:\s*\d+:\s*cannot create \/proc\/self\/oom_score_adj:\s*Permission denied/gi;
+
+/**
+ * Strip known sandbox exec stderr noise before classify/display.
+ * @param {string} line
+ */
+export function sanitizeOpenClawDisplayLine(line) {
+  return line.replace(OPENCLAW_EXEC_OOM_NOISE, "").replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Presenter hints per narrative step (from narrative-data step ids).
+ * @type {Record<string, { tab: string, terms: string[], note?: string }>}
+ */
+export const STEP_HINTS = {
+  "0": {
+    tab: "OpenShell",
+    terms: ["maas-direct", "policy loaded", "inference route"],
+  },
+  A: {
+    message:
+      "The agent called the model via inference.local — OpenShell's router injects the API key outside the sandbox. No direct MaaS egress and no credentials in this log.",
+  },
+  B: {
+    message:
+      "The agent ran cat /etc/shadow inside the sandbox — Landlock blocked the read at the filesystem layer. No NET: events and no shadow hashes in this log.",
+  },
+  "C-pre": {
+    tab: "Sandbox",
+    terms: ["github.com ALLOWED", "curl", "HTTP:GET"],
+  },
+  "C-post": {
+    tab: "Sandbox",
+    terms: ["github.com DENIED", "no matching policy"],
+  },
+  "D-pre": {
+    tab: "OpenClaw",
+    terms: ["maas-direct", "inference.local", "jailbreak"],
+  },
+  "D-post": {
+    tab: "NeMo",
+    terms: ["maas-guardrailed", "rail", "refus", "block"],
+  },
+  mlflow: {
+    tab: "MLflow",
+    terms: ["openclaw-tracing", "trace", "Request", "Response"],
+  },
+};
+
+export const COMPONENT_LABELS = {
+  openclaw: "OpenClaw",
+  sandbox: "Sandbox",
+  openshell: "OpenShell Gateway",
+  nemo: "NeMo",
+  mlflow: "MLflow",
+};
+
+/**
+ * @param {string} componentId
+ * @param {string} line
+ * @param {string | null} [stepId]
+ * @returns {LineTier}
+ */
+function isStepSuppressed(componentId, line, stepId) {
+  const patterns = STEP_SUPPRESS[stepId]?.[componentId] ?? [];
+  return patterns.some((re) => re.test(line));
+}
+
+export function classifyLine(componentId, line, stepId = null) {
+  const signals = SIGNAL_PATTERNS[componentId] ?? [];
+  let tier = null;
+  for (const { re, tier: matched } of signals) {
+    if (re.test(line)) {
+      tier = matched;
+      break;
+    }
+  }
+  if (tier && stepId && tier !== "warn" && isStepSuppressed(componentId, line, stepId)) {
+    return "noise";
+  }
+  if (
+    componentId === "openclaw" &&
+    stepId === "B" &&
+    tier === "signal" &&
+    !STEP_B_OPENCLAW_ALLOW.test(line)
+  ) {
+    return "noise";
+  }
+  if (componentId === "sandbox" && stepId && !tier) {
+    const stepRules = STEP_SANDBOX_OVERRIDES[stepId] ?? [];
+    for (const { re, tier: matched } of stepRules) {
+      if (re.test(line)) return matched;
+    }
+  }
+  return tier ?? "noise";
+}
+
+/**
+ * @param {string} content
+ * @param {string} componentId
+ * @param {boolean} focusFilter
+ * @param {string | null} [stepId]
+ * @returns {{ visible: Array<{ line: string, tier: LineTier }>, stats: { signal: number, warn: number, hidden: number } }}
+ */
+export function processLogLines(content, componentId, focusFilter, stepId = null) {
+  const lines = String(content || "")
+    .replace(/\x00/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0);
+  const stats = { signal: 0, warn: 0, hidden: 0 };
+  const visible = [];
+
+  for (const rawLine of lines) {
+    const line =
+      componentId === "openclaw" ? sanitizeOpenClawDisplayLine(rawLine) : rawLine;
+    if (!line) {
+      stats.hidden += 1;
+      continue;
+    }
+    const tier = classifyLine(componentId, line, stepId);
+    if (tier === "signal") stats.signal += 1;
+    else if (tier === "warn") stats.warn += 1;
+    else stats.hidden += 1;
+
+    if (focusFilter && tier !== "signal" && tier !== "warn") continue;
+    visible.push({ line, tier });
+  }
+
+  return { visible, stats };
+}
+
+/**
+ * @param {string | null} stepId
+ * @returns {string}
+ */
+export function formatStepHint(stepId) {
+  if (!stepId || !STEP_HINTS[stepId]) {
+    return "Navigate demo steps (← →) for scenario-specific search hints.";
+  }
+  const hint = STEP_HINTS[stepId];
+  if (hint.message) return hint.message;
+  const tab = COMPONENT_LABELS[hint.tab.toLowerCase()] ?? hint.tab;
+  let text = `Step ${stepId} · ${tab} tab · Look for: ${hint.terms.join(", ")}`;
+  if (hint.note) text += ` · ${hint.note}`;
+  return text;
+}
+
+/** @param {string | null} stepId */
+export function stepHintUsesCustomMessage(stepId) {
+  return Boolean(stepId && STEP_HINTS[stepId]?.message);
+}

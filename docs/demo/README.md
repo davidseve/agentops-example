@@ -2,21 +2,124 @@
 
 Interactive FlowStory panel for the AgentOps talk. Not slides.
 
-## Page 1 — Intro (this pass)
+## Launcher
 
-Two variants of the same hop map:
+```bash
+# Preflight + static UI + local observability proxy (recommended for v1 live companion)
+./scripts/demo-presenter-serve.sh
+# http://127.0.0.1:8765/v1/live.html
 
-- [layers.html](layers.html) — text boxes (default)
-- [layers-logos.html](layers-logos.html) — same hops with product marks (OpenClaw, OpenShell, OpenShift AI, NVIDIA, Landlock, MLflow, Internet)
+# Preflight only (oc/openshell/sandbox/gateway + port check)
+./scripts/demo-presenter-serve.sh --check-only
+```
+
+Requires logged-in `oc` and `openshell`. Fails fast if ports `8765`/`8766` are already in use (free with `lsof -ti :8765 | xargs kill`).
+
+Static UI only (offline / no observability panel):
 
 ```bash
 cd docs/demo
 python3 -m http.server 8765
-# http://127.0.0.1:8765/layers.html
-# http://127.0.0.1:8765/layers-logos.html
+# http://127.0.0.1:8765/index.html
 ```
 
-Marks are vendored under [assets/icons/](assets/icons/); sources in [assets/icons/NOTICE.txt](assets/icons/NOTICE.txt). FlowStory has no node-logo field, so [logo-renderer.js](logo-renderer.js) paints them on the canvas.
+## Structure
+
+```
+docs/demo/
+├── index.html           # Launcher (v1–v3 flows)
+├── overall-demo-architecture.html  # Phase 0 — full stack map (+ links to A–D)
+├── scenarios/           # Focused FlowStory panels per test A–D
+│   ├── shared-scenario.js
+│   ├── overall-flows.js        # SCENARIO_* (test-*) + OVERALL_SCENARIO_* (overall dropdown)
+│   ├── overall-response-maps.js  # Overall-map inference/trace response offsets
+│   ├── test-a-credentials.html   # Security-focused
+│   ├── test-b-files.html
+│   ├── test-c-egress.html
+│   └── test-d-guardrails.html
+├── shared/              # vendor/, assets/, demo.css, logo-renderer.js
+├── v1/                  # Split panel (recommended for rehearsal)
+│   ├── live.html
+│   ├── narrative.css
+│   ├── narrative-data.js
+│   ├── narrative-ui.js
+│   ├── observability-panel.js
+│   └── observability-log-rules.js
+├── v2/live.html         # Stub — unified panel (future)
+└── v3/live.html         # Stub — FlowStory narrative mode (future)
+```
+
+### v1 cluster observability
+
+`v1/live.html` can show live cluster logs and MLflow traces when the local proxy is running:
+
+```bash
+./scripts/demo-presenter-serve.sh   # UI :8765 + proxy :8766
+```
+
+| Component | Proxy endpoint | Cluster source | Tail lines |
+|-----------|----------------|----------------|------------|
+| OpenClaw | `/api/logs/openclaw` | `oc exec` → `openclaw.log` | 120 |
+| Sandbox | `/api/logs/sandbox?filter=signal` | `oc exec` → `/var/log/openshell.YYYY-MM-DD.log` | 300 |
+| OpenShell | `/api/logs/openshell` | `oc logs openshell-0` | 120 |
+| NeMo | `/api/logs/nemo` | `oc logs` on `nemo-guardrails-*` pod (dynamic discovery) | 120 |
+| MLflow | `/api/traces/mlflow` | MLflow REST API from sandbox pod ([ADR-0010](../adr/0010-mlflow-tracing-otel.md)) | — |
+
+Tail line limits are tuned in `LOG_LINES_BY_COMPONENT` in [`v1/observability-panel.js`](v1/observability-panel.js) (proxy accepts `?lines=1..500`, sandbox `?filter=all|signal`). Three-tier classification (signal/warn/noise), focus Filter (default ON), step-aware sandbox overrides (e.g. github.com green on C-pre only), and step hints: [`v1/observability-log-rules.js`](v1/observability-log-rules.js).
+
+**Runbook:** [demo-scenario-logs.md](demo-scenario-logs.md) — what to search for in each component during Tests A–D; [§ Sandbox panel highlight rules](demo-scenario-logs.md#sandbox-panel-highlight-rules) documents green/amber/gray tiers and step-aware overrides.
+
+**Panel controls (per tab):**
+- **Filter** — focus mode: show signal (green) and warn (amber) only (default ON); disable to see full log in gray
+- **↓** — pause/resume live updates (each tab remembers its own state)
+
+Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py). Requires `oc` and `openshell` on the presenter laptop; binds to `127.0.0.1` only.
+
+## Phase 0 — Overall demo architecture
+
+- [overall-demo-architecture.html](overall-demo-architecture.html) — full stack map with **7 flows** in the panel dropdown:
+
+| Flow | Layer board highlight |
+|------|----------------------|
+| Baseline · demo initial | egress open, guardrails **off** |
+| A · Credentials | gateway key vault |
+| B · Files | Landlock |
+| C · Egress (before/after) | egress open → blocked |
+| D · Guardrails (before/after) | guardrails off → NeMo on |
+
+**Shortcuts:** `0` baseline · `a`/`b`/`c`/`d` jump to scenario (C/D open **before** variant) · nav A–D switches flow **in-panel** (no new tab) · `←`/`→` or clicker advances hops.
+
+The **layer board** stays a fixed panel below the hop list; only the **dropdown** selects the scenario flow.
+
+**Hop bands** on overall-map scenario flows (not on deep-link pages): `1` user path · `2` security story · `3` inference · `4` MLflow trace (`oc → mlflow` direct).
+
+## Scenario diagrams (tests A–D)
+
+| Test | Security (`test-*`) | Full flow (overall map) | Notes |
+|------|---------------------|-------------------------|-------|
+| A | [test-a-credentials.html](scenarios/test-a-credentials.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `a` | ~8 hops vs ~11 (inference + MLflow trace) |
+| B | [test-b-files.html](scenarios/test-b-files.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `b` | Landlock focus vs full stack |
+| C | [test-c-egress.html](scenarios/test-c-egress.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `c` | Before/After in overall dropdown; test page has its own toggle |
+| D | [test-d-guardrails.html](scenarios/test-d-guardrails.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `d` | Before/After in overall dropdown; test page has its own toggle |
+
+- **`test-*`**: self-contained pages — security story only (~6–8 hops).
+- **Overall map**: single source of truth for full flows (`OVERALL_SCENARIO_*` in [`overall-flows.js`](scenarios/overall-flows.js)) — security + inference + MLflow trace.
+
+Open from the overall architecture nav bar, scenario header nav, or launcher.
+
+## Live companion flows
+
+| Flow | URL | When |
+|------|-----|------|
+| v1 | [v1/live.html](v1/live.html) | Recommended — narrative steps, matrix, diagram, YAML, cluster observability |
+| v2 | [v2/live.html](v2/live.html) | Coming soon (unified panel) |
+| v3 | [v3/live.html](v3/live.html) | Coming soon (FlowStory narrative) |
+
+Narrative (Spanish): [demo-narrativa-v1.md](../demo-narrativa-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
+
+## Design notes
+
+Living analysis of what each scenario proves, gaps vs narrative, and live-demo viability: [demo-scenario-considerations.md](../demo-scenario-considerations.md).
 
 ## Cursor skills
 
@@ -26,37 +129,8 @@ Marks are vendored under [assets/icons/](assets/icons/); sources in [assets/icon
 | Live runbook (A–D) | `demo-present` |
 | Cambio 1 / 2 / reset | `demo-restrict-egress`, `demo-enable-guardrails`, `demo-reset` |
 
-See [AGENTS.md](../AGENTS.md) § Demo v1 skills and [demo-script.md](../demo-script.md).
-
-
-Advance **one hop at a time** with a presentation clicker (Page Down / right) or **← →**. Prev is Page Up / left. **Start** still auto-plays the whole flow; **Reset** (or Home) clears the map.
-
-Hops in order:
-
-1. Usuario → **OpenShell Gateway** → OpenClaw (Usuario sits outside OpenShift, aligned with the gateway)
-2. OpenClaw → `inference.local` → **OpenShell Gateway** (both inside **OpenShell**, outside the Agent Sandbox) → NeMo → MaaS → LLM
-3. Response walks back through the Gateway to OpenClaw — the model told the agent to read a file
-4. OpenClaw ↔ Landlock (round trip — files locked)
-5. OpenClaw → Gateway → Internet (egress and back — Usuario and Internet sit outside OpenShift)
-6. OpenClaw → Usuario
-7. OpenClaw → Gateway → MLflow (traces; MLflow sits under the Gateway, outside OpenShell). NeMo / MaaS / LLM sit under `inference.local`, outside OpenShell.
-
-Garak and EvalHub are out of this diagram. A later variant may use Garak as the user UI.
-
-Loop stays off. Click a box for product / owner details.
-
-## Page 2 — Live companion
-
-[live.html](live.html) — Tests A–D with copy-paste prompts, security layer board, and demo script commands. Split screen with the OpenClaw Control UI.
-
-```bash
-cd docs/demo
-python3 -m http.server 8765
-# http://127.0.0.1:8765/live.html
-```
-
-Narrative (Spanish): [demo-narrativa-v1.md](../demo-narrativa-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
+See [AGENTS.md](../AGENTS.md) § Demo v1 skills.
 
 ## Vendor
 
-`vendor/` is a snapshot of [FlowStory](https://github.com/noyitz/flowstory) (Apache 2.0). See [vendor/NOTICE.txt](vendor/NOTICE.txt).
+`shared/vendor/` is a snapshot of [FlowStory](https://github.com/noyitz/flowstory) (Apache 2.0). See [shared/vendor/NOTICE.txt](shared/vendor/NOTICE.txt).

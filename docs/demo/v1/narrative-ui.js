@@ -69,12 +69,35 @@ export function renderLayerBoard(container, layers) {
     .join("");
 }
 
-export function renderMatrix(container, matrix) {
+export function renderMatrix(container, matrix, matrixFocus = "all") {
   if (!container) return;
+  const sectionTitle = container.previousElementSibling;
+  const hide = matrixFocus == null;
+  container.hidden = hide;
+  if (sectionTitle?.matches("h2")) sectionTitle.hidden = hide;
+  if (hide) {
+    container.innerHTML = "";
+    return;
+  }
+
   const { matrixLabels } = NARRATIVE;
-  const keys = Object.keys(matrixLabels);
-  const header = keys.map((k) => `<th>${escapeHtml(matrixLabels[k])}</th>`).join("");
-  const cells = keys
+  const allKeys = Object.keys(matrixLabels);
+
+  if (matrixFocus !== "all") {
+    const key = matrixFocus;
+    const v = matrix[key] ?? "na";
+    const cls = MATRIX_CELL_CLASS[v] ?? "na";
+    const text = MATRIX_CELL_TEXT[v] ?? v;
+    const label = matrixLabels[key] ?? key;
+    container.innerHTML = `<div class="nr-matrix-single">
+      <span class="nr-matrix-single-label">${escapeHtml(label)}</span>
+      <span class="nr-cell ${cls} nr-matrix-single-value">${escapeHtml(text)}</span>
+    </div>`;
+    return;
+  }
+
+  const header = allKeys.map((k) => `<th>${escapeHtml(matrixLabels[k])}</th>`).join("");
+  const cells = allKeys
     .map((k) => {
       const v = matrix[k] ?? "na";
       const cls = MATRIX_CELL_CLASS[v] ?? "na";
@@ -85,7 +108,7 @@ export function renderMatrix(container, matrix) {
 
   container.innerHTML = `<div class="nr-matrix-wrap"><table class="nr-matrix">
     <thead><tr><th></th>${header}</tr></thead>
-    <tbody><tr><td class="test-label">This step</td>${cells}</tr></tbody>
+    <tbody><tr><td class="test-label">Summary</td>${cells}</tr></tbody>
   </table></div>`;
 }
 
@@ -563,7 +586,7 @@ export function renderYamlPanel(container, yamlPanel) {
     body = `<pre class="nr-yaml-pre">${escapeHtml(yamlPanel.snippet)}</pre>`;
   }
 
-  container.innerHTML = `<details class="nr-yaml-panel" open>
+  container.innerHTML = `<details class="nr-yaml-panel"${yamlPanel.defaultOpen === false ? "" : " open"}>
     <summary>${escapeHtml(yamlPanel.title)}</summary>
     <div class="nr-yaml-body">
       ${yamlPanel.command ? `<div class="nr-label">Terminal</div><code class="nr-cmd">${escapeHtml(yamlPanel.command)}</code>` : ""}
@@ -718,7 +741,7 @@ export function initNarrativeUI({ root, onStepChange }) {
     const step = getStep(stepId);
 
     renderLayerBoard(layerEl, step.layers);
-    renderMatrix(matrixEl, step.matrix);
+    renderMatrix(matrixEl, step.matrix, step.matrixFocus);
     renderStepCard(cardEl, step, { flowAnimEnabled, onFlowAnimChange: handleFlowAnimChange });
     updateNavActive(navEl, stepId);
     updateHash(stepId);
@@ -728,6 +751,16 @@ export function initNarrativeUI({ root, onStepChange }) {
       window.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
     }
     onStepChange?.(stepId, step);
+    root.dispatchEvent(
+      new CustomEvent("nr:step-change", {
+        bubbles: true,
+        detail: {
+          stepId,
+          observabilityFocus: step.observabilityFocus ?? null,
+          observabilityHidden: step.observabilityHidden ?? [],
+        },
+      })
+    );
   }
 
   NAV_GROUPS.forEach((g) => {
