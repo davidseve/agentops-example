@@ -194,44 +194,102 @@ export_playwright_env() {
   resolve_mlflow_experiment_id || warn "MLFLOW_EXPERIMENT_ID not resolved — mlflow-ui-tests may fail"
 }
 
-# Resolve openclaw-tracing experiment id for the target workspace (ids are per-workspace).
-resolve_mlflow_experiment_id() {
+# Pick a pod that can reach mlflow.<rhoai-ns>.svc from inside the cluster.
+_mlflow_exec_target() {
+  if oc -n "$NAMESPACE" get pod "$SANDBOX_NAME" &>/dev/null 2>&1; then
+    _MLFLOW_EXEC_POD="$SANDBOX_NAME"
+    _MLFLOW_EXEC_CONTAINER="agent"
+    return 0
+  fi
+  local gw_pod
+  gw_pod="$(oc -n "$NAMESPACE" get pods -l app.kubernetes.io/name=openshell \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+  if [[ -n "$gw_pod" ]]; then
+    _MLFLOW_EXEC_POD="$gw_pod"
+    _MLFLOW_EXEC_CONTAINER=""
+    return 0
+  fi
+  return 1
+}
+
+_mlflow_cluster_curl() {
+  local curl_cmd="$1"
+  if ! _mlflow_exec_target; then
+    warn "No sandbox or OpenShell pod in ${NAMESPACE} for MLflow API calls"
+    return 1
+  fi
+  if [[ -n "$_MLFLOW_EXEC_CONTAINER" ]]; then
+    oc -n "$NAMESPACE" exec "$_MLFLOW_EXEC_POD" -c "$_MLFLOW_EXEC_CONTAINER" -- \
+      bash -c "$curl_cmd" 2>/dev/null || true
+  else
+    oc -n "$NAMESPACE" exec "$_MLFLOW_EXEC_POD" -- \
+      bash -c "$curl_cmd" 2>/dev/null || true
+  fi
+}
+
+read_mlflow_sa_token() {
+  if [[ -n "${MLFLOW_TOKEN:-}" ]]; then
+    return 0
+  fi
+  if ! oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" &>/dev/null; then
+    warn "Secret ${SANDBOX_SA_NAME}-mlflow-token not found"
+    return 1
+  fi
+  MLFLOW_TOKEN="$(oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" \
+    -o jsonpath='{.data.token}' | base64 -d)"
+  export MLFLOW_TOKEN
+  return 0
+}
+
+# Get-or-create openclaw-tracing in the target workspace (ids are per-workspace).
+ensure_mlflow_experiment() {
   local experiment_name="${MLFLOW_EXPERIMENT_NAME:-openclaw-tracing}"
   local workspace="${MLFLOW_WORKSPACE:-$NAMESPACE}"
-  local rhoai_ns="${RHOAI_NS:-redhat-ods-applications}"
-  local mlflow_url="https://mlflow.${rhoai_ns}.svc:8443"
+  local mlflow_url="https://mlflow.${RHOAI_NS}.svc:8443"
+  local exp_json exp_id token
 
   if [[ -n "${MLFLOW_EXPERIMENT_ID:-}" && "${MLFLOW_EXPERIMENT_ID}" != "__RESOLVE__" ]]; then
     info "MLFLOW_EXPERIMENT_ID=${MLFLOW_EXPERIMENT_ID}"
     return 0
   fi
 
-  if ! oc -n "$NAMESPACE" get pod "$SANDBOX_NAME" &>/dev/null; then
-    warn "Sandbox pod ${SANDBOX_NAME} not found in ${NAMESPACE}"
+  if ! read_mlflow_sa_token; then
     return 1
   fi
-  if ! oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" &>/dev/null; then
-    warn "Secret ${SANDBOX_SA_NAME}-mlflow-token not found"
-    return 1
-  fi
+  token="$MLFLOW_TOKEN"
 
-  local token exp_json exp_id
-  token="$(oc -n "$NAMESPACE" get secret "${SANDBOX_SA_NAME}-mlflow-token" \
-    -o jsonpath='{.data.token}' | base64 -d)"
-  exp_json="$(oc -n "$NAMESPACE" exec "$SANDBOX_NAME" -c agent -- \
-    bash -c "curl -sk '${mlflow_url}/api/2.0/mlflow/experiments/get-by-name?experiment_name=${experiment_name}' \
+  exp_json="$(_mlflow_cluster_curl \
+    "curl -sk '${mlflow_url}/api/2.0/mlflow/experiments/get-by-name?experiment_name=${experiment_name}' \
       -H 'Authorization: Bearer ${token}' \
-      -H 'X-MLFLOW-WORKSPACE: ${workspace}'" 2>/dev/null || true)"
+      -H 'X-MLFLOW-WORKSPACE: ${workspace}'")"
   exp_id="$(echo "$exp_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('experiment',{}).get('experiment_id',''))" 2>/dev/null || true)"
 
   if [[ -z "$exp_id" ]]; then
-    warn "Experiment '${experiment_name}' not found in workspace ${workspace}"
+    info "Creating MLflow experiment '${experiment_name}' in workspace ${workspace}"
+    exp_json="$(_mlflow_cluster_curl \
+      "curl -sk -X POST \
+        -H 'Authorization: Bearer ${token}' \
+        -H 'X-MLFLOW-WORKSPACE: ${workspace}' \
+        -H 'Content-Type: application/json' \
+        -d '{\"name\": \"${experiment_name}\"}' \
+        '${mlflow_url}/api/2.0/mlflow/experiments/create'")"
+    exp_id="$(echo "$exp_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('experiment',{}).get('experiment_id',''))" 2>/dev/null || true)"
+  fi
+
+  if [[ -z "$exp_id" ]]; then
+    warn "Could not get or create experiment '${experiment_name}' in workspace ${workspace}"
+    warn "Last MLflow response: ${exp_json:-<empty>}"
     return 1
   fi
 
   export MLFLOW_EXPERIMENT_ID="$exp_id"
-  info "Resolved MLflow experiment ${experiment_name} → id=${MLFLOW_EXPERIMENT_ID}"
+  info "MLflow experiment ${experiment_name} → id=${MLFLOW_EXPERIMENT_ID} (workspace=${workspace})"
   return 0
+}
+
+# Resolve openclaw-tracing experiment id for the target workspace (ids are per-workspace).
+resolve_mlflow_experiment_id() {
+  ensure_mlflow_experiment
 }
 
 warn_playwright_mlflow_oauth_missing() {

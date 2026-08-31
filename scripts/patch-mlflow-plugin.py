@@ -50,6 +50,93 @@ if 'definePluginEntry' in content:
 else:
     print('index.ts already patched')
 
+# RHOAI MLflow requires X-MLFLOW-WORKSPACE on every REST call. The gateway
+# process often loses MLFLOW_WORKSPACE from its environment after restarts, so
+# read it from a sidecar file written at launch (openclaw.json schema rejects
+# a workspace field in plugin config).
+SVC_WORKSPACE_PATCH = """    const experimentId =
+      (typeof pluginConfig.experimentId === 'string' ? pluginConfig.experimentId : '') ||
+      process.env.MLFLOW_EXPERIMENT_ID;
+
+    if (!trackingUri || !experimentId) {
+      return;
+    }
+
+    try {
+      init({ trackingUri, experimentId });"""
+SVC_WORKSPACE_REPLACEMENT = """    const experimentId =
+      (typeof pluginConfig.experimentId === 'string' ? pluginConfig.experimentId : '') ||
+      process.env.MLFLOW_EXPERIMENT_ID;
+
+    if (!trackingUri || !experimentId) {
+      return;
+    }
+
+    let workspace = process.env.MLFLOW_WORKSPACE;
+    if (!workspace) {
+      try {
+        workspace = require('fs').readFileSync('/sandbox/workspace/.openclaw/mlflow-workspace', 'utf8').trim();
+      } catch {}
+    }
+    if (workspace) {
+      process.env.MLFLOW_WORKSPACE = workspace;
+    }
+
+    try {
+      const trackingServerToken = process.env.MLFLOW_TRACKING_TOKEN;
+      init({
+        trackingUri,
+        experimentId,
+        ...(trackingServerToken ? { trackingServerToken } : {}),
+      });"""
+
+with open(SVC, 'r') as f:
+    svc_content = f.read()
+if 'mlflow-workspace' in svc_content:
+    print('service.ts workspace init already patched')
+elif 'pluginConfig.workspace' in svc_content:
+    svc_content = re.sub(
+        r"""    const workspace =
+      \(typeof pluginConfig\.workspace === 'string' \? pluginConfig\.workspace : ''\) \|\|
+      process\.env\.MLFLOW_WORKSPACE;
+
+    if \(!trackingUri \|\| !experimentId\) \{
+      return;
+    \}
+
+    if \(workspace\) \{
+      process\.env\.MLFLOW_WORKSPACE = workspace;
+    \}""",
+        """    if (!trackingUri || !experimentId) {
+      return;
+    }
+
+    let workspace = process.env.MLFLOW_WORKSPACE;
+    if (!workspace) {
+      try {
+        workspace = require('fs').readFileSync('/sandbox/workspace/.openclaw/mlflow-workspace', 'utf8').trim();
+      } catch {}
+    }
+    if (workspace) {
+      process.env.MLFLOW_WORKSPACE = workspace;
+    }""",
+        svc_content,
+        count=1,
+    )
+    with open(SVC, 'w') as f:
+        f.write(svc_content)
+    print('service.ts upgraded (workspace sidecar file)')
+elif SVC_WORKSPACE_PATCH not in svc_content:
+    raise SystemExit(
+        'service.ts: expected init block not found (package version drift?) — '
+        'refusing to patch blindly. Inspect ' + SVC
+    )
+else:
+    svc_content = svc_content.replace(SVC_WORKSPACE_PATCH, SVC_WORKSPACE_REPLACEMENT)
+    with open(SVC, 'w') as f:
+        f.write(svc_content)
+    print('service.ts patched (workspace sidecar + trackingServerToken before init)')
+
 # Backport of mlflow/mlflow#23927 for pinned @mlflow/core@0.2.0.
 # createOssAuth()'s headersProvider builds Content-Type/Authorization but
 # never X-MLFLOW-WORKSPACE — RHOAI-managed MLflow rejects every request

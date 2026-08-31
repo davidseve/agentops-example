@@ -101,9 +101,9 @@ SKIP_E2E ?=
 .PHONY: wait-dashboard-crd adopt-dashboard-config
 .PHONY: wait-mlflow-crd deploy-mlflow wait-evalhub-crd deploy-evalhub
 .PHONY: wait-nemoguardrails-crd deploy-guardrails undeploy-guardrails validate-guardrails deploy-all
-.PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration validate-openshell
-.PHONY: validate-openclaw validate-traces validate-security validate-demo-initial
-.PHONY: test-e2e test-ui test-security test-mlflow test-guardrails
+.PHONY: helm-env deploy-openshell deploy-mlflow-openclaw-integration ensure-mlflow-experiment validate-openshell
+.PHONY: validate-openclaw validate-traces validate-security validate-demo-initial validate-scenario-a-baseline
+.PHONY: test-e2e test-ui test-security test-mlflow test-guardrails test-demo test-scenario-a
 .PHONY: undeploy-apps purge-dsci undeploy-operators cleanup-orphans undeploy-all
 .PHONY: deploy-openclaw-ui-proxy undeploy-openshell undeploy-everything
 .PHONY: openshell-sync-mtls openshell-register-gateway
@@ -476,6 +476,27 @@ deploy-mlflow-openclaw-integration:
 	@oc -n $(OPENSHELL_NAMESPACE) get secret $(SANDBOX_SA_NAME)-mlflow-token >/dev/null \
 		&& echo "OK: $(SANDBOX_SA_NAME)-mlflow-token created" \
 		|| echo "WARN: $(SANDBOX_SA_NAME)-mlflow-token not found yet (token controller may still be catching up)"
+	@echo "Waiting for MLflow experiment hook Job (if present)..."
+	@i=0; JOB=$$(oc -n $(OPENSHELL_NAMESPACE) get jobs -o name 2>/dev/null \
+		| grep openclaw-mlflow-experiment | tail -1 | cut -d/ -f2); \
+	if [ -n "$$JOB" ]; then \
+		while [ $$i -lt 60 ]; do \
+			if oc -n $(OPENSHELL_NAMESPACE) get job "$$JOB" -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null | grep -q True; then \
+				echo "OK: $$JOB completed"; break; \
+			fi; \
+			if oc -n $(OPENSHELL_NAMESPACE) get job "$$JOB" -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null | grep -q True; then \
+				echo "WARN: $$JOB failed — will retry via ensure-mlflow-experiment"; break; \
+			fi; \
+			i=$$((i+1)); sleep 2; \
+		done; \
+	fi
+	@$(MAKE) ensure-mlflow-experiment
+
+ensure-mlflow-experiment:
+	@echo "=== MLflow experiment (openclaw-tracing) ==="
+	@NAMESPACE=$(OPENSHELL_NAMESPACE) SANDBOX_NAME=$(SANDBOX_NAME) \
+		SANDBOX_SA_NAME=$(SANDBOX_SA_NAME) RHOAI_NS=redhat-ods-applications \
+		$(ROOT_DIR)/scripts/ensure-mlflow-experiment.sh
 
 # --- openclaw-ui-proxy (nginx mTLS bridge for OpenClaw Control UI) ---
 # Sole browser entrypoint: Route → nginx (TLS + mTLS to relay) → OpenShell → gateway.
@@ -578,7 +599,8 @@ validate-traces:
 	@echo "=== MLflow Trace Validation ==="
 	@bash -ec 'source $(ROOT_DIR)/scripts/common.sh; \
 		[[ -f $(ROOT_DIR)/secrets/secrets.env ]] && set -a && source $(ROOT_DIR)/secrets/secrets.env && set +a; \
-		resolve_mlflow_experiment_id || { echo "FAIL: could not resolve MLflow experiment id"; exit 1; }; \
+		NAMESPACE=$(OPENSHELL_NAMESPACE) SANDBOX_SA_NAME=$(SANDBOX_SA_NAME) SANDBOX_NAME=$(SANDBOX_NAME); \
+		ensure_mlflow_experiment || { echo "FAIL: could not ensure MLflow experiment"; exit 1; }; \
 		MLFLOW_TOKEN=$$(oc -n $(OPENSHELL_NAMESPACE) get secret $(SANDBOX_SA_NAME)-mlflow-token -o jsonpath='"'"'{.data.token}'"'"' | base64 -d); \
 		TRACES=$$(oc -n $(OPENSHELL_NAMESPACE) exec $(SANDBOX_NAME) -c agent -- \
 			bash -c "curl -sk '"'"'https://mlflow.redhat-ods-applications.svc:8443/api/2.0/mlflow/traces?experiment_ids=$${MLFLOW_EXPERIMENT_ID}&max_results=1'"'"' \
@@ -623,7 +645,7 @@ validate-demo-initial:
 	RESULT=$$(echo "$$RESULT" | tr -d '[:space:]'); \
 	case "$$RESULT" in \
 		200|301|302) echo "OK: github.com reachable for demo Test C (HTTP $$RESULT)" ;; \
-		*) echo "FAIL: github.com not reachable (HTTP $${RESULT:-timeout}) — use policies/openclaw-demo-initial.yaml at sandbox create"; exit 1 ;; \
+		*) echo "FAIL: github.com not reachable (HTTP $${RESULT:-timeout}) — use config/openshell/github-egress.yaml at sandbox create"; exit 1 ;; \
 	esac
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
 		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://inference.local/v1/models 2>/dev/null; echo'); \
@@ -633,6 +655,9 @@ validate-demo-initial:
 	else \
 		echo "FAIL: inference.local not reachable (HTTP $$RESULT)"; exit 1; \
 	fi
+
+validate-scenario-a-baseline:
+	@$(ROOT_DIR)/scripts/validate-scenario-a-baseline.sh
 
 # --- Playwright E2E Tests ---
 # These test the REAL user experience: browser → UI → gateway → model → MLflow traces.
@@ -660,6 +685,12 @@ test-mlflow:
 
 test-guardrails:
 	@$(ROOT_DIR)/scripts/run-playwright-tests.sh guardrails-ui.spec.ts
+
+test-demo:
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh demo-narrative.spec.ts
+
+test-scenario-a:
+	@$(ROOT_DIR)/scripts/run-playwright-tests.sh scenario-a-regression.spec.ts
 
 # --- Undeploy targets ---
 # CRITICAL: DSCI must be deleted while the operator is still running,
