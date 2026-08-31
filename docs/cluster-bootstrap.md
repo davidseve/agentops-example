@@ -77,7 +77,7 @@ make deploy-agent
 make validate-full
 ```
 
-> **Path trap**: Run `make demo` from the repo root (`agentops-example/`). If your shell is already in `deploy/`, use `make demo` there — **not** `make -C deploy demo` (that looks for `deploy/deploy/` and fails).
+> **Path trap**: Run `make demo` from the repo root (`agentops-showcase/`). If your shell is already in `deploy/`, use `make demo` there — **not** `make -C deploy demo` (that looks for `deploy/deploy/` and fails).
 
 `make demo` chains:
 

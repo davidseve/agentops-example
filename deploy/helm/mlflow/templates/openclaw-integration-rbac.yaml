@@ -24,7 +24,7 @@ metadata:
   namespace: {{ .Values.openclawIntegration.namespace }}
   labels:
     {{- include "mlflow.labels" . | nindent 4 }}
-    app.kubernetes.io/part-of: agentops-example
+    app.kubernetes.io/part-of: agentops-showcase
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -41,7 +41,7 @@ metadata:
   namespace: {{ .Values.openclawIntegration.namespace }}
   labels:
     {{- include "mlflow.labels" . | nindent 4 }}
-    app.kubernetes.io/part-of: agentops-example
+    app.kubernetes.io/part-of: agentops-showcase
   annotations:
     kubernetes.io/service-account.name: {{ .Values.openclawIntegration.serviceAccountName }}
 type: kubernetes.io/service-account-token

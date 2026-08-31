@@ -1,5 +1,5 @@
 {
-  "name": "agentops-example-tests",
+  "name": "agentops-showcase-tests",
   "version": "1.0.0",
   "private": true,
   "description": "Playwright E2E tests for OpenClaw + MLflow on RHOAI",

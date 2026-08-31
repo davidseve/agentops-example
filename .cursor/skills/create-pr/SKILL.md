@@ -1,14 +1,14 @@
 ---
 name: create-pr
 description: >-
-  Create GitHub pull requests for agentops-example using the project PR
+  Create GitHub pull requests for agentops-showcase using the project PR
   template (Summary, Details, Test plan). Use when the user asks to open a
   PR, create a pull request, or merge a branch — follow structure from PR #1.
 ---
 
 # Create Pull Request
 
-Create PRs for **agentops-example** using the structure validated in [PR #1](https://github.com/davidseve/agentops-example/pull/1).
+Create PRs for **agentops-showcase** using the structure validated in [PR #1](https://github.com/davidseve/agentops-showcase/pull/1).
 
 Also follow the user rule workflow: `git status`, `git diff`, branch tracking, `git log`, then `gh pr create`.
 

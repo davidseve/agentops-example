@@ -1,4 +1,4 @@
-# AgentOps Example - Enterprise Secure Agent Platform
+# AgentOps Showcase - Enterprise Secure Agent Platform
 
 Demo showcasing a complete enterprise-grade platform for deploying, securing, and observing AI agents on Red Hat OpenShift AI 3.x.
 
