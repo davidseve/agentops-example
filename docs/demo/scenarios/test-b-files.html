@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>Test B — Sensitive files</title>
+<link rel="stylesheet" href="../shared/vendor/style.css">
+<link rel="stylesheet" href="../shared/demo.css">
+</head>
+<body>
+
+<button class="fs-theme-toggle" id="fs-theme" title="Toggle theme">&#9790;</button>
+
+<div class="fs-brand" id="fs-brand"></div>
+<div class="fs-header-stack" id="fs-header-stack">
+  <div class="fs-title" id="fs-title"></div>
+  <div class="fs-tagline" id="fs-tagline">Your Agent. Our Platform. Production-Ready.</div>
+</div>
+
+<nav class="fs-scenario-nav" aria-label="Scenario diagrams"></nav>
+
+<div class="fs-panel">
+  <div class="fs-flow-bar">
+    <div class="fs-mode-toggle" id="fs-mode-toggle" hidden></div>
+    <div class="fs-flow-nav">
+      <select id="fs-flow-select"></select>
+      <button id="fs-prev" title="Previous hop">&#9664;</button>
+      <button class="fs-start" id="fs-play">&#9654; Start</button>
+      <button id="fs-next" title="Next hop">&#9654;</button>
+    </div>
+    <button id="fs-speed">1x</button>
+    <button id="fs-loop" style="border-color:#79c0ff;color:#79c0ff">&#8635; Loop</button>
+    <button id="fs-response-mode" type="button" title="Cycle messages: Popup near node / Panel / Both">Msgs: Popup</button>
+    <button class="fs-reset" id="fs-reset">Reset</button>
+  </div>
+  <div class="fs-steps" id="fs-steps">
+    <div class="fs-steps-title">Layers <span style="font-weight:400;font-size:11px;color:var(--fs-text-dim)">· clicker or ← →</span></div>
+    <div id="fs-steps-container"></div>
+  </div>
+  <div class="fs-inspector" id="fs-inspector">
+    <div class="fs-inspector-title" id="fs-inspector-title" style="color:var(--fs-accent)">Layer board</div>
+    <div id="fs-inspector-content"></div>
+  </div>
+</div>
+
+<div id="fs-highlight-box" style="display:none;position:fixed;z-index:350;border-radius:10px;pointer-events:none"></div>
+<div id="fs-overlay" onclick="if(event.target===this)window.__flowstory?.closeOverlay()" style="display:none;position:fixed;top:0;left:0;right:380px;bottom:0;z-index:300;background:rgba(0,0,0,0.6)">
+  <div id="fs-overlay-card" style="position:absolute;background:#161b22ee;border:1px solid #30363d;border-radius:14px;max-width:420px;padding:22px 26px;box-shadow:0 12px 40px rgba(0,0,0,0.5)">
+    <button id="fs-overlay-close" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#8b949e;font-size:18px;cursor:pointer">✕</button>
+    <div id="fs-overlay-accent" style="width:4px;height:24px;border-radius:2px;position:absolute;left:0;top:22px"></div>
+    <h2 id="fs-overlay-title" style="margin:0 0 6px;font-size:18px;color:#c9d1d9;font-family:system-ui"></h2>
+    <p id="fs-overlay-desc" style="margin:0 0 14px;font-size:13px;color:#8b949e;line-height:1.5;font-family:system-ui"></p>
+    <div id="fs-overlay-details" style="font-size:12px;font-family:'SF Mono',Menlo,monospace"></div>
+    <button id="fs-overlay-resume" style="margin-top:14px;padding:7px 20px;border:1px solid #3fb950;border-radius:8px;background:transparent;color:#3fb950;font-size:13px;cursor:pointer">&#9654; Resume</button>
+  </div>
+</div>
+
+<div class="fs-legend" id="fs-legend"></div>
+<div class="fs-credit-scenario"><a href="../index.html">launcher</a> · <a href="../overall-demo-architecture.html">overall map</a></div>
+
+<canvas id="fs-canvas"></canvas>
+
+<script type="module">
+import {
+  COLORS,
+  LAYER_NAMES,
+  OVERALL_CANVAS,
+  pickNodes,
+  ARROW,
+  mergeResponseBodies,
+  initScenarioDiagram,
+} from "./shared-scenario.js";
+import { RESPONSES_B, OVERLAYS_B } from "./scenario-responses.js";
+
+const baseMutationsMain = [
+  {
+    step: 1,
+    label: `1  ${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
+    actions: [{ id: "l-user", style: "highlight" }, { id: "l-gw", style: "highlight" }],
+  },
+  { step: 2, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}` },
+  {
+    step: 3,
+    label: `2  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.landlock}`,
+    actions: [{ id: "p-probe", style: "highlight" }],
+  },
+  {
+    step: 4,
+    label: "2  Landlock denies /etc/shadow",
+    actions: [{ id: "l-files", style: "highlight" }],
+  },
+  { step: 5, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · blocked` },
+  { step: 6, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · safe` },
+];
+
+const mergedMutationsMain = mergeResponseBodies(baseMutationsMain, RESPONSES_B);
+
+const diagram = {
+  meta: {
+    title: "Test B — Sensitive files",
+    branding: {
+      logo: "../shared/assets/redhat-logo.svg",
+      title: "Red Hat",
+    },
+  },
+  canvas: OVERALL_CANVAS,
+  nodes: pickNodes(["user", "openshell", "agentsb", "oc", "landlock", "gw"], {
+    gw: { sublabel: "Control UI bridge" },
+  }),
+  tooltips: {
+    user: {
+      title: LAYER_NAMES.endUser,
+      description: `Auditor prompt via ${LAYER_NAMES.controlUI} — cat /etc/shadow reaches OpenClaw through the gateway.`,
+    },
+    gw: {
+      title: LAYER_NAMES.gw,
+      description: "User entry to OpenClaw. No direct hop into the sandbox.",
+    },
+    oc: {
+      title: "OpenClaw",
+      description: "Shell tool runs: cat /etc/shadow",
+    },
+    landlock: {
+      title: "Landlock filesystem policy",
+      description: "workspaceOnly — /etc/shadow and secrets blocked from minute zero.",
+    },
+  },
+  flows: {
+    main: {
+      label: "File probe",
+      steps: [
+        {
+          text: `${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
+          mode: "arrow",
+          from: "user",
+          to: "gw",
+          color: COLORS.endUser,
+          num: 1,
+          ...ARROW.userToGw,
+        },
+        {
+          text: `${LAYER_NAMES.gw} forwards cat /etc/shadow prompt to ${LAYER_NAMES.openClaw}`,
+          mode: "arrow",
+          from: "gw",
+          to: "oc",
+          color: COLORS.endUser,
+          num: 1,
+          ...ARROW.gwToOc,
+        },
+        {
+          text: `${LAYER_NAMES.openClaw} tries to read outside workspace`,
+          mode: "arrow",
+          from: "oc",
+          to: "landlock",
+          color: COLORS.landlock,
+          num: 2,
+          ...ARROW.ocToLandlock,
+        },
+        {
+          text: `${LAYER_NAMES.landlock} blocks /etc/shadow — no secret content`,
+          mode: "arrow",
+          from: "landlock",
+          to: "oc",
+          color: COLORS.denied,
+          num: 2,
+          ...ARROW.landlockToOc,
+        },
+        {
+          text: `${LAYER_NAMES.openClaw} answers through ${LAYER_NAMES.gw} — empty / blocked`,
+          mode: "arrow",
+          from: "oc",
+          to: "gw",
+          color: COLORS.secure,
+          num: 1,
+          ...ARROW.ocToGwReply,
+        },
+        {
+          text: `${LAYER_NAMES.gw} returns to ${LAYER_NAMES.endUser} — no sensitive data`,
+          mode: "arrow",
+          from: "gw",
+          to: "user",
+          color: COLORS.secure,
+          num: 1,
+          ...ARROW.gwToUser,
+        },
+      ],
+    },
+  },
+  flowOrder: ["main"],
+  defaultFlow: "main",
+  inspector: {
+    initialState: {
+      headers: [
+        { value: "Credentials     locked", style: "keep", id: "l-creds" },
+        {
+          value: `User path       ${LAYER_NAMES.controlUI} → GW`,
+          style: "keep",
+          id: "l-user",
+        },
+        {
+          value: `Gateway         ${LAYER_NAMES.controlUI} bridge`,
+          style: "keep",
+          id: "l-gw",
+        },
+        { value: "Filesystem      locked  (Landlock)", style: "highlight", id: "l-files" },
+        { value: "Network egress  open (demo)", style: "keep", id: "l-egress" },
+        { value: "Guardrails      off", style: "keep", id: "l-rails" },
+        { value: "MLflow          on (background)", style: "keep", id: "l-mlflow" },
+      ],
+      body: [
+        { value: "Probe: cat /etc/shadow", style: "add", id: "p-probe" },
+      ],
+    },
+    mutations: {
+      main: baseMutationsMain,
+    },
+  },
+  legend: [
+    { label: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`, color: COLORS.endUser },
+    { label: `${LAYER_NAMES.openClaw}`, color: COLORS.oc },
+    { label: "Landlock file policy", color: COLORS.landlock },
+    { label: "Blocked read", color: COLORS.denied },
+    { label: "Safe response", color: COLORS.secure },
+  ],
+};
+
+try {
+  await initScenarioDiagram(diagram, {
+    headerTitle: "Test B — Sensitive files",
+    activeNavId: "B",
+    responseComparison: {
+      flowId: "main",
+      baseMutations: baseMutationsMain,
+      mergedMutations: mergedMutationsMain,
+      overlays: OVERLAYS_B,
+      responseMap: RESPONSES_B,
+    },
+  });
+} catch (e) {
+  console.error(e);
+  document.body.innerHTML = `<pre style="padding:24px;color:#f85149">FlowStory load error\n${e.message}</pre>`;
+}
+</script>
+</body>
+</html>
