@@ -100,10 +100,10 @@ live audience.
 
 Active v1 demo uses the opposite direction for egress:
 
-- [x] Demo-initial policy with permissive egress — [`policies/openclaw-demo-initial.yaml`](../policies/openclaw-demo-initial.yaml)
-- [x] Live restrict script — [`scripts/demo-restrict-egress.sh`](../scripts/demo-restrict-egress.sh) applies [`policies/openclaw-sandbox.yaml`](../policies/openclaw-sandbox.yaml)
+- [x] Demo-initial policy with permissive egress — [`config/openshell/github-egress.yaml`](../config/openshell/github-egress.yaml)
+- [x] Live restrict script — [`scripts/demo-restrict-egress.sh`](../scripts/demo-restrict-egress.sh) applies [`config/openshell/default.yaml`](../config/openshell/default.yaml)
 - [x] Narrative + timed script — [`demo-narrativa-v1.md`](demo-narrativa-v1.md), [`demo-script.md`](demo-script.md)
-- [ ] Keep `policies/openclaw-sandbox.yaml` as CI / `validate-security` final state (unchanged)
+- [ ] Keep `config/openshell/default.yaml` as CI / `validate-security` final state (unchanged)
 - [ ] Optional: document the reference-demo unlock flow as an alternate narrative (deferred)
 
 
