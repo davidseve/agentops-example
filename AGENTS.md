@@ -186,6 +186,7 @@ agentops-example/
 ├── tests/
 │   ├── health-check.sh        # Pre-demo health verification
 │   └── red-teaming/           # GARC configs (Phase 3, nice-to-have)
+├── .github/workflows/         # CI (PR unit tests + Helm lint) — docs/github-actions.md
 └── scripts/
     ├── cluster-lifecycle.sh           # deploy / verify / full / teardown / status / preflight
     ├── verify.sh                      # Layered validation (Makefile + Playwright); .verify-status.json
