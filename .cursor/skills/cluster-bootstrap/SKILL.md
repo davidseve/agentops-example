@@ -174,7 +174,7 @@ Follow global skill **`long-running-scripts`**.
 ## Related
 
 - Full demo v1 install: `demo-backstage-install` skill — [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md)
-- Demo verify (permissive egress): `demo-verify` skill
+- Demo verify (default deny egress): `demo-verify` skill
 
 ## Notes
 

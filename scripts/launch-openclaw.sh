@@ -30,7 +30,7 @@ OPENSHELL_RELEASE_NAME="${OPENSHELL_RELEASE_NAME:-openshell}"
 SANDBOX_SA_NAME="${SANDBOX_SA_NAME:-${OPENSHELL_RELEASE_NAME}-sandbox}"
 APPS_DOMAIN="${APPS_DOMAIN:-}"
 RHOAI_NS="${RHOAI_NS:-redhat-ods-applications}"
-POLICY_FILE="${POLICY_FILE:-${PROJECT_DIR}/policies/openclaw-sandbox.yaml}"
+POLICY_FILE="${POLICY_FILE:-${PROJECT_DIR}/config/openshell/default.yaml}"
 if [[ "$POLICY_FILE" != /* ]]; then
   POLICY_FILE="${PROJECT_DIR}/${POLICY_FILE#./}"
 fi
@@ -135,7 +135,7 @@ if openshell sandbox list 2>/dev/null | awk -v n="$SANDBOX_NAME" 'index($0, n) {
 else
   [[ -f "$POLICY_FILE" ]] || { error "Policy file not found: $POLICY_FILE"; exit 1; }
   info "Creating sandbox (policy=$(basename "$POLICY_FILE"))..."
-  # NOTE: no --upload here. policies/openclaw-sandbox.yaml lists /sandbox
+  # NOTE: no --upload here. config/openshell/default.yaml lists /sandbox
   # itself under filesystem_policy.read_only (only /sandbox/workspace is
   # read_write), so `--upload ...:/sandbox/.openclaw/config.json` is DOA —
   # the CLI's tar-over-ssh extraction always fails with "Permission denied"
@@ -201,20 +201,16 @@ SANDBOX_UID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -u sandbox 2
 SANDBOX_GID=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- id -g sandbox 2>/dev/null || echo "1000820000")
 info "Sandbox UID:GID = ${SANDBOX_UID}:${SANDBOX_GID}"
 
-# ─── Resolve MLflow experiment id (per-workspace on shared MLflow) ────────────
+# ─── Ensure MLflow experiment id (per-workspace on shared MLflow) ─────────────
 if [[ "$MLFLOW_EXPERIMENT_ID" == "__RESOLVE__" ]]; then
-  step "Resolving MLflow experiment '${MLFLOW_EXPERIMENT_NAME}' in workspace ${NAMESPACE}"
-  EXP_JSON=$(oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- \
-    bash -c "curl -sk '${MLFLOW_SVC_URL}/api/2.0/mlflow/experiments/get-by-name?experiment_name=${MLFLOW_EXPERIMENT_NAME}' \
-      -H 'Authorization: Bearer ${MLFLOW_TOKEN}' \
-      -H 'X-MLFLOW-WORKSPACE: ${NAMESPACE}'" 2>/dev/null || true)
-  MLFLOW_EXPERIMENT_ID=$(echo "$EXP_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('experiment',{}).get('experiment_id',''))" 2>/dev/null || true)
-  if [[ -z "$MLFLOW_EXPERIMENT_ID" ]]; then
-    warn "Could not resolve experiment by name; defaulting to 1 (override with MLFLOW_EXPERIMENT_ID)"
-    MLFLOW_EXPERIMENT_ID=1
-  else
-    pass "Resolved experiment ${MLFLOW_EXPERIMENT_NAME} → id=${MLFLOW_EXPERIMENT_ID}"
+  step "Ensuring MLflow experiment '${MLFLOW_EXPERIMENT_NAME}' in workspace ${NAMESPACE}"
+  MLFLOW_WORKSPACE="$NAMESPACE"
+  if ! ensure_mlflow_experiment; then
+    error "Could not get or create MLflow experiment '${MLFLOW_EXPERIMENT_NAME}'"
+    error "Run: make -C deploy deploy-mlflow-openclaw-integration"
+    exit 1
   fi
+  pass "MLflow experiment ${MLFLOW_EXPERIMENT_NAME} → id=${MLFLOW_EXPERIMENT_ID}"
 fi
 # Re-render so experimentId is concrete before upload.
 sed -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
@@ -235,23 +231,23 @@ sed -e "s|__APPS_DOMAIN__|${APPS_DOMAIN}|g" \
 step "Cleaning stale gateway processes"
 kill_stale_openclaw_gateway() {
   openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 -- bash -c '
-    for p in $(pgrep -f "openclaw gateway" 2>/dev/null); do
+    for p in $(pgrep -f "openclaw gateway|/openclaw| openclaw$|node.*openclaw" 2>/dev/null); do
       kill -9 "$p" 2>/dev/null
     done
     sleep 2
     rm -f /sandbox/workspace/.openclaw/state/*.lock /tmp/openclaw*/*.lock 2>/dev/null
-    pgrep -af "openclaw gateway" 2>/dev/null
+    pgrep -af "openclaw gateway|/openclaw| openclaw$|node.*openclaw" 2>/dev/null
     true
   ' 2>&1
   return 0
 }
 STALE_CHECK="$(kill_stale_openclaw_gateway)"
-if echo "$STALE_CHECK" | grep -q "openclaw gateway"; then
+if echo "$STALE_CHECK" | grep -qE "openclaw gateway|/openclaw| openclaw$|node.*openclaw"; then
   warn "Stale gateway process(es) survived first kill attempt — retrying:"
   echo "$STALE_CHECK" | while IFS= read -r line; do info "  $line"; done
   STALE_CHECK="$(kill_stale_openclaw_gateway)"
 fi
-if echo "$STALE_CHECK" | grep -q "openclaw gateway"; then
+if echo "$STALE_CHECK" | grep -qE "openclaw gateway|/openclaw| openclaw$|node.*openclaw"; then
   error "Could not kill stale OpenClaw gateway process(es) after 2 attempts — refusing to start a second gateway on top of a live one:"
   echo "$STALE_CHECK" | while IFS= read -r line; do error "  $line"; done
   error "Fix: openshell sandbox connect ${SANDBOX_POD}, then manually 'kill -9 <pid>' for each, then re-run this script."
@@ -294,6 +290,27 @@ oc -n "$NAMESPACE" cp "$CONFIG_RENDERED" "${SANDBOX_POD}:/sandbox/workspace/.ope
 oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- \
   chown "${SANDBOX_UID}:${SANDBOX_GID}" /sandbox/workspace/.openclaw/openclaw.json
 pass "Config uploaded (owned by sandbox UID ${SANDBOX_UID})"
+
+# ─── Step 3b: Upload workspace bootstrap (demo AGENTS.md / SOUL.md) ───────────
+# OpenClaw injects workspace bootstrap files into every session system prompt.
+# Default bootstrap refuses sensitive probes; demo workspace overrides that so
+# Landlock/egress/guardrails — not LLM refusal — are what the audience sees.
+WORKSPACE_SRC="${PROJECT_DIR}/agent/workspace"
+step "Uploading workspace bootstrap files"
+if [[ -d "$WORKSPACE_SRC" ]]; then
+  for ws_file in AGENTS.md SOUL.md IDENTITY.md; do
+    if [[ -f "${WORKSPACE_SRC}/${ws_file}" ]]; then
+      oc -n "$NAMESPACE" cp "${WORKSPACE_SRC}/${ws_file}" \
+        "${SANDBOX_POD}:/sandbox/workspace/${ws_file}" -c agent
+      oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- \
+        chown "${SANDBOX_UID}:${SANDBOX_GID}" "/sandbox/workspace/${ws_file}"
+      info "  uploaded ${ws_file}"
+    fi
+  done
+  pass "Workspace bootstrap ready (skipBootstrap=true in openclaw.json)"
+else
+  warn "agent/workspace not found — OpenClaw may use default bootstrap templates"
+fi
 
 # ─── Step 4: Install mlflow-openclaw plugin ───────────────────────────────────
 # This plugin hooks into OpenClaw's agent lifecycle events and creates MLflow
@@ -350,6 +367,25 @@ oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- \
   chown "${SANDBOX_UID}:${SANDBOX_GID}" "${COMBINED_CA}"
 pass "Combined CA bundle staged at ${COMBINED_CA}"
 
+# Sidecar files for MLflow tracing (openclaw.json schema cannot carry workspace).
+GATEWAY_ENV="/sandbox/workspace/.openclaw/gateway.env"
+MLFLOW_WORKSPACE_FILE="/sandbox/workspace/.openclaw/mlflow-workspace"
+step "Writing MLflow tracing sidecar files"
+oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c "
+  printf '%s\\n' '${NAMESPACE}' > '${MLFLOW_WORKSPACE_FILE}'
+  cat > '${GATEWAY_ENV}' <<EOF
+MLFLOW_TRACKING_TOKEN=${MLFLOW_TOKEN}
+MLFLOW_WORKSPACE=${NAMESPACE}
+NODE_EXTRA_CA_CERTS=${COMBINED_CA}
+NODE_TLS_REJECT_UNAUTHORIZED=0
+OTEL_TRACES_EXPORTER=none
+OTEL_METRICS_EXPORTER=none
+EOF
+  chown ${SANDBOX_UID}:${SANDBOX_GID} '${MLFLOW_WORKSPACE_FILE}' '${GATEWAY_ENV}'
+  chmod 600 '${GATEWAY_ENV}'
+"
+pass "MLflow sidecar files ready (workspace=${NAMESPACE})"
+
 # ─── Step 7: Setup workspace dirs with correct ownership ─────────────────────
 step "Setting up workspace directories"
 oc -n "$NAMESPACE" exec "$SANDBOX_POD" -c agent -- bash -c "
@@ -380,24 +416,22 @@ step "Starting OpenClaw gateway"
 openshell sandbox exec -n "$SANDBOX_POD" --no-tty --timeout 15 \
   --env "HOME=/sandbox/workspace" \
   --env "OPENCLAW_TEMP=/sandbox/workspace/.openclaw/tmp" \
-  --env "OTEL_TRACES_EXPORTER=none" \
-  --env "OTEL_METRICS_EXPORTER=none" \
-  --env "MLFLOW_TRACKING_TOKEN=${MLFLOW_TOKEN}" \
-  --env "MLFLOW_WORKSPACE=${NAMESPACE}" \
-  --env "NODE_EXTRA_CA_CERTS=${COMBINED_CA}" \
-  --env "NODE_TLS_REJECT_UNAUTHORIZED=0" \
-  -- bash -c '
+  -- bash -c "
+    set -a
+    # shellcheck disable=SC1091
+    source '${GATEWAY_ENV}'
+    set +a
     nohup openclaw gateway run > /sandbox/workspace/openclaw.log 2>&1 &
     disown
     sleep 8
-    if pgrep -f "openclaw gateway" >/dev/null; then
-      echo "OK"
+    if pgrep -f 'openclaw gateway|/openclaw| openclaw\$|node.*openclaw' >/dev/null; then
+      echo OK
     else
-      echo "FAIL"
+      echo FAIL
       tail -20 /sandbox/workspace/openclaw.log
       exit 1
     fi
-  '
+  "
 
 # ─── Step 10: Verify health + plugin loaded ───────────────────────────────────
 step "Verifying gateway health"

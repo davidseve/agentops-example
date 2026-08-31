@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# demo-enable-guardrails.sh — Live demo Cambio 2: route inference.local via NeMo Guardrails.
+# demo-enable-guardrails.sh — Live demo Change 2: route inference.local via NeMo Guardrails.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
