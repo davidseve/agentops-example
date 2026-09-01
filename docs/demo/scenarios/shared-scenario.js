@@ -5,207 +5,228 @@
 import { FlowStory } from "../shared/vendor/flowstory.min.js";
 import { setLogosEnabled } from "../shared/logo-renderer.js";
 
-export const LAYER_NAMES = {
-  endUser: "End user",
-  controlUI: "Control UI",
-  openClaw: "OpenClaw",
-  harness: "BYOA harness",
-  gw: "OpenShell Gateway",
-  ir: "inference.local",
-  nemo: "NeMo Guardrails",
-  maas: "MaaS",
-  llm: "LLM",
-  mlflow: "MLflow",
-  internet: "Internet",
-  landlock: "Landlock",
-};
 
-export const COLORS = {
-  platform: "#58a6ff",
-  secure: "#3fb950",
-  warn: "#d29922",
-  risk: "#f78166",
-  denied: "#f85149",
-  landlock: "#c9d1d9",
-  nemo: "#2dd4bf",
-  maas: "#3fb950",
-  gw: "#1f6feb",
-  oc: "#f0883e",
-  dim: "#484f58",
-  trace: "#e3b341",
-  sandbox: "#d2a8ff",
-  endUser: "#79c0ff",
-};
+export * from "./scenario-layout.js";
+import {
+  ARROW,
+  BOX,
+  COLORS,
+  LAYER_NAMES,
+  OVERALL_CANVAS,
+  OVERALL_FLOW_ORDER,
+  OVERALL_FLOW_SHORTCUTS,
+  OVERALL_HREF,
+  OVERALL_NODES,
+  SCENARIO_LINKS,
+  mergeResponseBodies,
+  pickNodes,
+} from "./scenario-layout.js";
 
-export const BOX = { w: 148, h: 50 };
+const LAYERS_DOCK_MODES = ["right", "off", "top", "bottom"];
+export const LAYERS_RIGHT_PANEL_WIDTH = 380;
 
-/** Layout grid — must match overall-demo-architecture.html */
-export const COL_L = 292;
-export const COL_R = 512;
-export const INNER_W = COL_R + BOX.w - COL_L;
-export const CONTAINER_PAD = 16;
-export const SHELL_PAD = 16;
-export const CONTENT_L = COL_L - CONTAINER_PAD;
-export const CONTENT_R = CONTENT_L + INNER_W + 2 * CONTAINER_PAD;
-export const OPENSHELL_X = CONTENT_L - SHELL_PAD;
-export const OPENSHELL_W = CONTENT_R - CONTENT_L + 2 * SHELL_PAD;
-export const CLUSTER_PAD = 16;
-export const CLUSTER_X = OPENSHELL_X - CLUSTER_PAD;
-export const CLUSTER_W = OPENSHELL_W + 2 * CLUSTER_PAD;
+function isLayersRightMode() {
+  return (
+    document.body.classList.contains("fs-layers-pos-right") &&
+    !document.body.classList.contains("fs-layers-ui--off")
+  );
+}
 
-export const OVERALL_CANVAS = { width: 820, height: 740 };
-/** @deprecated use OVERALL_CANVAS */
-export const CANVAS = OVERALL_CANVAS;
+function getLayersPanelWidth() {
+  return isLayersRightMode() ? LAYERS_RIGHT_PANEL_WIDTH : 0;
+}
 
-const NODE_FS = 12;
+function readLayersDockMode() {
+  const stored = localStorage.getItem(LAYERS_DOCK_MODE_KEY);
+  if (LAYERS_DOCK_MODES.includes(stored)) return stored;
+  return localStorage.getItem(LAYERS_DOCK_VISIBLE_KEY) === "false" ? "off" : "right";
+}
 
-/** Node positions aligned with overall-demo-architecture.html */
-export const OVERALL_NODES = {
-  cluster: {
-    x: CLUSTER_X,
-    y: 48,
-    w: CLUSTER_W,
-    h: 668,
-    type: "boundary",
-    label: "OpenShift + RHOAI",
-    labelAlign: "left",
-    labelColor: "#8b949e",
-  },
-  openshell: {
-    x: OPENSHELL_X,
-    y: 88,
-    w: OPENSHELL_W,
-    h: 328,
-    type: "container",
-    label: "OpenShell",
-    color: COLORS.platform,
-  },
-  agentsb: {
-    x: CONTENT_L,
-    y: 124,
-    w: CONTENT_R - CONTENT_L,
-    h: 108,
-    type: "container",
-    label: "Agent Sandbox",
-    color: COLORS.sandbox,
-  },
-  oc: {
-    x: COL_L,
-    y: 156,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.openClaw,
-    sublabel: LAYER_NAMES.harness,
-    color: COLORS.oc,
-    fontSize: NODE_FS,
-  },
-  landlock: {
-    x: COL_R,
-    y: 156,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.landlock,
-    sublabel: "files locked",
-    color: "#8b949e",
-    fontSize: NODE_FS,
-  },
-  ir: {
-    x: COL_R,
-    y: 240,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.ir,
-    sublabel: "router injects key",
-    color: COLORS.platform,
-    fontSize: NODE_FS,
-  },
-  gw: {
-    x: COL_L,
-    y: 324,
-    w: INNER_W,
-    h: BOX.h,
-    label: LAYER_NAMES.gw,
-    sublabel: "all outbound",
-    color: COLORS.gw,
-    fontSize: NODE_FS,
-  },
-  nemo: {
-    x: COL_R,
-    y: 436,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.nemo,
-    sublabel: "TrustyAI · RHOAI",
-    color: COLORS.nemo,
-    fontSize: NODE_FS,
-  },
-  maas: {
-    x: COL_R,
-    y: 528,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.maas,
-    sublabel: "RHOAI",
-    color: COLORS.maas,
-    fontSize: NODE_FS,
-  },
-  llm: {
-    x: COL_R,
-    y: 620,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.llm,
-    sublabel: "the model",
-    color: "#7ee787",
-    fontSize: NODE_FS,
-    stackCount: 2,
-    stackOffset: { dx: 8, dy: -7 },
-  },
-  mlflow: {
-    x: COL_L,
-    y: 436,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.mlflow,
-    sublabel: "traces · RHOAI",
-    color: COLORS.trace,
-    fontSize: NODE_FS,
-  },
-  internet: {
-    x: 40,
-    y: 528,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.internet,
-    sublabel: "public egress",
-    color: COLORS.risk,
-    fontSize: NODE_FS,
-  },
-  user: {
-    x: 40,
-    y: 324,
-    w: BOX.w,
-    h: BOX.h,
-    label: LAYER_NAMES.endUser,
-    sublabel: LAYER_NAMES.controlUI,
-    color: COLORS.endUser,
-    fontSize: NODE_FS,
-  },
-};
+function getChromeInsets() {
+  const flowDock = document.getElementById("fs-top-dock");
+  const layersDock = document.getElementById("fs-layers-dock");
+  const off = document.body.classList.contains("fs-layers-ui--off");
+  const bottom = document.body.classList.contains("fs-layers-pos-bottom");
 
-/** Pick nodes from the overall layout with optional per-id overrides */
-export function pickNodes(keys, overrides = {}) {
-  const nodes = {};
-  const orderedKeys =
-    keys.includes("openshell") && !keys.includes("cluster")
-      ? ["cluster", ...keys]
-      : keys;
-  for (const key of orderedKeys) {
-    const base = OVERALL_NODES[key];
-    if (!base) continue;
-    nodes[key] = { ...base, ...(overrides[key] || {}) };
+  const flowBottom = flowDock
+    ? Math.round(flowDock.getBoundingClientRect().bottom)
+    : 52;
+
+  if (off || !layersDock || isLayersRightMode()) {
+    return { top: flowBottom, bottom: 0 };
   }
-  return nodes;
+
+  if (bottom) {
+    return {
+      top: flowBottom,
+      bottom: Math.round(layersDock.getBoundingClientRect().height),
+    };
+  }
+
+  return {
+    top: Math.round(layersDock.getBoundingClientRect().bottom),
+    bottom: 0,
+  };
+}
+
+function syncChromeInsets() {
+  const flowDock = document.getElementById("fs-top-dock");
+  const flowBottom = flowDock
+    ? Math.round(flowDock.getBoundingClientRect().bottom)
+    : 52;
+  const { top, bottom } = getChromeInsets();
+  document.documentElement.style.setProperty("--fs-flow-dock-offset", `${flowBottom}px`);
+  document.documentElement.style.setProperty("--fs-chrome-top-offset", `${top}px`);
+  document.documentElement.style.setProperty("--fs-chrome-bottom-offset", `${bottom}px`);
+  document.documentElement.style.setProperty(
+    "--fs-layers-right-width",
+    `${LAYERS_RIGHT_PANEL_WIDTH}px`,
+  );
+}
+
+let layersDockSyncRaf = 0;
+
+/** Content-driven panel height (not the flex-sized inspector container). */
+function measureLayersPanelHeight() {
+  const content = document.getElementById("fs-inspector-content");
+  const title = document.getElementById("fs-inspector-title");
+  if (!content) return 112;
+  const pad = 16;
+  const titleH = title?.offsetHeight ?? 0;
+  return Math.max(112, Math.ceil(titleH + content.scrollHeight + pad));
+}
+
+function scheduleSyncLayersDockHeight(viz) {
+  if (layersDockSyncRaf) return;
+  layersDockSyncRaf = requestAnimationFrame(() => {
+    layersDockSyncRaf = 0;
+    syncLayersDockHeight(viz);
+  });
+}
+
+/** Equal-height Layers + Layer board; dock height = 2× layer-board content (no inspector scroll). */
+function syncLayersDockHeight(viz) {
+  const layersDock = document.getElementById("fs-layers-dock");
+  if (!layersDock) return;
+
+  if (document.body.classList.contains("fs-layers-ui--off")) {
+    document.documentElement.style.removeProperty("--fs-layers-panel-height");
+    layersDock.style.height = "";
+    syncChromeInsets();
+    viz?._engine?.resize?.();
+    refreshScenarioHeader(viz);
+    return;
+  }
+
+  if (isLayersRightMode()) {
+    document.documentElement.style.removeProperty("--fs-layers-panel-height");
+    layersDock.style.height = "";
+    syncChromeInsets();
+    viz?._engine?.resize?.();
+    refreshScenarioHeader(viz);
+    return;
+  }
+
+  const maxPanel = Math.floor(window.innerHeight * 0.38);
+  const panelHeight = Math.min(maxPanel, measureLayersPanelHeight());
+  const prev = Number.parseInt(
+    document.documentElement.style.getPropertyValue("--fs-layers-panel-height"),
+    10,
+  );
+  if (!Number.isFinite(prev) || Math.abs(prev - panelHeight) > 1) {
+    document.documentElement.style.setProperty("--fs-layers-panel-height", `${panelHeight}px`);
+    layersDock.style.height = "";
+  }
+
+  syncChromeInsets();
+  viz?._engine?.resize?.();
+  refreshScenarioHeader(viz);
+}
+
+function patchEngineLayoutForTopPanel(viz) {
+  const engine = viz?._engine;
+  if (!engine || engine._topPanelPatched) return;
+  engine._topPanelPatched = true;
+  engine.panelWidth = 0;
+
+  engine.resize = function chromeDockResize() {
+    syncChromeInsets();
+    const { top, bottom } = getChromeInsets();
+    const panelWidth = getLayersPanelWidth();
+    this.panelWidth = panelWidth;
+    this.W = this.canvas.width = innerWidth - panelWidth;
+    this.H = this.canvas.height = innerHeight;
+    const availH = Math.max(1, innerHeight - top - bottom);
+    this._sc = Math.min(this.W / this.logicalWidth, availH / this.logicalHeight) * 0.98;
+    this._ox = (this.W - this.logicalWidth * this._sc) / 2;
+    this._oy = top + (availH - this.logicalHeight * this._sc) * 0.04;
+    this.draw();
+  };
+}
+
+/** Flow bar on top; layers stack toggles Right → Off → Top → Bottom. */
+export function wireLayersDock(viz) {
+  const stack = document.getElementById("fs-layers-stack");
+  const toggle = document.getElementById("fs-layers-toggle");
+  const flowDock = document.getElementById("fs-top-dock");
+  const layersDock = document.getElementById("fs-layers-dock");
+  if (!stack || !toggle || !flowDock || !layersDock) return null;
+
+  document.body.classList.add("fs-has-top-panel");
+
+  let mode = readLayersDockMode();
+
+  function syncToggle() {
+    const labels = {
+      off: "Layers: Off",
+      right: "Layers: Right",
+      top: "Layers: Top",
+      bottom: "Layers: Bottom",
+    };
+    toggle.textContent = labels[mode];
+    toggle.classList.toggle("fs-layers-toggle--right", mode === "right");
+    toggle.classList.toggle("fs-layers-toggle--top", mode === "top");
+    toggle.classList.toggle("fs-layers-toggle--bottom", mode === "bottom");
+    toggle.classList.toggle("fs-layers-toggle--on", mode !== "off");
+    toggle.setAttribute("aria-pressed", mode !== "off" ? "true" : "false");
+  }
+
+  function apply() {
+    document.body.classList.toggle("fs-layers-ui--off", mode === "off");
+    document.body.classList.toggle("fs-layers-pos-right", mode === "right");
+    document.body.classList.toggle("fs-layers-pos-top", mode === "top");
+    document.body.classList.toggle("fs-layers-pos-bottom", mode === "bottom");
+    stack.hidden = mode === "off";
+    stack.setAttribute("aria-hidden", mode === "off" ? "true" : "false");
+    syncToggle();
+    localStorage.setItem(LAYERS_DOCK_MODE_KEY, mode);
+    localStorage.setItem(LAYERS_DOCK_VISIBLE_KEY, mode === "off" ? "false" : "true");
+    scheduleSyncLayersDockHeight(viz);
+    refreshScenarioHeader(viz);
+  }
+
+  toggle.addEventListener("click", () => {
+    const idx = LAYERS_DOCK_MODES.indexOf(mode);
+    mode = LAYERS_DOCK_MODES[(idx + 1) % LAYERS_DOCK_MODES.length];
+    apply();
+  });
+
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => scheduleSyncLayersDockHeight(viz));
+    ro.observe(flowDock);
+    const content = document.getElementById("fs-inspector-content");
+    if (content) ro.observe(content);
+  }
+
+  apply();
+  return {
+    setMode: (next) => {
+      if (LAYERS_DOCK_MODES.includes(next)) {
+        mode = next;
+        apply();
+      }
+    },
+  };
 }
 
 /** Align fixed title/tagline + scenario nav with the main container center on canvas. */
@@ -232,136 +253,66 @@ export function syncScenarioHeaderLayout(viz) {
   }
 }
 
-/** Arrow routing offsets from overall-demo-architecture.html */
-export const ARROW = {
-  userToGw: { fromRight: true, toLeft: true, yOff: -10 },
-  gwToOc: {
-    fromTop: true,
-    toBottom: true,
-    fromXOff: -224,
-    toXOff: -66,
-    glow: "openshell",
-  },
-  ocToGwReply: {
-    fromBottom: true,
-    toTop: true,
-    fromXOff: -36,
-    toXOff: -194,
-    glow: "openshell",
-  },
-  gwToUser: { fromLeft: true, toRight: true, yOff: 10 },
-  ocToIr: { fromRight: true, toLeft: true, yOff: -6, glow: "openshell" },
-  irToGw: { fromBottom: true, toTop: true, fromXOff: 0, toXOff: 62, glow: "openshell" },
-  gwToIr: {
-    fromTop: true,
-    toBottom: true,
-    fromXOff: 74,
-    toXOff: 12,
-    glow: "openshell",
-  },
-  irToOc: { fromLeft: true, toRight: true, yOff: 6, glow: "openshell" },
-  ocToLandlock: { fromRight: true, toLeft: true, yOff: -14, glow: "agentsb" },
-  landlockToOc: { fromLeft: true, toRight: true, yOff: 6, glow: "agentsb" },
-  ocToGw: { fromBottom: true, toTop: true, fromXOff: 2, toXOff: -156, glow: "openshell" },
-  gwToInternet: { fromBottom: true, toTop: true, fromXOff: -234, toXOff: 0 },
-  internetToGw: { fromTop: true, toBottom: true, fromXOff: 0, toXOff: -220 },
-  gwToOcReturn: {
-    fromTop: true,
-    toBottom: true,
-    fromXOff: -118,
-    toXOff: 40,
-    glow: "openshell",
-  },
-  gwToNemo: { fromBottom: true, toTop: true, fromXOff: 50, toXOff: -12 },
-  nemoToMaas: { fromBottom: true, toTop: true, fromXOff: -12, toXOff: -12 },
-  irToMaas: { fromBottom: true, toTop: true, fromXOff: -12, toXOff: -12 },
-  irToNemo: { fromBottom: true, toTop: true, fromXOff: -12, toXOff: -12 },
-  gwToMaas: { fromBottom: true, toTop: true, fromXOff: 50, toXOff: -12 },
-  maasToLlm: { fromBottom: true, toTop: true, fromXOff: -12, toXOff: -12 },
-  llmToMaas: { fromTop: true, toBottom: true, fromXOff: 12, toXOff: 12 },
-  ocToGwTrace: {
-    fromBottom: true,
-    toTop: true,
-    fromXOff: 78,
-    toXOff: -80,
-    glow: "openshell",
-  },
-  gwToMlflow: { fromBottom: true, toTop: true, fromXOff: -158, toXOff: 0 },
-  /** Direct trace export — mlflow_direct policy (sandbox → MLflow, no gateway hop). */
-  ocToMlflow: {
-    fromBottom: true,
-    toTop: true,
-    fromXOff: -36,
-    toXOff: 36,
-    glow: "openshell",
-  },
-};
+const LAYER_BOARD_TITLE_DEFAULT = "Layer board";
 
-/** FlowStory band styling for background MLflow trace hops. */
-export const TRACE_STEP_STYLE = { color: COLORS.trace, num: 4 };
+/** Keep the layer-board panel title fixed (layers-logos.html behaviour). */
+function relabelLayerBoardTitle() {
+  const title = document.getElementById("fs-inspector-title");
+  if (!title || title.textContent === LAYER_BOARD_TITLE_DEFAULT) return;
+  title.textContent = LAYER_BOARD_TITLE_DEFAULT;
+  title.style.color = "var(--fs-accent, #58a6ff)";
+}
 
-export const SCENARIO_LINKS = [
-  {
-    id: "A",
-    label: "A · Credentials",
-    href: "test-a-credentials.html",
-    flowId: "scenario-a",
-    navGroup: "A",
-  },
-  {
-    id: "B",
-    label: "B · Files",
-    href: "test-b-files.html",
-    flowId: "scenario-b",
-    navGroup: "B",
-  },
-  {
-    id: "C",
-    label: "C · Egress",
-    href: "test-c-egress.html",
-    flowId: "scenario-c-before",
-    navGroup: "C",
-  },
-  {
-    id: "D",
-    label: "D · Guardrails",
-    href: "test-d-guardrails.html",
-    flowId: "scenario-d-before",
-    navGroup: "D",
-  },
-];
+/** Stop FlowStory from overwriting the layer-board title with Request/Response. */
+function patchInspectorLayerBoardTitle(viz) {
+  const inspector = viz?._inspector;
+  if (!inspector || inspector._layerBoardTitlePatched) return;
+  inspector._layerBoardTitlePatched = true;
 
-export const OVERALL_FLOW_ORDER = [
-  "baseline",
-  "scenario-a",
-  "scenario-b",
-  "scenario-c-before",
-  "scenario-c-after",
-  "scenario-d-before",
-  "scenario-d-after",
-];
+  inspector.setPhase = function setPhase(phase) {
+    this._phase = phase;
+  };
 
-export const OVERALL_FLOW_SHORTCUTS = {
-  "0": "baseline",
-  a: "scenario-a",
-  A: "scenario-a",
-  b: "scenario-b",
-  B: "scenario-b",
-  c: "scenario-c-before",
-  C: "scenario-c-before",
-  d: "scenario-d-before",
-  D: "scenario-d-before",
-};
+  const origRender = inspector.render.bind(inspector);
+  inspector.render = function render() {
+    origRender();
+    relabelInspector();
+    if (document.getElementById("fs-top-dock")) {
+      scheduleSyncLayersDockHeight(viz);
+    }
+  };
+}
 
-export const OVERALL_HREF = "../overall-demo-architecture.html";
+export function refreshScenarioHeader(viz) {
+  viz._origUpdateFlowLabel?.call(viz);
+  relabelLayerBoardTitle();
+  syncScenarioHeaderLayout(viz);
+}
 
+function wireLayerBoardTitle(viz) {
+  patchInspectorLayerBoardTitle(viz);
+  viz._origUpdateFlowLabel = viz._updateFlowLabel.bind(viz);
+  viz._updateFlowLabel = () => refreshScenarioHeader(viz);
+  relabelLayerBoardTitle();
+
+  const titleEl = document.getElementById("fs-inspector-title");
+  if (titleEl) {
+    new MutationObserver(() => relabelLayerBoardTitle()).observe(titleEl, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+}
 export const RESPONSE_MODE_KEY = "agentops-demo-response-mode-v2";
+export const LAYERS_DOCK_VISIBLE_KEY = "agentops-layers-dock-visible";
+export const LAYERS_DOCK_MODE_KEY = "agentops-layers-dock-mode";
 export const RESPONSE_MODES = ["popup", "panel", "both"];
 
 export function readResponseMode(storageKey = RESPONSE_MODE_KEY) {
   const stored = localStorage.getItem(storageKey);
   if (stored === "overlay") return "popup";
-  return RESPONSE_MODES.includes(stored) ? stored : "popup";
+  return RESPONSE_MODES.includes(stored) ? stored : "panel";
 }
 
 export function writeResponseMode(mode, storageKey = RESPONSE_MODE_KEY) {
@@ -385,59 +336,37 @@ export function syncResponseModeButton(btn, mode, labels, isActive) {
 export function getActiveResponseMode() {
   return activeResponseMode;
 }
-
-/** Merge panel response lines into inspector mutations (1-based step keys). */
-export function mergeResponseBodies(mutations, responseMap) {
-  if (!responseMap) return mutations;
-  return mutations.map((m) => {
-    const lines = responseMap[m.step];
-    if (!lines?.length) return m;
-    return {
-      ...m,
-      replaceBody: lines.map((value, i) => ({
-        value,
-        style: "add",
-        id: `r-${m.step}-${i}`,
-      })),
-    };
-  });
-}
-
 let activeResponseMode = "panel";
 let inspectorBodyLabelDefault = "Scenario";
+let relabelInspectorBusy = false;
 
 function relabelInspector(scope = document) {
-  const title =
-    scope.querySelector?.(".v2-fs-inspector-title, #fs-inspector-title") ??
-    document.getElementById("fs-inspector-title");
-  if (
-    title &&
-    (title.textContent === "Request" ||
-      title.textContent === "Response" ||
-      title.textContent === "Error Response")
-  ) {
-    title.textContent = "Layer board";
-    title.style.color = "#58a6ff";
+  if (relabelInspectorBusy) return;
+  relabelInspectorBusy = true;
+  try {
+    const sections =
+      scope.querySelectorAll?.(".fs-inspector-section") ??
+      document.querySelectorAll(".fs-inspector-section");
+    sections.forEach((el) => {
+      if (el.textContent === "Headers:") el.textContent = "Layers";
+      const useResponses =
+        activeResponseMode === "panel" || activeResponseMode === "both";
+      const targetBody = useResponses ? "Responses" : inspectorBodyLabelDefault;
+      const bodyLabels = new Set([
+        "Body:",
+        "Scenario",
+        "Responses",
+        inspectorBodyLabelDefault,
+      ]);
+      if (bodyLabels.has(el.textContent) && el.textContent !== targetBody) {
+        el.textContent = targetBody;
+        el.classList.toggle("fs-inspector-responses", useResponses);
+      }
+    });
+    relabelLayerBoardTitle();
+  } finally {
+    relabelInspectorBusy = false;
   }
-  const sections =
-    scope.querySelectorAll?.(".fs-inspector-section") ??
-    document.querySelectorAll(".fs-inspector-section");
-  sections.forEach((el) => {
-    if (el.textContent === "Headers:") el.textContent = "Layers";
-    const useResponses =
-      activeResponseMode === "panel" || activeResponseMode === "both";
-    const targetBody = useResponses ? "Responses" : inspectorBodyLabelDefault;
-    const bodyLabels = new Set([
-      "Body:",
-      "Scenario",
-      "Responses",
-      inspectorBodyLabelDefault,
-    ]);
-    if (bodyLabels.has(el.textContent) && el.textContent !== targetBody) {
-      el.textContent = targetBody;
-      el.classList.toggle("fs-inspector-responses", useResponses);
-    }
-  });
 }
 
 function mapInspectorRows(rows) {
@@ -735,11 +664,20 @@ export function wireResponseComparison(viz, diagram, config) {
   const modeLabels = config.modeLabels;
   const modeActive = config.modeActive;
 
-  let mode = readResponseMode(config.modeKey ?? RESPONSE_MODE_KEY);
-  if (!cycleModes.includes(mode)) mode = cycleModes[0];
+  const modeBtn = config.modeButton ?? document.getElementById("fs-response-mode");
+
+  function resolveMode() {
+    if (modeBtn) {
+      let m = readResponseMode(config.modeKey ?? RESPONSE_MODE_KEY);
+      if (!cycleModes.includes(m)) m = cycleModes[0];
+      return m;
+    }
+    return config.fixedMode ?? "panel";
+  }
+
+  let mode = resolveMode();
   activeResponseMode = mode;
 
-  const modeBtn = config.modeButton ?? document.getElementById("fs-response-mode");
   const syncModeBtn = () =>
     syncResponseModeButton(modeBtn, mode, modeLabels, modeActive);
 
@@ -791,6 +729,7 @@ export function wireResponseComparison(viz, diagram, config) {
     }
     relabelInspector(inspectorRoot);
     refreshPopup();
+    refreshScenarioHeader(viz);
   }
 
   function onFlowChange(flowId) {
@@ -836,7 +775,10 @@ export function wireResponseComparison(viz, diagram, config) {
     viz.jumpTo = (idx) => {
       origJumpTo(idx);
       syncPlayLabel(viz);
-      requestAnimationFrame(() => refreshPopup());
+      requestAnimationFrame(() => {
+        refreshPopup();
+        refreshScenarioHeader(viz);
+      });
     };
   }
 
@@ -851,14 +793,14 @@ export function wireResponseComparison(viz, diagram, config) {
 
   viz._playback?.onChange?.((event) => {
     if (event === "reset") {
-      mode = readResponseMode(config.modeKey ?? RESPONSE_MODE_KEY);
-      if (!cycleModes.includes(mode)) mode = cycleModes[0];
+      mode = resolveMode();
       activeResponseMode = mode;
       syncModeBtn();
       applyMutationSet();
       hideNodePopup();
       viz.closeOverlay?.();
       relabelInspector(inspectorRoot);
+      refreshScenarioHeader(viz);
     }
   });
 
@@ -949,6 +891,11 @@ export async function initScenarioDiagram(diagram, options = {}) {
 
   window.__flowstory = viz;
 
+  if (document.getElementById("fs-top-dock")) {
+    patchEngineLayoutForTopPanel(viz);
+    syncChromeInsets();
+  }
+
   const titleEl = document.getElementById("fs-title");
   if (titleEl && headerTitle) titleEl.textContent = headerTitle;
   const taglineEl = document.getElementById("fs-tagline");
@@ -960,6 +907,7 @@ export async function initScenarioDiagram(diagram, options = {}) {
     if (shown >= stepCount(diagram, viz)) return;
     viz.jumpTo(shown);
     syncPlayLabel(viz);
+    refreshScenarioHeader(viz);
   }
 
   function goPrev() {
@@ -969,15 +917,16 @@ export async function initScenarioDiagram(diagram, options = {}) {
     if (shown === 1) viz.reset();
     else viz.jumpTo(shown - 2);
     syncPlayLabel(viz);
+    refreshScenarioHeader(viz);
   }
 
   normalizeLightupBadges(diagram);
   await viz.load(diagram);
   relabelInspector();
-  viz._updateFlowLabel = () => syncScenarioHeaderLayout(viz);
-  syncScenarioHeaderLayout(viz);
-  requestAnimationFrame(() => syncScenarioHeaderLayout(viz));
-  window.addEventListener("resize", () => syncScenarioHeaderLayout(viz), {
+  wireLayersDock(viz);
+  wireLayerBoardTitle(viz);
+  refreshScenarioHeader(viz);
+  window.addEventListener("resize", () => refreshScenarioHeader(viz), {
     passive: true,
   });
 
@@ -1005,7 +954,8 @@ export async function initScenarioDiagram(diagram, options = {}) {
     syncNavFromFlow?.(flowId);
     viz.closeOverlay?.();
     syncPlayLabel(viz);
-    syncScenarioHeaderLayout(viz);
+    refreshScenarioHeader(viz);
+    scheduleSyncLayersDockHeight(viz);
   }
 
   const modeToggle = document.getElementById("fs-mode-toggle");
@@ -1030,6 +980,9 @@ export async function initScenarioDiagram(diagram, options = {}) {
     syncFlowPanel(initialFlow);
   } else {
     applyInspectorInitialState(diagram, diagram.defaultFlow);
+    if (phaseRest) {
+      applyPhaseRestVisuals(viz, diagram, diagram.defaultFlow, phaseRest);
+    }
   }
 
   if (modeFlows) {
@@ -1089,23 +1042,20 @@ export async function initScenarioDiagram(diagram, options = {}) {
       viz.reset();
       syncPlayLabel(viz);
       responseWire?.syncStepPresentation?.(0);
+      refreshScenarioHeader(viz);
     } else if (e.key === "End") {
       e.preventDefault();
       viz.closeOverlay?.();
       viz.jumpTo(stepCount(diagram, viz) - 1);
       syncPlayLabel(viz);
+      refreshScenarioHeader(viz);
     }
   }, true);
 
   const insp = document.getElementById("fs-inspector-content");
   if (insp) {
-    new MutationObserver(relabelInspector).observe(insp, { childList: true, subtree: true });
-  }
-  const inspTitle = document.getElementById("fs-inspector-title");
-  if (inspTitle) {
-    new MutationObserver(relabelInspector).observe(inspTitle, {
+    new MutationObserver(() => relabelInspector()).observe(insp, {
       childList: true,
-      characterData: true,
       subtree: true,
     });
   }
@@ -1114,7 +1064,7 @@ export async function initScenarioDiagram(diagram, options = {}) {
     if (event === "flow") {
       syncFlowPanel(viz.state.activeFlow);
     }
-    if (event === "reset" && modeFlows) {
+    if (event === "reset" && phaseRest) {
       applyPhaseRestVisuals(viz, diagram, viz.state.activeFlow, phaseRest);
     }
   });

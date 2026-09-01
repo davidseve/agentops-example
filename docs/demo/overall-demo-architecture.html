@@ -18,44 +18,49 @@
   <div class="fs-tagline">Your Agent. Our Platform. Production-Ready.</div>
 </div>
 
-<nav class="fs-scenario-nav" id="fs-scenario-nav" aria-label="Scenario diagrams"></nav>
-
-<div class="fs-panel">
-  <div class="fs-flow-bar">
-    <div class="fs-flow-nav">
-      <select id="fs-flow-select"></select>
-      <button id="fs-prev" title="Previous hop (clicker / ← / Page Up)">&#9664;</button>
-      <button class="fs-start" id="fs-play">&#9654; Start</button>
-      <button id="fs-next" title="Next hop (clicker / → / Page Down)">&#9654;</button>
+<div class="fs-top-dock" id="fs-top-dock">
+  <div class="fs-panel">
+    <div class="fs-flow-bar">
+      <div class="fs-flow-nav">
+        <select id="fs-flow-select"></select>
+        <button id="fs-prev" title="Previous hop (clicker / ← / Page Up)">&#9664;</button>
+        <button class="fs-start" id="fs-play">&#9654; Start</button>
+        <button id="fs-next" title="Next hop (clicker / → / Page Down)">&#9654;</button>
+      </div>
+      <button id="fs-speed">1x</button>
+      <button id="fs-loop">&#8635; Loop</button>
+      <button id="fs-layers-toggle" type="button" title="Cycle layers panel: Right → Off → Top → Bottom">Layers: Right</button>
+      <button class="fs-reset" id="fs-reset">Reset</button>
     </div>
-    <button id="fs-speed">1x</button>
-    <button id="fs-loop" style="border-color:#79c0ff;color:#79c0ff">&#8635; Loop</button>
-    <button id="fs-response-mode" type="button" title="Cycle messages: Popup near node / Panel / Both">Msgs: Popup</button>
-    <button class="fs-reset" id="fs-reset">Reset</button>
-  </div>
-  <div class="fs-steps" id="fs-steps">
-    <div class="fs-steps-title">Layers</div>
-    <div id="fs-steps-container"></div>
-  </div>
-  <div class="fs-inspector" id="fs-inspector">
-    <div class="fs-inspector-title" id="fs-inspector-title" style="color:var(--fs-accent)">Layer board</div>
-    <div id="fs-inspector-content"></div>
   </div>
 </div>
 
-<div id="fs-highlight-box" style="display:none;position:fixed;z-index:350;border-radius:10px;pointer-events:none"></div>
-<div id="fs-overlay" onclick="if(event.target===this)window.__flowstory?.closeOverlay()" style="display:none;position:fixed;top:0;left:0;right:380px;bottom:0;z-index:300;background:rgba(0,0,0,0.6)">
-  <div id="fs-overlay-card" style="position:absolute;background:#161b22ee;border:1px solid #30363d;border-radius:14px;max-width:420px;padding:22px 26px;box-shadow:0 12px 40px rgba(0,0,0,0.5);transition:opacity .2s">
-    <button id="fs-overlay-close" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#8b949e;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px">✕</button>
-    <div id="fs-overlay-accent" style="width:4px;height:24px;border-radius:2px;position:absolute;left:0;top:22px"></div>
-    <h2 id="fs-overlay-title" style="margin:0 0 6px;font-size:18px;color:#c9d1d9;font-family:system-ui"></h2>
-    <p id="fs-overlay-desc" style="margin:0 0 14px;font-size:13px;color:#8b949e;line-height:1.5;font-family:system-ui"></p>
-    <div id="fs-overlay-details" style="font-size:12px;font-family:'SF Mono',Menlo,monospace"></div>
-    <button id="fs-overlay-resume" style="margin-top:14px;padding:7px 20px;border:1px solid #3fb950;border-radius:8px;background:transparent;color:#3fb950;font-size:13px;cursor:pointer;font-family:system-ui">&#9654; Resume</button>
+<div class="fs-layers-dock" id="fs-layers-dock">
+  <div id="fs-layers-stack" class="fs-layers-stack">
+    <div class="fs-steps" id="fs-steps">
+      <div class="fs-steps-title">Layers <span class="fs-steps-hint">· clicker or ← →</span></div>
+      <div id="fs-steps-container"></div>
+    </div>
+    <div class="fs-inspector" id="fs-inspector">
+      <div class="fs-inspector-title" id="fs-inspector-title">Layer board</div>
+      <div id="fs-inspector-content"></div>
+    </div>
   </div>
 </div>
 
-<div class="fs-legend" id="fs-legend"></div>
+<div id="fs-highlight-box"></div>
+<div id="fs-overlay" onclick="if(event.target===this)window.__flowstory?.closeOverlay()">
+  <div id="fs-overlay-card">
+    <button id="fs-overlay-close" type="button" aria-label="Close">✕</button>
+    <div id="fs-overlay-accent"></div>
+    <h2 id="fs-overlay-title"></h2>
+    <p id="fs-overlay-desc"></p>
+    <div id="fs-overlay-details"></div>
+    <button id="fs-overlay-resume" type="button">&#9654; Resume</button>
+  </div>
+</div>
+
+<div class="fs-legend fs-legend--diagram-inset" id="fs-legend"></div>
 <div class="fs-credit">Complete platform · <a href="./index.html">launcher</a></div>
 
 <canvas id="fs-canvas"></canvas>
@@ -70,8 +75,6 @@ const diagram = buildOverallDiagram();
 try {
   await initScenarioDiagram(diagram, {
     headerTitle: "AgentOps - Platform Architecture",
-    renderNav: { base: "overall", inPanel: true },
-    overallNav: true,
     showFlowSelect: true,
     defaultMode: "baseline",
     phaseRest: PHASE_REST,
@@ -81,7 +84,7 @@ try {
   });
 } catch (e) {
   console.error("FlowStory load error:", e);
-  document.body.innerHTML = `<pre style="padding:24px;color:#f85149">FlowStory load error\n${e.message}\n\n${e.stack || ""}</pre>`;
+  document.body.innerHTML = `<pre class="fs-load-error">FlowStory load error\n${e.message}\n\n${e.stack || ""}</pre>`;
 }
 </script>
 </body>
