@@ -11,6 +11,7 @@
     "test:guardrails": "bash ../scripts/run-playwright-tests.sh guardrails-ui.spec.ts",
     "test:demo": "bash ../scripts/run-playwright-tests.sh demo-narrative.spec.ts",
     "test:log-rules": "npx playwright test observability-log-rules.spec.ts",
+    "test:demo-unit": "npx playwright test observability-log-rules.spec.ts demo-scenario-consistency.spec.ts ui-helpers.unit.spec.ts",
     "test:scenario-a": "bash ../scripts/run-playwright-tests.sh scenario-a-regression.spec.ts",
     "test:mlflow": "bash ../scripts/run-playwright-tests.sh mlflow-ui.spec.ts"
   },

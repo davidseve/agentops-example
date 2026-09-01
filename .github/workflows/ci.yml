@@ -33,9 +33,8 @@ jobs:
         working-directory: tests
         run: npm ci
 
-      - name: Run observability log-rules unit tests
-        working-directory: tests
-        run: npm run test:log-rules
+      - name: Validate demo UI (CSS + unit tests)
+        run: ./scripts/validate-demo-ui.sh
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
