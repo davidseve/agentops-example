@@ -213,16 +213,28 @@ body.nr-v2.nr-page {
 }
 
 /* Overlay */
-.nr-v2-baseline-inner .v2-fs-overlay {
+.v2-fs-highlight-box {
+  display: none;
+  position: fixed;
+  z-index: 350;
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.v2-fs-overlay {
+  display: none;
   position: fixed;
   inset: 0;
   z-index: 400;
   background: rgba(0, 0, 0, 0.55);
-  display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: 12px;
   box-sizing: border-box;
+}
+
+.v2-fs-inspector-title {
+  color: var(--fs-accent);
 }
 
 .nr-v2-baseline-inner .v2-fs-overlay-card {

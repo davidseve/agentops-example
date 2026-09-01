@@ -6,21 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <title>AgentOps — Demo UI launcher</title>
 <link rel="stylesheet" href="./v1/narrative.css">
-<style>
-.launcher { max-width: 920px; margin: 0 auto; padding: 24px; }
-.launcher h2 { font-family: var(--nr-display); font-size: 16px; margin: 28px 0 12px; }
-.launcher table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.launcher th, .launcher td { border: 1px solid var(--nr-border); padding: 10px 12px; text-align: left; }
-.launcher th { background: var(--nr-panel); color: var(--nr-dim); font-weight: 500; }
-.launcher tr.recommended td:first-child { border-left: 3px solid var(--nr-ok); }
-.launcher tr.stub td { color: var(--nr-dim); }
-.launcher code { font-family: var(--nr-mono); font-size: 12px; background: var(--nr-panel); padding: 2px 6px; border-radius: 4px; }
-.launcher pre { background: var(--nr-panel); border: 1px solid var(--nr-border); border-radius: 8px; padding: 14px; font-family: var(--nr-mono); font-size: 13px; }
-.checklist { list-style: none; padding: 0; margin: 0; }
-.checklist li { padding: 8px 0; border-bottom: 1px solid var(--nr-border); font-size: 14px; }
-.badge { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--nr-ok); color: var(--nr-ok); margin-left: 8px; }
-.badge-soon { border-color: var(--nr-dim); color: var(--nr-dim); }
-</style>
+<link rel="stylesheet" href="./index.css">
 </head>
 <body class="nr-page">
 
@@ -36,9 +22,9 @@
   <h2>Overall demo architecture (phase 0)</h2>
   <table>
     <tbody>
-      <tr>
-        <td><a href="./layers-logos.html">layers-logos.html</a></td>
-        <td>Original FlowStory map with logos — hop-by-hop platform intro</td>
+      <tr class="stub">
+        <td><a href="./layers-logos.html">layers-logos.html</a> <span class="badge badge-deprecated">deprecated</span></td>
+        <td>Superseded by <a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> — original FlowStory map with logos</td>
       </tr>
       <tr>
         <td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a></td>
@@ -48,7 +34,7 @@
   </table>
 
   <h2>Scenario diagrams (tests A–D)</h2>
-  <p class="nr-meta" style="margin:0 0 8px;font-size:13px">
+  <p class="nr-meta nr-meta--tight">
     Security-focused FlowStory pages (~6–8 hops). Use the overall map above for the complete stack path.
   </p>
   <table>
@@ -85,14 +71,14 @@
       <tr><th>Flow</th><th>Panel</th><th>Description</th><th>Open</th></tr>
     </thead>
     <tbody>
-      <tr class="recommended">
-        <td>v1 <span class="badge">recommended</span></td>
+      <tr>
+        <td>v1</td>
         <td><code>v1/live.html</code></td>
         <td>Split panel: narrative steps, matrix, mini-diagram, YAML diff</td>
         <td><a href="./v1/live.html">Open</a></td>
       </tr>
-      <tr>
-        <td>v2</td>
+      <tr class="recommended">
+        <td>v2 <span class="badge">recommended</span></td>
         <td><code>v2/live.html</code></td>
         <td>Compact panel — no sidebar, full-width narrative + observability</td>
         <td><a href="./v2/live.html">Open</a></td>
@@ -110,9 +96,10 @@
   <table>
     <tbody>
       <tr><td>Primary</td><td>OpenClaw Control UI</td></tr>
-      <tr class="recommended"><td>Secondary (recommended)</td><td><a href="./v1/live.html">v1/live.html</a></td></tr>
-      <tr><td>Secondary (compact)</td><td><a href="./v2/live.html">v2/live.html</a></td></tr>
-      <tr><td>Phase 0 only</td><td><a href="./layers-logos.html">layers-logos.html</a> or <a href="./overall-demo-architecture.html">overall-demo-architecture.html</a></td></tr>
+      <tr><td>Secondary (split panel)</td><td><a href="./v1/live.html">v1/live.html</a></td></tr>
+      <tr class="recommended"><td>Secondary (recommended)</td><td><a href="./v2/live.html">v2/live.html</a></td></tr>
+      <tr><td>Phase 0 only</td><td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> <span class="badge">recommended</span></td></tr>
+      <tr class="stub"><td>Phase 0 (legacy)</td><td><a href="./layers-logos.html">layers-logos.html</a> <span class="badge badge-deprecated">deprecated</span></td></tr>
     </tbody>
   </table>
 
@@ -135,7 +122,7 @@
     <li>Do arrow keys / clicker feel natural on stage?</li>
   </ul>
 
-  <p class="nr-meta" style="margin-top:24px">
+  <p class="nr-meta nr-meta--footer">
     Narrative: <a href="../demo-narrativa-v1.md">demo-narrativa-v1.md</a> ·
     Script: <a href="../demo-script.md">demo-script.md</a>
   </p>

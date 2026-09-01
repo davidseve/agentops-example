@@ -223,6 +223,37 @@
   margin-bottom: 12px;
 }
 
+.nr-meta--top {
+  margin-top: 0;
+}
+
+.nr-meta--tight {
+  margin: 0 0 8px;
+}
+
+.nr-meta--footer {
+  margin-top: 24px;
+}
+
+.nr-stub {
+  max-width: 560px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+
+.nr-stub h1 {
+  font-family: var(--nr-display);
+  font-size: 22px;
+}
+
+.nr-stub p {
+  color: var(--nr-dim);
+}
+
+.nr-stub a {
+  color: var(--nr-accent);
+}
+
 .nr-body p {
   margin: 0 0 8px;
   font-size: 14px;
