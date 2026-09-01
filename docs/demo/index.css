@@ -1,0 +1,91 @@
+/* Demo UI launcher (index.html) */
+
+.launcher {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.launcher h2 {
+  font-family: var(--nr-display);
+  font-size: 16px;
+  margin: 28px 0 12px;
+}
+
+.launcher table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.launcher th,
+.launcher td {
+  border: 1px solid var(--nr-border);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.launcher th {
+  background: var(--nr-panel);
+  color: var(--nr-dim);
+  font-weight: 500;
+}
+
+.launcher tr.recommended td:first-child {
+  border-left: 3px solid var(--nr-ok);
+}
+
+.launcher tr.stub td {
+  color: var(--nr-dim);
+}
+
+.launcher code {
+  font-family: var(--nr-mono);
+  font-size: 12px;
+  background: var(--nr-panel);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.launcher pre {
+  background: var(--nr-panel);
+  border: 1px solid var(--nr-border);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: var(--nr-mono);
+  font-size: 13px;
+}
+
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.checklist li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--nr-border);
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--nr-ok);
+  color: var(--nr-ok);
+  margin-left: 8px;
+}
+
+.badge-soon {
+  border-color: var(--nr-dim);
+  color: var(--nr-dim);
+}
+
+.badge-deprecated {
+  border-color: var(--nr-warn);
+  color: var(--nr-warn);
+}

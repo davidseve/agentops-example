@@ -1,0 +1,63 @@
+---
+description: >-
+  Demo UI HTML/JS must use external CSS — no embedded <style> blocks or
+  style=" attributes. Run validate-demo-external-css.sh before finishing.
+globs: >-
+  docs/demo/**/*.html,
+  docs/demo/**/*.js,
+  docs/demo/**/*.css
+alwaysApply: false
+---
+
+# Demo UI — External CSS Only
+
+When editing `docs/demo/`, keep presentation CSS in `.css` files, not in markup or JS templates.
+
+## Do
+
+- Link stylesheets with `<link rel="stylesheet" href="...">`
+- Add rules to the nearest existing sheet (see map below) or a new co-located `.css`
+- Prefer semantic classes (`.fs-steps-hint`, `.nr-meta--top`) over inline attributes
+- Run `./scripts/validate-demo-external-css.sh` before marking the task done
+
+## Do not
+
+- `<style>...</style>` blocks in HTML
+- `style="..."` on HTML elements or in JS template strings
+- Duplicating the same rules across multiple HTML files
+
+## Stylesheet map
+
+| Area | Files |
+|---|---|
+| FlowStory (architecture + scenarios) | `shared/vendor/style.css`, `shared/demo.css` |
+| Launcher | `v1/narrative.css`, `index.css` |
+| Narrative v1 | `v1/narrative.css` |
+| Narrative v2 embed | `v2/baseline-embed.css`, `v2/narrative-v2.css`, … |
+
+## Allowed exceptions
+
+| Case | Example |
+|---|---|
+| SVG assets | `docs/demo/shared/assets/**` |
+| Vendored libs | `docs/demo/shared/vendor/**` |
+| Runtime JS | `element.style.display = "flex"` (property, not HTML attribute) |
+
+## Fix pattern
+
+```html
+<!-- ❌ BAD -->
+<style>.panel { padding: 8px; }</style>
+<button style="color:#79c0ff">Loop</button>
+
+<!-- ✅ GOOD -->
+<link rel="stylesheet" href="./shared/demo.css">
+<button id="fs-loop">Loop</button>
+```
+
+```css
+/* shared/demo.css */
+#fs-loop { border-color: #79c0ff; color: #79c0ff; }
+```
+
+For refactor or audit workflows, use the `demo-external-css` skill.
