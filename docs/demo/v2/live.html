@@ -36,10 +36,12 @@
 <script type="module">
 import { initNarrativeV2UI } from "./narrative-v2-ui.js";
 import { initObservabilityPanel } from "../v1/observability-panel.js?v=25";
+import { initScriptRunner } from "./script-runner.js";
 
 const root = document.getElementById("nr-root");
-initObservabilityPanel({ root });
+const observability = initObservabilityPanel({ root });
 initNarrativeV2UI({ root });
+initScriptRunner({ root, observability });
 </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the v1 live companion static server and the local observability proxy.
+# Start the live companion static server and the local observability proxy.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +19,7 @@ usage() {
   cat <<EOF
 Usage: $0 [--check-only]
 
-  Start the v1 live companion UI (port ${HTTP_PORT}) and observability proxy (${PROXY_PORT}).
+  Start the live companion UI (port ${HTTP_PORT}) and observability proxy (${PROXY_PORT}).
 
   Runs a light cluster preflight (oc, openshell, sandbox + gateway pods) before binding ports.
 
@@ -134,12 +134,13 @@ print_health_summary() {
   health_json="$(curl -sf "http://127.0.0.1:${PROXY_PORT}/api/health" 2>/dev/null || echo "{}")"
 
   step "Ready"
-  python3 - <<'PY' "$health_json" "$HTTP_PORT" "$APPS_DOMAIN" "$SANDBOX_NAME"
+  python3 - <<'PY' "$health_json" "$HTTP_PORT" "$PROXY_PORT" "$APPS_DOMAIN" "$SANDBOX_NAME"
 import json, sys
 health = json.loads(sys.argv[1])
 http_port = sys.argv[2]
-apps_domain = sys.argv[3]
-sandbox_name = sys.argv[4]
+proxy_port = sys.argv[3]
+apps_domain = sys.argv[4]
+sandbox_name = sys.argv[5]
 
 oc_user = health.get("ocUser") or "—"
 sandbox = "yes" if health.get("sandboxReachable") else "no"
@@ -150,7 +151,9 @@ print(f"    Cluster: {oc_user} · sandbox reachable: {sandbox} · MLflow experim
 if mlflow_url:
     print(f"    MLflow UI: {mlflow_url}")
 print()
-print(f"    Live companion:  http://127.0.0.1:{http_port}/v1/live.html")
+print(f"    Live companion (v1): http://127.0.0.1:{http_port}/v1/live.html")
+print(f"    Live companion (v2): http://127.0.0.1:{http_port}/v2/live.html")
+print(f"    Script runner API:   http://127.0.0.1:{proxy_port}/api/demo/run")
 print(f"    Architecture map: http://127.0.0.1:{http_port}/overall-demo-architecture.html")
 if apps_domain:
     print(f"    Control UI:       https://{sandbox_name}--openclaw-ui.{apps_domain}/")
@@ -166,7 +169,7 @@ start_servers() {
   python3 "${PROXY_SCRIPT}" --port "${PROXY_PORT}" &
   PIDS+=("$!")
 
-  echo "==> Live companion UI: http://127.0.0.1:${HTTP_PORT}/v1/live.html"
+  echo "==> Live companion UI: http://127.0.0.1:${HTTP_PORT}/v1/live.html (v2: /v2/live.html)"
   (
     cd "${DEMO_DIR}"
     python3 -m http.server "${HTTP_PORT}"

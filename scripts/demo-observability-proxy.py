@@ -13,8 +13,11 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+import threading
+import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -23,6 +26,8 @@ from urllib.parse import parse_qs, urlparse
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 COMMON_SH = os.path.join(ROOT_DIR, "scripts", "common.sh")
 
+_bash_executable: str | None = None
+
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8766
 ALLOWED_ORIGINS = frozenset(
@@ -30,6 +35,26 @@ ALLOWED_ORIGINS = frozenset(
 )
 
 LOG_COMPONENT_IDS = frozenset({"openclaw", "sandbox", "openshell", "nemo"})
+
+DEMO_ACTIONS: dict[str, dict[str, Any]] = {
+    "demo-reset": {
+        "script": "scripts/demo-reset.sh",
+        "timeout": 120,
+        "label": "Run reset",
+    },
+    "demo-allow-google-egress": {
+        "script": "scripts/demo-allow-google-egress.sh",
+        "timeout": 90,
+        "label": "Allow google.com egress",
+    },
+    "demo-enable-guardrails": {
+        "script": "scripts/demo-enable-guardrails.sh",
+        "timeout": 60,
+        "label": "Enable NeMo Guardrails",
+    },
+}
+
+_demo_run_lock = threading.Lock()
 
 COMPONENTS: list[dict[str, Any]] = [
     {
@@ -69,11 +94,78 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def resolve_bash_executable() -> str:
+    """Pick bash 4+ (common.sh uses associative arrays; macOS /bin/bash is 3.2)."""
+    global _bash_executable
+    if _bash_executable:
+        return _bash_executable
+
+    candidates: list[str] = []
+    bash_env = os.environ.get("BASH")
+    if bash_env:
+        candidates.append(bash_env)
+    which_bash = shutil.which("bash")
+    if which_bash:
+        candidates.append(which_bash)
+    candidates.extend(
+        [
+            "/opt/homebrew/bin/bash",
+            "/usr/local/bin/bash",
+            "/opt/local/bin/bash",
+            "/bin/bash",
+        ]
+    )
+
+    seen: set[str] = set()
+    for path in candidates:
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        if not os.path.isfile(path):
+            continue
+        try:
+            result = subprocess.run(
+                [path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        version_line = result.stdout.splitlines()[0] if result.stdout else ""
+        match = re.search(r"version (\d+)", version_line)
+        if match and int(match.group(1)) >= 4:
+            _bash_executable = path
+            return path
+
+    _bash_executable = which_bash or "bash"
+    return _bash_executable
+
+
 def run_bash(script: str, timeout: int = 45) -> tuple[int, str, str]:
     wrapped = f"set -euo pipefail; source '{COMMON_SH}'; {script}"
+    bash_bin = resolve_bash_executable()
     try:
         result = subprocess.run(
-            ["bash", "-lc", wrapped],
+            [bash_bin, "-lc", wrapped],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=ROOT_DIR,
+        )
+    except subprocess.TimeoutExpired as exc:
+        out = exc.stdout or ""
+        err = (exc.stderr or "") + "\nCommand timed out"
+        return 124, out, err
+    return result.returncode, result.stdout or "", result.stderr or ""
+
+
+def run_demo_script(script_path: str, timeout: int) -> tuple[int, str, str]:
+    """Run a repo demo script; script sources common.sh itself (no double-source)."""
+    bash_bin = resolve_bash_executable()
+    try:
+        result = subprocess.run(
+            [bash_bin, script_path],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -525,6 +617,77 @@ oc -n "{namespace}" exec "{sandbox}" -c agent -- bash -lc {json.dumps(curl_scrip
     }
 
 
+def build_demo_actions() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": action_id,
+            "label": meta["label"],
+            "script": meta["script"],
+            "timeout": meta["timeout"],
+        }
+        for action_id, meta in DEMO_ACTIONS.items()
+    ]
+
+
+def run_demo_action(action_id: str) -> tuple[int, dict[str, Any]]:
+    meta = DEMO_ACTIONS.get(action_id)
+    if not meta:
+        return 400, {"ok": False, "error": f"Unknown action: {action_id}"}
+
+    if not _demo_run_lock.acquire(blocking=False):
+        return 409, {"ok": False, "error": "Another demo script is already running"}
+
+    health = build_health()
+    if not health.get("ok"):
+        _demo_run_lock.release()
+        return 503, {
+            "ok": False,
+            "error": "Cluster preflight failed — ensure oc login and openshell are available",
+            "health": health,
+        }
+
+    script_path = os.path.join(ROOT_DIR, meta["script"])
+    if not os.path.isfile(script_path):
+        _demo_run_lock.release()
+        return 500, {
+            "ok": False,
+            "error": f"Script not found: {meta['script']}",
+        }
+
+    started_at = utc_now()
+    started_ms = time.monotonic()
+    print(
+        f"[demo-run] {started_at} starting action={action_id} script={meta['script']}",
+        file=sys.stderr,
+    )
+
+    try:
+        code, stdout, stderr = run_demo_script(
+            script_path,
+            timeout=int(meta["timeout"]),
+        )
+    finally:
+        _demo_run_lock.release()
+
+    finished_at = utc_now()
+    duration_ms = int((time.monotonic() - started_ms) * 1000)
+    print(
+        f"[demo-run] {finished_at} finished action={action_id} exitCode={code} durationMs={duration_ms}",
+        file=sys.stderr,
+    )
+
+    return 200, {
+        "ok": code == 0,
+        "action": action_id,
+        "exitCode": code,
+        "stdout": stdout,
+        "stderr": stderr,
+        "startedAt": started_at,
+        "finishedAt": finished_at,
+        "durationMs": duration_ms,
+    }
+
+
 def build_health() -> dict[str, Any]:
     oc_ok = command_exists("oc")
     openshell_ok = command_exists("openshell")
@@ -567,10 +730,38 @@ class ObservabilityHandler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin", "")
         if origin in ALLOWED_ORIGINS:
             self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Vary", "Origin")
         self.end_headers()
+
+    def do_POST(self) -> None:
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip("/") or "/"
+
+        if path != "/api/demo/run":
+            json_response(self, 404, {"ok": False, "error": "Not found"})
+            return
+
+        content_length = int(self.headers.get("Content-Length", "0") or "0")
+        if content_length <= 0:
+            json_response(self, 400, {"ok": False, "error": "Missing request body"})
+            return
+
+        try:
+            raw = self.rfile.read(content_length)
+            body = json.loads(raw.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            json_response(self, 400, {"ok": False, "error": "Invalid JSON body"})
+            return
+
+        action_id = body.get("action")
+        if not isinstance(action_id, str) or not action_id.strip():
+            json_response(self, 400, {"ok": False, "error": "Missing or invalid action"})
+            return
+
+        status, payload = run_demo_action(action_id.strip())
+        json_response(self, status, payload)
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -579,6 +770,17 @@ class ObservabilityHandler(BaseHTTPRequestHandler):
 
         if path == "/api/health":
             json_response(self, 200, build_health())
+            return
+
+        if path == "/api/demo/actions":
+            json_response(
+                self,
+                200,
+                {
+                    "actions": build_demo_actions(),
+                    "fetchedAt": utc_now(),
+                },
+            )
             return
 
         if path == "/api/components":
@@ -634,7 +836,11 @@ def main() -> int:
 
     httpd = ThreadingHTTPServer((args.host, args.port), ObservabilityHandler)
     print(f"Observability proxy listening on http://{args.host}:{args.port}", file=sys.stderr)
-    print("Endpoints: /api/health /api/components /api/logs/{id} /api/traces/mlflow", file=sys.stderr)
+    print(
+        "Endpoints: /api/health /api/components /api/logs/{id} /api/traces/mlflow "
+        "/api/demo/actions /api/demo/run",
+        file=sys.stderr,
+    )
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
