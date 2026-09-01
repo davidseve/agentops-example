@@ -154,6 +154,8 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `adr` | Create or update an Architecture Decision Record — see [docs/adr/](docs/adr/) |
 | `create-pr` | Create GitHub PRs — use [PR #1](https://github.com/davidseve/agentops-showcase/pull/1) structure |
 | `no-secrets` | Scan for credentials before commit or PR |
+| `demo-external-css` | Keep `docs/demo/` CSS external — run `scripts/validate-demo-external-css.sh` after HTML/JS/CSS edits |
+| `demo-ui-tests` | Demo test logic (log rules, scenarios, E2E assertions) — run `scripts/validate-demo-ui.sh` after edits; add matching unit tests |
 | `redhat-kb` | Search Red Hat Knowledge Base for official troubleshooting |
 
 ## Project Structure
@@ -211,6 +213,8 @@ agentops-showcase/
 │   ├── ensure-mlflow-experiment.sh
 │   ├── patch-mlflow-plugin.py     # mlflow-openclaw SDK compatibility patch
 │   ├── demo-presenter-serve.sh    # Serve demo architecture + live panels
+│   ├── validate-demo-external-css.sh  # Lint docs/demo HTML/JS for external CSS only
+│   ├── validate-demo-ui.sh            # CSS lint + demo unit tests (no cluster)
 │   ├── demo-observability-proxy.py
 │   ├── demo-enable-guardrails.sh  # Live demo Cambio 2: NeMo inference path
 │   ├── demo-disable-guardrails.sh # Reset to direct MaaS
@@ -248,6 +252,7 @@ The `.cursor/rules/adr-alignment.mdc` rule enforces this for all agent sessions.
 - **BYOA principle**: The agent layer is intentionally decoupled from the platform. The platform works regardless of which framework/harness is chosen
 - **Document new or modified functionality**: After adding or modifying a stack technology (version, deploy path, prereqs, verify steps), the `technology-usage-docs` rule requires running the `document-feature` skill in the same session — create or update guides in `docs/`, cross-link `ROADMAP.md`, `README.md`, and `AGENTS.md`
 - **Keep index docs aligned with the repo**: The `docs-repo-alignment` rule requires running the `sync-repo-docs` skill when layout, scripts, skills, or Makefile targets change — or when auditing documentation against the filesystem
+- **Demo UI test coverage**: When changing demo test logic (log rules, scenario flows, prompts, E2E assertion helpers), the `demo-ui-tests` rule requires matching unit tests and `./scripts/validate-demo-ui.sh` in the same session
 - **Pull requests**: Use the `create-pr` skill — body must follow [PR #1](https://github.com/davidseve/agentops-showcase/pull/1) structure (`Summary`, `Details`, `Test plan`); no default assignee unless the user requests one
 
 ## Open Questions

@@ -157,10 +157,11 @@ Run per scenario (A–D) and per variant where applicable (C/D pre/post):
 | Overall map | Composed hops (security + inference + trace) | [overall-flows.js](demo/scenarios/overall-flows.js), [overall-demo-architecture.html](demo/overall-demo-architecture.html) |
 | Per-hop messages | Node / inspector text | [scenario-responses.js](demo/scenarios/scenario-responses.js), [overall-response-maps.js](demo/scenarios/overall-response-maps.js) |
 | Presenter v1 | Layer board + step diagrams | [narrative-data.js](demo/v1/narrative-data.js), [live.html](demo/v1/live.html) |
-| Shared labels | Layer names and nav | [shared-scenario.js](demo/scenarios/shared-scenario.js) (`LAYER_NAMES`) |
+| Shared labels | Layer names and nav | [scenario-layout.js](demo/scenarios/scenario-layout.js), [shared-scenario.js](demo/scenarios/shared-scenario.js) (`LAYER_NAMES`) |
 | Runtime reference | Actual call sequence | [launch-openclaw.sh](../scripts/launch-openclaw.sh), [openclaw.json.tpl](../config/openclaw.json.tpl), policies, MLflow traces |
 | Log evidence | Per-scenario search + panel rules | [demo-scenario-logs.md](demo/demo-scenario-logs.md), [observability-log-rules.js](demo/v1/observability-log-rules.js) |
-| Automated demo tests | Prompts, E2E flow, assertions | [demo-prompts.ts](../tests/demo-prompts.ts), [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts), [scenario-a-regression.spec.ts](../tests/scenario-a-regression.spec.ts), [observability-log-rules.spec.ts](../tests/observability-log-rules.spec.ts), [ui-helpers.ts](../tests/ui-helpers.ts), [verify.sh](../scripts/verify.sh) (`VERIFY_PROFILE=demo`), [validate-demo-initial](../deploy/Makefile), [validate-scenario-a-baseline](../deploy/Makefile) |
+| Automated demo tests (no cluster) | Prompts, flow invariants, log rules, assertion helpers | [validate-demo-ui.sh](../scripts/validate-demo-ui.sh), [demo-scenario-consistency.spec.ts](../tests/demo-scenario-consistency.spec.ts), [observability-log-rules.spec.ts](../tests/observability-log-rules.spec.ts), [ui-helpers.unit.spec.ts](../tests/ui-helpers.unit.spec.ts) |
+| Automated demo tests (cluster E2E) | Live agent outcomes | [demo-prompts.ts](../tests/demo-prompts.ts), [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts), [scenario-a-regression.spec.ts](../tests/scenario-a-regression.spec.ts), [ui-helpers.ts](../tests/ui-helpers.ts), [verify.sh](../scripts/verify.sh) (`VERIFY_PROFILE=demo`), [validate-demo-initial](../deploy/Makefile), [validate-scenario-a-baseline](../deploy/Makefile) |
 
 ### Benefits for demo narrative
 
@@ -172,11 +173,10 @@ Run per scenario (A–D) and per variant where applicable (C/D pre/post):
 
 - **Intentional simplification** (security-only deep-links) is valid when documented — do not force 1:1 hop counts on every panel.
 - **ADR-0010:** trace metadata may show `model: router` rather than upstream model name — treat as label limitation, not a flow-path error, when the hop sequence is correct.
-- **Test scope:** Playwright validates minimal outcomes (probe evidence, Landlock denial, egress allowed/blocked, guardrails refusal); a passing test does **not** prove diagram hops or panel messages are correct — review both dimensions.
+- **Test scope:** Cluster Playwright validates minimal outcomes (probe evidence, Landlock denial, egress allowed/blocked, guardrails refusal). No-cluster unit tests (`validate-demo-ui.sh`) guard log rules, scenario flow invariants, and assertion helpers — but do **not** replace manual rehearsal for pixel-level FlowStory layout.
 
 ### Open questions
 
-- Manual rehearsal checklist vs automated validation (e.g. compare flow length/labels across JS modules)?
 - Should [narrative-data.js](demo/v1/narrative-data.js) converge to overall-composed hops or keep a simplified presenter view?
 - Add a Playwright test for the MLflow phase, or keep ML validation in [mlflow-ui.spec.ts](../tests/mlflow-ui.spec.ts) / manual skill only?
 - Extract prompts to a single shared module (avoid `demo-prompts.ts` ↔ `narrative-data.js` duplication)?
