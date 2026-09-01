@@ -45,10 +45,11 @@ docs/demo/
 │   ├── narrative-ui.js
 │   ├── observability-panel.js
 │   └── observability-log-rules.js
-├── v2/                  # Compact panel (no sidebar; in development)
+├── v2/                  # Compact panel (no sidebar; script runner)
 │   ├── live.html
 │   ├── narrative-v2.css
 │   ├── narrative-v2-ui.js
+│   ├── script-runner.js
 │   ├── baseline-diagram.js
 │   ├── baseline-embed.css
 │   └── baseline-layout-variants.css
@@ -80,7 +81,7 @@ Tail line limits are tuned in `LOG_LINES_BY_COMPONENT` in [`v1/observability-pan
 - **Filter** — focus mode: show signal (green) and warn (amber) only (default ON); disable to see full log in gray
 - **↓** — pause/resume live updates (each tab remembers its own state)
 
-Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py). Requires `oc` and `openshell` on the presenter laptop; binds to `127.0.0.1` only.
+Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py). Requires `oc` and `openshell` on the presenter laptop; binds to `127.0.0.1` only. v2 script runner uses `POST /api/demo/run` (allowlisted actions only).
 
 ## Phase 0 — Overall demo architecture
 
@@ -119,7 +120,16 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 | Flow | URL | When |
 |------|-----|------|
 | v1 | [v1/live.html](v1/live.html) | Recommended — narrative steps, matrix, diagram, YAML, cluster observability |
-| v2 | [v2/live.html](v2/live.html) | Compact variant — no sidebar; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); full-width narrative + observability on steps A–MLflow (v1 remains recommended for rehearsal) |
+| v2 | [v2/live.html](v2/live.html) | Compact variant — no sidebar; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); **Run against cluster** buttons on Cambio 1/2 (C-post, D-post); full-width narrative + observability on steps A–MLflow |
+
+**v2 script runner** — run allowlisted demo scripts from the panel (no terminal switch). Requires `./scripts/demo-presenter-serve.sh` so the observability proxy is up on `127.0.0.1:8766`. Binds localhost only; actions are allowlisted in [`demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py).
+
+| Step | Action | Script |
+|------|--------|--------|
+| C-post | Cambio 1 — allow google.com | `./scripts/demo-allow-google-egress.sh` |
+| D-post | Cambio 2 — enable NeMo | `./scripts/demo-enable-guardrails.sh` |
+
+Proxy endpoints: `GET /api/demo/actions`, `POST /api/demo/run` with body `{"action":"<id>"}`. On success the observability panel refreshes automatically. v1 panel still shows commands as text only.
 
 **v2 step 0 layout lab** (compare variants live): dropdown on step 0 or `?layout=<id>`. IDs: `current`, `stack`, `unified`, `legend-footer`, `legend-inset`. Persists in `localStorage` (`v2-baseline-layout`).
 | v3 | [v3/live.html](v3/live.html) | Coming soon (FlowStory narrative) |

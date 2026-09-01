@@ -3,6 +3,23 @@
  * Consumed by v1/live.html via narrative-ui.js
  */
 
+/** Allowlisted demo scripts runnable from v2 live companion (via local proxy). */
+export const DEMO_SCRIPT_ACTIONS = {
+  "./scripts/demo-reset.sh": {
+    id: "demo-reset",
+    label: "Run reset",
+    confirm: "Reset demo to initial state (direct MaaS + MLflow-only egress)?",
+  },
+  "./scripts/demo-allow-google-egress.sh": {
+    id: "demo-allow-google-egress",
+    label: "Allow google.com egress",
+  },
+  "./scripts/demo-enable-guardrails.sh": {
+    id: "demo-enable-guardrails",
+    label: "Enable NeMo Guardrails",
+  },
+};
+
 export const STEP_IDS = [
   "0",
   "A",
@@ -206,13 +223,13 @@ export const NARRATIVE = {
       titleEs: "curl no autorizado (antes)",
       timing: "Cambio 1 — before",
       body: [
-        "Run demo-reset.sh if you skipped from a prior rehearsal or jump straight to Scenario C.",
-        "Default policy allows MLflow only — public curl should be denied.",
+        "Default policy (MLflow only) is already active from backstage — no reset needed before this step.",
+        "Public curl should be denied; paste the prompt in Control UI.",
       ],
       prompt: PROMPT_C,
       expected: null,
       expectedFail: "curl blocked (timeout / denied) — default deny egress.",
-      command: "./scripts/demo-reset.sh",
+      command: null,
       layers: { ...LAYERS_INITIAL },
       matrix: { key: "blocked", shadow: "blocked", curl: "blocked", recon: "na" },
       matrixFocus: "curl",
