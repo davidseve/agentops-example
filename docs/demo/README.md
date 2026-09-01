@@ -28,9 +28,11 @@ python3 -m http.server 8765
 ```
 docs/demo/
 ├── index.html           # Launcher (v1–v3 flows)
+├── index.css            # Launcher-only styles
 ├── overall-demo-architecture.html  # Phase 0 — full stack map (+ links to A–D)
 ├── scenarios/           # Focused FlowStory panels per test A–D
 │   ├── shared-scenario.js
+│   ├── scenario-layout.js      # Pure layout constants (no FlowStory/DOM; unit-test import)
 │   ├── overall-flows.js        # SCENARIO_* (test-*) + OVERALL_SCENARIO_* (overall dropdown)
 │   ├── overall-response-maps.js  # Overall-map inference/trace response offsets
 │   ├── test-a-credentials.html   # Security-focused
@@ -55,6 +57,35 @@ docs/demo/
 │   └── baseline-layout-variants.css
 └── v3/live.html         # Stub — FlowStory narrative mode (future)
 ```
+
+## CSS conventions
+
+Presentation styles live in external `.css` files — no `<style>` blocks or `style="..."` in HTML/JS templates. Shared FlowStory chrome: `shared/demo.css`; launcher: `index.css`; narrative: `v1/narrative.css` (+ v2 sheets).
+
+Validate after edits:
+
+```bash
+./scripts/validate-demo-external-css.sh
+```
+
+Cursor: rule `.cursor/rules/demo-external-css.mdc`, skill `demo-external-css`.
+
+## Testing
+
+Demo presentation logic is covered by **no-cluster** unit tests (also run in CI):
+
+```bash
+./scripts/validate-demo-ui.sh
+```
+
+| Module | Spec |
+|--------|------|
+| `v1/observability-log-rules.js` | `tests/observability-log-rules.spec.ts` |
+| `scenarios/overall-flows.js`, `overall-response-maps.js`, `v1/narrative-data.js`, `tests/demo-prompts.ts` | `tests/demo-scenario-consistency.spec.ts` |
+| `tests/ui-helpers.ts` (assertion helpers) | `tests/ui-helpers.unit.spec.ts` |
+| HTML/JS presentation CSS | `scripts/validate-demo-external-css.sh` |
+
+Cursor: rule `.cursor/rules/demo-ui-tests.mdc`, skill `demo-ui-tests`. Pure layout constants (importable in Node tests): `scenarios/scenario-layout.js`.
 
 ### v1 cluster observability
 
@@ -89,7 +120,7 @@ Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo
 
 | Flow | Layer board highlight |
 |------|----------------------|
-| Baseline · demo initial | egress open, guardrails **off** |
+| Overall Demo | egress open, guardrails **off** |
 | A · Credentials | gateway key vault |
 | B · Files | Landlock |
 | C · Egress (before/after) | egress open → blocked |
@@ -99,19 +130,18 @@ Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo
 
 The **layer board** stays a fixed panel below the hop list; only the **dropdown** selects the scenario flow.
 
-**Hop bands** on overall-map scenario flows (not on deep-link pages): `1` user path · `2` security story · `3` inference · `4` MLflow trace (`oc → mlflow` direct).
+**Hop bands** on overall-map scenario flows: `1` user path · `2` security story · `3` inference · `4` MLflow trace (`oc → gw → mlflow`).
 
 ## Scenario diagrams (tests A–D)
 
 | Test | Security (`test-*`) | Full flow (overall map) | Notes |
 |------|---------------------|-------------------------|-------|
-| A | [test-a-credentials.html](scenarios/test-a-credentials.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `a` | ~8 hops vs ~11 (inference + MLflow trace) |
+| A | [test-a-credentials.html](scenarios/test-a-credentials.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `a` | 12 hops aligned with overall map; layer board shows applicable layers only |
 | B | [test-b-files.html](scenarios/test-b-files.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `b` | Landlock focus vs full stack |
 | C | [test-c-egress.html](scenarios/test-c-egress.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `c` | Before/After in overall dropdown; test page has its own toggle |
 | D | [test-d-guardrails.html](scenarios/test-d-guardrails.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `d` | Before/After in overall dropdown; test page has its own toggle |
 
-- **`test-*`**: self-contained pages — security story only (~6–8 hops).
-- **Overall map**: single source of truth for full flows (`OVERALL_SCENARIO_*` in [`overall-flows.js`](scenarios/overall-flows.js)) — security + inference + MLflow trace.
+- **`test-*`**: self-contained pages derived from `OVERALL_SCENARIO_*` in [`overall-flows.js`](scenarios/overall-flows.js) via `buildScenarioPageDiagram()` — same hop routing as the overall map, with layer board filtered to applicable layers. Test A is implemented; B–D still use inline definitions until migrated.
 
 Open from the overall architecture nav bar, scenario header nav, or launcher.
 
