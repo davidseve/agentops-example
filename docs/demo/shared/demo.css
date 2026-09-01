@@ -40,9 +40,234 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+/* Flow bar dock — always under the header */
+body.fs-has-top-panel .fs-top-dock {
+  position: fixed;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 131;
+  background: var(--fs-bg-surface);
+  border-bottom: 1px solid var(--fs-border);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+}
+
+body.fs-has-top-panel .fs-top-dock .fs-panel {
+  position: static;
+  top: auto;
+  right: auto;
+  width: 100%;
+  height: auto;
+  border-left: none;
+  display: block;
+  overflow: visible;
+}
+
+body.fs-has-top-panel .fs-top-dock .fs-flow-bar {
+  flex-shrink: 0;
+  border-bottom: none;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+body.fs-has-top-panel .fs-top-dock .fs-flow-nav {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+body.fs-has-top-panel .fs-top-dock .fs-flow-bar select {
+  flex: 1 1 auto;
+  min-width: 7.5rem;
+  max-width: none;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+body.fs-has-top-panel .fs-top-dock .fs-flow-bar button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+body.fs-has-top-panel .fs-top-dock .fs-flow-nav #fs-prev,
+body.fs-has-top-panel .fs-top-dock .fs-flow-nav #fs-next {
+  flex: 0 0 30px;
+  min-width: 30px;
+  padding: 6px 4px;
+}
+
+body.fs-has-top-panel .fs-top-dock .fs-flow-nav #fs-play {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+/* Legend — top-left gap in diagram area (below flow / layers chrome) */
+body.fs-has-top-panel .fs-legend--diagram-inset {
+  position: fixed;
+  top: calc(var(--fs-chrome-top-offset, 52px) + 10px);
+  left: 16px;
+  right: auto;
+  bottom: auto;
+  z-index: 125;
+  width: min(168px, 20vw);
+  max-height: min(
+    240px,
+    calc(100vh - var(--fs-chrome-top-offset, 52px) - var(--fs-chrome-bottom-offset, 0px) - 56px)
+  );
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 8px 10px;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  pointer-events: auto;
+}
+
+body.fs-has-top-panel .fs-legend--diagram-inset .fs-legend-title {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+body.fs-has-top-panel .fs-legend--diagram-inset .fs-legend-item {
+  font-size: 10px;
+  margin: 2px 0;
+  gap: 5px;
+}
+
+body.fs-has-top-panel .fs-legend--diagram-inset .fs-legend-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+/* Layers dock — right (default), top, or bottom */
+body.fs-has-top-panel .fs-layers-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 130;
+  background: var(--fs-bg-surface);
+  height: calc(var(--fs-layers-panel-height, 10rem) * 2);
+  overflow: hidden;
+}
+
+body.fs-layers-pos-right .fs-layers-dock {
+  top: var(--fs-flow-dock-offset, 52px);
+  bottom: 0;
+  left: auto;
+  width: var(--fs-layers-right-width, 380px);
+  height: auto;
+  border-left: 1px solid var(--fs-border);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.18);
+}
+
+body.fs-layers-pos-right .fs-layers-stack .fs-steps {
+  flex: 2 1 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+body.fs-layers-pos-right .fs-layers-stack .fs-inspector {
+  flex: 3 1 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+body.fs-layers-pos-top .fs-layers-dock {
+  top: var(--fs-flow-dock-offset, 52px);
+  border-bottom: 1px solid var(--fs-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+body.fs-layers-pos-bottom .fs-layers-dock {
+  bottom: 0;
+  top: auto;
+  border-top: 1px solid var(--fs-border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18);
+}
+
+body.fs-has-top-panel .fs-layers-stack {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.fs-has-top-panel .fs-layers-stack .fs-steps,
+body.fs-has-top-panel .fs-layers-stack .fs-inspector {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 50%;
+  overflow-x: hidden;
+}
+
+body.fs-has-top-panel .fs-layers-stack .fs-steps {
+  padding: 8px 12px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--fs-border);
+}
+
+body.fs-has-top-panel .fs-layers-stack .fs-inspector {
+  padding: 8px 12px;
+  overflow-y: hidden;
+}
+
+body.fs-layers-ui--off .fs-layers-dock {
+  display: none;
+}
+
+body.fs-has-top-panel .fs-theme-toggle {
+  top: calc(var(--fs-chrome-top-offset, 52px) + 8px);
+  right: 16px;
+}
+
+body.fs-has-top-panel #fs-overlay {
+  top: var(--fs-chrome-top-offset, 52px) !important;
+  bottom: var(--fs-chrome-bottom-offset, 0px) !important;
+  right: 0 !important;
+}
+
+body.fs-layers-pos-right:not(.fs-layers-ui--off) #fs-overlay {
+  right: var(--fs-layers-right-width, 380px) !important;
+}
+
+body.fs-has-top-panel .fs-credit {
+  bottom: calc(16px + var(--fs-chrome-bottom-offset, 0px));
+}
+
+body.fs-layers-pos-right:not(.fs-layers-ui--off) .fs-theme-toggle {
+  right: calc(var(--fs-layers-right-width, 380px) + 16px);
+}
+
+#fs-layers-toggle.fs-layers-toggle--right {
+  border-color: #d2a8ff;
+  color: #d2a8ff;
+}
+
+#fs-layers-toggle.fs-layers-toggle--top {
+  border-color: #3fb950;
+  color: #3fb950;
+}
+
+#fs-layers-toggle.fs-layers-toggle--bottom {
+  border-color: #79c0ff;
+  color: #79c0ff;
+}
+
 .fs-legend {
   left: auto;
-  right: 396px;
+  right: 16px;
   bottom: 16px;
 }
 
@@ -60,15 +285,18 @@
   text-decoration: none;
 }
 
-/* Flow hop row: dropdown + prev/play/next stay on one line */
+/* Flow hop row: dropdown + prev/play/next stay on one line (scenario side panels) */
 .fs-flow-nav {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+body:not(.fs-has-top-panel) .fs-flow-nav {
   width: 100%;
   flex: 1 1 100%;
-  min-width: 0;
 }
 
 .fs-flow-bar select {
@@ -246,4 +474,110 @@ body.fs-scenario-phase-after #fs-canvas {
 .fs-credit-scenario a {
   color: var(--fs-accent);
   text-decoration: none;
+}
+
+/* FlowStory chrome — overlay, highlight, loop, hints (shared markup) */
+
+#fs-loop {
+  border-color: #79c0ff;
+  color: #79c0ff;
+}
+
+.fs-steps-title .fs-steps-hint {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--fs-text-dim);
+}
+
+#fs-inspector-title {
+  color: var(--fs-accent);
+}
+
+#fs-highlight-box {
+  display: none;
+  position: fixed;
+  z-index: 350;
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+#fs-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 380px;
+  bottom: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#fs-overlay-card {
+  position: absolute;
+  background: #161b22ee;
+  border: 1px solid #30363d;
+  border-radius: 14px;
+  max-width: 420px;
+  padding: 22px 26px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.2s;
+}
+
+#fs-overlay-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+#fs-overlay-accent {
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  position: absolute;
+  left: 0;
+  top: 22px;
+}
+
+#fs-overlay-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #c9d1d9;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+#fs-overlay-desc {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #8b949e;
+  line-height: 1.5;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+#fs-overlay-details {
+  font-size: 12px;
+  font-family: "SF Mono", Menlo, monospace;
+}
+
+#fs-overlay-resume {
+  margin-top: 14px;
+  padding: 7px 20px;
+  border: 1px solid #3fb950;
+  border-radius: 8px;
+  background: transparent;
+  color: #3fb950;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.fs-load-error {
+  padding: 24px;
+  color: #f85149;
 }
