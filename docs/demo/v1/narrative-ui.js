@@ -494,7 +494,7 @@ export function renderDiagram(container, diagramState, layers, animateFlows = fa
     flows,
     animateFlows
   );
-  addEdge(staticEdges, flowingEdges, "oc", "mlflow", edgeActive("oc", "mlflow") ? "active" : "", flows, animateFlows);
+  addEdge(staticEdges, flowingEdges, "gw", "mlflow", edgeActive("gw", "mlflow") ? "active" : "", flows, animateFlows);
 
   if (path === "nemo") {
     addEdge(staticEdges, flowingEdges, "ir", "nemo", "active direct", flows, animateFlows);

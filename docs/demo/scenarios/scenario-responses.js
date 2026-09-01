@@ -3,7 +3,7 @@
  * Remove entries + wiring if the experiment does not ship.
  */
 
-import { COLORS, LAYER_NAMES } from "./shared-scenario.js";
+import { COLORS, LAYER_NAMES } from "./scenario-layout.js";
 
 /** Auditor probe shorthand shown in Layers / popup (scenario A). */
 export const SCENARIO_A_PROBE = "echo $LITELLM_API_KEY · grep apiKey";
@@ -325,14 +325,14 @@ export const OVERLAYS_D_AFTER = {
   },
 };
 
-/** Overall architecture map — MLflow hops only (21–22). */
-const RESPONSES_LAYERS_MLFLOW = {
-  21: [`${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}: trace spans leave sandbox`],
-  22: [`${LAYER_NAMES.gw} → ${LAYER_NAMES.mlflow}: full request/response logged`],
+/** MLflow trace via gateway (band 4 in scenarios; hops 21–22 in baseline). */
+export const RESPONSES_TRACE_GW = {
+  1: [`${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}: trace spans leave sandbox`],
+  2: [`${LAYER_NAMES.gw} → ${LAYER_NAMES.mlflow}: full request/response logged`],
 };
 
-const OVERLAYS_LAYERS_MLFLOW = {
-  21: {
+export const OVERLAYS_TRACE_GW = {
+  1: {
     node: "oc",
     title: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}`,
     description: "Agent traces leave the sandbox through the gateway — same egress path as inference.",
@@ -342,7 +342,7 @@ const OVERLAYS_LAYERS_MLFLOW = {
     ],
     color: COLORS.trace,
   },
-  22: {
+  2: {
     node: "mlflow",
     title: LAYER_NAMES.mlflow,
     description: "One RHOAI MLflow server — same session trace for tests A–D.",
@@ -352,6 +352,17 @@ const OVERLAYS_LAYERS_MLFLOW = {
     ],
     color: COLORS.trace,
   },
+};
+
+/** Overall architecture map — MLflow hops only (21–22). */
+const RESPONSES_LAYERS_MLFLOW = {
+  21: RESPONSES_TRACE_GW[1],
+  22: RESPONSES_TRACE_GW[2],
+};
+
+const OVERLAYS_LAYERS_MLFLOW = {
+  21: OVERLAYS_TRACE_GW[1],
+  22: OVERLAYS_TRACE_GW[2],
 };
 
 /**

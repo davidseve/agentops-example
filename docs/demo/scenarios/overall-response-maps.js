@@ -3,7 +3,7 @@
  * Standalone test-a..d pages keep scenario-responses.js exports unchanged.
  */
 
-import { COLORS, LAYER_NAMES } from "./shared-scenario.js";
+import { COLORS, LAYER_NAMES } from "./scenario-layout.js";
 import {
   OVERLAYS_A,
   OVERLAYS_B,
@@ -11,12 +11,16 @@ import {
   OVERLAYS_C_BEFORE,
   OVERLAYS_D_AFTER,
   OVERLAYS_D_BEFORE,
+  OVERLAYS_LAYERS,
+  OVERLAYS_TRACE_GW,
   RESPONSES_A,
   RESPONSES_B,
   RESPONSES_C_AFTER,
   RESPONSES_C_BEFORE,
   RESPONSES_D_AFTER,
   RESPONSES_D_BEFORE,
+  RESPONSES_LAYERS,
+  RESPONSES_TRACE_GW,
 } from "./scenario-responses.js";
 
 function pickKeys(map, keys) {
@@ -124,169 +128,93 @@ export const OVERLAYS_INFERENCE_MAAS_LLM = {
   },
 };
 
-/** Direct oc → mlflow trace (mlflow_direct policy). Relative key 1. */
-export const RESPONSES_TRACE_DIRECT = {
-  1: ["Trace span (background)"],
-};
+/** @deprecated use RESPONSES_TRACE_GW — direct oc→mlflow path retired from diagrams */
+export const RESPONSES_TRACE_DIRECT = RESPONSES_TRACE_GW;
 
-export const OVERLAYS_TRACE_DIRECT = {
-  1: {
-    node: "mlflow",
-    title: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.mlflow}`,
-    description:
-      "mlflow-openclaw exports spans directly from the sandbox (mlflow_direct policy). Same session trace for tests A–D.",
-    details: [
-      ["Plugin", "mlflow-openclaw"],
-      ["Policy", "mlflow_direct"],
-      ["ADR", "0010 — full request/response"],
-    ],
-    color: COLORS.trace,
-  },
-};
+/** @deprecated use OVERLAYS_TRACE_GW */
+export const OVERLAYS_TRACE_DIRECT = OVERLAYS_TRACE_GW;
 
 function mergeMaps(...maps) {
   return Object.assign({}, ...maps);
 }
 
-/** Baseline flow (10 hops): user path + direct inference + reply + trace. */
-const BASELINE_USER_RESPONSES = {
-  1: [`${LAYER_NAMES.controlUI} — user prompt`],
-  2: [`${LAYER_NAMES.gw} forwards prompt to ${LAYER_NAMES.openClaw}`],
-  8: [`${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}: agent reply`],
-  9: [`${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser}: answer in Control UI`],
-};
-
-const BASELINE_USER_OVERLAYS = {
-  1: {
-    node: "user",
-    title: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`,
-    description:
-      "Baseline demo initial state — user prompt enters through the Control UI and OpenShell gateway.",
-    details: [
-      ["State", "demo-initial policy"],
-      ["Guardrails", "off · egress open"],
-    ],
-    color: COLORS.endUser,
-  },
-  2: {
-    node: "oc",
-    title: `${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}`,
-    description: `${LAYER_NAMES.gw} forwards the prompt into the Agent Sandbox via mTLS bridge.`,
-    details: [
-      ["Harness", "OpenClaw (BYOA)"],
-      ["Bridge", "mTLS · no direct sandbox access"],
-    ],
-    color: COLORS.oc,
-  },
-  8: {
-    node: "gw",
-    title: `${LAYER_NAMES.gw} — reply path`,
-    description: "Agent answer leaves the sandbox through the same gateway bridge.",
-    details: [
-      ["Path", "OC → GW"],
-      ["Credentials", "Still held at gateway"],
-    ],
-    color: COLORS.gw,
-  },
-  9: {
-    node: "user",
-    title: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`,
-    description: "Response returns to the Control UI — full stack path before security tests A–D.",
-    details: [
-      ["Flow", "Baseline happy path"],
-      ["Next", "Jump to A–D for security probes"],
-    ],
-    color: COLORS.endUser,
-  },
-};
-
 /** Overall-map response maps keyed to composed hop indices (1-based). */
 export const OVERALL_RESPONSES = {
-  baseline: mergeMaps(
-    BASELINE_USER_RESPONSES,
-    remapKeys(RESPONSES_INFERENCE_DIRECT, 2),
-    remapKeys(RESPONSES_TRACE_DIRECT, 9)
-  ),
+  baseline: RESPONSES_LAYERS,
   "scenario-a": mergeMaps(
     pickKeys(RESPONSES_A, [1, 2, 3, 4]),
     remapKeys(RESPONSES_INFERENCE_GW_MAAS, 5),
     remapKeys(pickKeys(RESPONSES_A, [6, 8]), 2),
-    remapKeys(RESPONSES_TRACE_DIRECT, 10)
+    remapKeys(RESPONSES_TRACE_GW, 10)
   ),
   "scenario-b": mergeMaps(
     pickKeys(RESPONSES_B, [3, 4]),
     remapKeys(RESPONSES_INFERENCE_DIRECT, 4),
     remapKeys(pickKeys(RESPONSES_B, [5, 6]), 5),
-    remapKeys(RESPONSES_TRACE_DIRECT, 11)
+    remapKeys(RESPONSES_TRACE_GW, 11)
   ),
   "scenario-c-before": mergeMaps(
     pickKeys(RESPONSES_C_BEFORE, [1, 2]),
     remapKeys(RESPONSES_INFERENCE_DIRECT, 2),
     remapKeys(pickKeys(RESPONSES_C_BEFORE, [4, 7, 8]), 5),
-    remapKeys(RESPONSES_TRACE_DIRECT, 13)
+    remapKeys(RESPONSES_TRACE_GW, 13)
   ),
   "scenario-c-after": mergeMaps(
     pickKeys(RESPONSES_C_AFTER, [1]),
     remapKeys(RESPONSES_INFERENCE_DIRECT, 2),
     remapKeys(pickKeys(RESPONSES_C_AFTER, [4, 6]), 5),
-    remapKeys(RESPONSES_TRACE_DIRECT, 11)
+    remapKeys(RESPONSES_TRACE_GW, 11)
   ),
   "scenario-d-before": mergeMaps(
     pickKeys(RESPONSES_D_BEFORE, [2, 4]),
     remapKeys(RESPONSES_INFERENCE_MAAS_LLM, 4),
     remapKeys(pickKeys(RESPONSES_D_BEFORE, [7]), 1),
-    remapKeys(RESPONSES_TRACE_DIRECT, 8)
+    remapKeys(RESPONSES_TRACE_GW, 8)
   ),
   "scenario-d-after": mergeMaps(
     pickKeys(RESPONSES_D_AFTER, [4, 5]),
     remapKeys(RESPONSES_INFERENCE_MAAS_LLM, 5),
     remapKeys(pickKeys(RESPONSES_D_AFTER, [8]), 1),
-    remapKeys(RESPONSES_TRACE_DIRECT, 9)
+    remapKeys(RESPONSES_TRACE_GW, 9)
   ),
 };
 
 export const OVERALL_OVERLAYS = {
-  baseline: mergeMaps(
-    BASELINE_USER_OVERLAYS,
-    remapKeys(pickKeys(OVERLAYS_INFERENCE_DIRECT, [1]), 2),
-    pickKeys(OVERLAYS_A, [4, 6]),
-    remapKeys(pickKeys(OVERLAYS_INFERENCE_DIRECT, [3, 4]), 2),
-    remapKeys(OVERLAYS_TRACE_DIRECT, 9)
-  ),
+  baseline: OVERLAYS_LAYERS,
   "scenario-a": mergeMaps(
     pickKeys(OVERLAYS_A, [1, 2, 3, 4]),
     remapKeys(OVERLAYS_INFERENCE_GW_MAAS, 5),
     remapKeys(pickKeys(OVERLAYS_A, [6, 8]), 2),
-    remapKeys(OVERLAYS_TRACE_DIRECT, 10)
+    remapKeys(OVERLAYS_TRACE_GW, 10)
   ),
   "scenario-b": mergeMaps(
     pickKeys(OVERLAYS_B, [3, 4]),
     remapKeys(OVERLAYS_INFERENCE_DIRECT, 4),
     remapKeys(pickKeys(OVERLAYS_B, [5, 6]), 5),
-    remapKeys(OVERLAYS_TRACE_DIRECT, 11)
+    remapKeys(OVERLAYS_TRACE_GW, 11)
   ),
   "scenario-c-before": mergeMaps(
     pickKeys(OVERLAYS_C_BEFORE, [1, 2]),
     remapKeys(OVERLAYS_INFERENCE_DIRECT, 2),
     remapKeys(pickKeys(OVERLAYS_C_BEFORE, [4, 7, 8]), 5),
-    remapKeys(OVERLAYS_TRACE_DIRECT, 13)
+    remapKeys(OVERLAYS_TRACE_GW, 13)
   ),
   "scenario-c-after": mergeMaps(
     pickKeys(OVERLAYS_C_AFTER, [1]),
     remapKeys(OVERLAYS_INFERENCE_DIRECT, 2),
     remapKeys(pickKeys(OVERLAYS_C_AFTER, [4, 6]), 5),
-    remapKeys(OVERLAYS_TRACE_DIRECT, 11)
+    remapKeys(OVERLAYS_TRACE_GW, 11)
   ),
   "scenario-d-before": mergeMaps(
     pickKeys(OVERLAYS_D_BEFORE, [2, 4]),
     remapKeys(OVERLAYS_INFERENCE_MAAS_LLM, 4),
     remapKeys(pickKeys(OVERLAYS_D_BEFORE, [7]), 1),
-    remapKeys(OVERLAYS_TRACE_DIRECT, 8)
+    remapKeys(OVERLAYS_TRACE_GW, 8)
   ),
   "scenario-d-after": mergeMaps(
     pickKeys(OVERLAYS_D_AFTER, [4, 5]),
     remapKeys(OVERLAYS_INFERENCE_MAAS_LLM, 5),
     remapKeys(pickKeys(OVERLAYS_D_AFTER, [8]), 1),
-    remapKeys(OVERLAYS_TRACE_DIRECT, 9)
+    remapKeys(OVERLAYS_TRACE_GW, 9)
   ),
 };

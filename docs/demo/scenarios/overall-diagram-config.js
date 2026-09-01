@@ -8,7 +8,11 @@ import {
   buildOverallMutations,
   buildOverallNodes,
   buildOverallResponseComparison,
-  LAYER_BOARDS,
+  buildFilteredLayerBoards,
+  collectNodesFromSteps,
+  filterLayerBoard,
+  getScenarioFlowBundle,
+  layerIdsFromMutations,
   OVERALL_CANVAS,
   OVERALL_FLOW_ORDER,
 } from "./overall-flows.js";
@@ -108,17 +112,54 @@ function buildTooltips() {
 
 function buildLegend() {
   return [
-    { label: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`, color: "#79c0ff" },
-    { label: "Public egress (risk)", color: "#f78166" },
+    { label: LAYER_NAMES.endUser, color: "#79c0ff" },
+    { label: LAYER_NAMES.internet, color: "#f78166" },
     { label: `${LAYER_NAMES.openClaw} · ${LAYER_NAMES.harness}`, color: "#f0883e" },
     { label: "Agent Sandbox", color: "#d2a8ff" },
-    { label: "Inference request", color: "#58a6ff" },
-    { label: "OpenShell Gateway", color: "#1f6feb" },
-    { label: "NeMo Guardrails", color: "#2dd4bf" },
-    { label: "Inference response", color: "#3fb950" },
-    { label: "File policy (Landlock)", color: "#c9d1d9" },
+    { label: "Inference hop", color: "#58a6ff" },
+    { label: LAYER_NAMES.gw, color: "#1f6feb" },
+    { label: LAYER_NAMES.nemo, color: "#2dd4bf" },
+    { label: `${LAYER_NAMES.maas} / ${LAYER_NAMES.llm}`, color: "#3fb950" },
     { label: "MLflow traces", color: "#e3b341" },
   ];
+}
+
+/** Legend item index → node ids used on canvas (for per-scenario filtering). */
+const LEGEND_NODE_SETS = [
+  ["user"],
+  ["internet"],
+  ["oc"],
+  ["oc", "agentsb"],
+  ["ir"],
+  ["gw"],
+  ["nemo"],
+  ["maas", "llm"],
+  ["mlflow"],
+];
+
+function filterLegendForNodes(legend, activeNodeIds) {
+  const active = activeNodeIds instanceof Set ? activeNodeIds : new Set(activeNodeIds);
+  return legend.filter((_, index) => {
+    const nodes = LEGEND_NODE_SETS[index] ?? [];
+    return nodes.some((id) => active.has(id));
+  });
+}
+
+function applyNodeOverrides(nodes, overrides = {}) {
+  const next = { ...nodes };
+  for (const [key, patch] of Object.entries(overrides)) {
+    if (next[key]) next[key] = { ...next[key], ...patch };
+  }
+  return next;
+}
+
+function mergeTooltips(overrides = {}) {
+  const base = buildTooltips();
+  const merged = { ...base };
+  for (const [key, patch] of Object.entries(overrides)) {
+    merged[key] = { ...base[key], ...patch };
+  }
+  return merged;
 }
 
 function buildDiagramBase() {
@@ -141,7 +182,7 @@ function buildDiagramBase() {
     legend: buildLegend(),
     defaultFlow: "baseline",
     inspector: {
-      initialStates: LAYER_BOARDS,
+      initialStates: buildFilteredLayerBoards(),
       mutations: buildOverallMutations(),
     },
     _baselineMergedMutations: baselineMerged,
@@ -183,9 +224,69 @@ export function buildBaselineDiagram() {
     flowOrder: ["baseline"],
     defaultFlow: "baseline",
     inspector: {
-      initialStates: { baseline: LAYER_BOARDS.baseline },
+      initialStates: { baseline: buildFilteredLayerBoards().baseline },
       mutations: { baseline: base._baselineMergedMutations },
     },
     legend: base.legend,
+  };
+}
+
+/**
+ * Self-contained test page diagram — same hops/nodes/ARROW routing as overall map scenario flow.
+ * @param {string} flowId — e.g. "scenario-a"
+ * @param {{ title?: string, gwSublabel?: string, nodeOverrides?: object, tooltipOverrides?: object }} options
+ */
+export function buildScenarioPageDiagram(flowId, options = {}) {
+  const bundle = getScenarioFlowBundle(flowId);
+  const comparison = buildOverallResponseComparison().flows[flowId];
+  if (!comparison) {
+    throw new Error(`No response comparison for scenario flow: ${flowId}`);
+  }
+
+  const nodeOverrides = { ...(options.nodeOverrides ?? {}) };
+  if (options.gwSublabel) {
+    nodeOverrides.gw = { ...nodeOverrides.gw, sublabel: options.gwSublabel };
+  }
+
+  const activeNodes = collectNodesFromSteps(bundle.steps);
+  const filteredBoard = filterLayerBoard(
+    bundle.layerBoard,
+    layerIdsFromMutations(bundle.mutations)
+  );
+
+  return {
+    meta: {
+      title: options.title ?? bundle.label,
+      branding: {
+        logo: "../shared/assets/redhat-logo.svg",
+        title: "Red Hat",
+      },
+    },
+    canvas: OVERALL_CANVAS,
+    nodes: applyNodeOverrides(buildOverallNodes(), nodeOverrides),
+    tooltips: mergeTooltips(options.tooltipOverrides),
+    flows: {
+      main: {
+        label: bundle.label,
+        steps: bundle.steps,
+      },
+    },
+    flowOrder: ["main"],
+    defaultFlow: "main",
+    inspector: {
+      initialState: filteredBoard,
+      mutations: { main: bundle.mutations },
+    },
+    legend: filterLegendForNodes(buildLegend(), activeNodes),
+    _responseComparison: {
+      flowId: "main",
+      baseMutations: comparison.baseMutations,
+      mergedMutations: comparison.mergedMutations,
+      overlays: comparison.overlays,
+      responseMap: comparison.responseMap,
+    },
+    _phaseRest: {
+      main: bundle.phaseRest,
+    },
   };
 }

@@ -165,7 +165,7 @@ export const NARRATIVE = {
         inferencePath: "direct",
         flows: [
           { nodes: ["oc", "ir", "maas"], kind: "inference" },
-          { nodes: ["oc", "mlflow"], kind: "trace" },
+          { nodes: ["oc", "gw", "mlflow"], kind: "trace" },
         ],
       },
       yamlPanel: null,
@@ -362,9 +362,9 @@ export const NARRATIVE = {
       },
       matrixFocus: "all",
       diagram: {
-        active: ["oc", "mlflow"],
+        active: ["oc", "gw", "mlflow"],
         inferencePath: "nemo",
-        flows: [{ nodes: ["oc", "mlflow"], kind: "trace" }],
+        flows: [{ nodes: ["oc", "gw", "mlflow"], kind: "trace" }],
       },
       yamlPanel: null,
       observabilityFocus: "mlflow",
@@ -396,7 +396,7 @@ export const NARRATIVE = {
         inferencePath: "nemo",
         flows: [
           { nodes: ["oc", "ir", "nemo", "maas"], kind: "inference-guarded" },
-          { nodes: ["oc", "mlflow"], kind: "trace" },
+          { nodes: ["oc", "gw", "mlflow"], kind: "trace" },
         ],
       },
       yamlPanel: null,

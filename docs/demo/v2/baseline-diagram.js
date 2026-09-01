@@ -233,7 +233,7 @@ function legendHtml(extraClass = "") {
 function inspectorHtml() {
   return `
     <div class="fs-inspector">
-      <div class="fs-inspector-title v2-fs-inspector-title" style="color:var(--fs-accent)">Layer board</div>
+      <div class="fs-inspector-title v2-fs-inspector-title">Layer board</div>
       <div class="v2-fs-inspector-content"></div>
     </div>`;
 }
@@ -267,8 +267,8 @@ function canvasBlock(layout) {
 
 function overlayHtml() {
   return `
-      <div class="v2-fs-highlight-box" style="display:none;position:fixed;z-index:350;border-radius:10px;pointer-events:none"></div>
-      <div class="v2-fs-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:400;background:rgba(0,0,0,0.55)">
+      <div class="v2-fs-highlight-box"></div>
+      <div class="v2-fs-overlay">
         <div class="v2-fs-overlay-card">
           <button type="button" class="v2-fs-overlay-close">✕</button>
           <div class="v2-fs-overlay-accent"></div>

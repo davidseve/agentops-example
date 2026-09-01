@@ -4,6 +4,8 @@
 
 import {
   ARROW,
+  ARROW_SCENARIO_OC_GW,
+  ARROW_SCENARIO_OC_GW_C_AFTER,
   COLORS,
   LAYER_NAMES,
   mergeResponseBodies,
@@ -11,7 +13,7 @@ import {
   OVERALL_FLOW_ORDER,
   pickNodes,
   TRACE_STEP_STYLE,
-} from "./shared-scenario.js";
+} from "./scenario-layout.js";
 import { OVERALL_OVERLAYS, OVERALL_RESPONSES } from "./overall-response-maps.js";
 
 const DIRECT_INFERENCE_PATH = `${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}`;
@@ -51,35 +53,64 @@ export const BASELINE_MUTATIONS = [
   {
     step: 1,
     label: `1  ${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
-    actions: [{ id: "l-user", style: "highlight" }, { id: "l-gw", style: "highlight" }],
+    actions: [{ id: "l-gw", style: "highlight" }],
   },
-  { step: 2, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw} · forward` },
+  { step: 2, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}` },
   {
     step: 3,
     label: `2  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.ir}`,
     actions: [{ id: "l-creds", style: "highlight" }],
   },
-  { step: 4, label: `3  ${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} · key inject` },
+  { step: 4, label: `3  ${LAYER_NAMES.gw}`, actions: [{ id: "l-gw", style: "highlight" }] },
   {
     step: 5,
-    label: `3  ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} · direct`,
+    label: `4  ${LAYER_NAMES.nemo} on the path`,
     actions: [{ id: "l-rails", style: "highlight" }],
-    replaceBody: [{ value: `Path:  ${DIRECT_INFERENCE_PATH}`, style: "add", id: "p-path" }],
+    replaceBody: [
+      {
+        value: `Path:  ${LAYER_NAMES.ir}  →  ${LAYER_NAMES.gw}  →  ${LAYER_NAMES.nemo}  →  ${LAYER_NAMES.maas}  →  ${LAYER_NAMES.llm}`,
+        style: "add",
+        id: "p-path",
+      },
+    ],
   },
-  { step: 6, label: `4  ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}` },
-  { step: 7, label: `2  ${LAYER_NAMES.ir} → ${LAYER_NAMES.openClaw}` },
-  { step: 8, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}` },
-  { step: 9, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser}` },
+  { step: 6, label: `5  ${LAYER_NAMES.maas}`, actions: [{ id: "p-path", style: "highlight" }] },
+  { step: 7, label: `6  ${LAYER_NAMES.llm}` },
   {
-    step: 10,
-    label: `4  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.mlflow} · trace`,
-    actions: [{ id: "l-mlflow", style: "highlight" }],
+    step: 8,
+    label: `6  ${LAYER_NAMES.llm} → ${LAYER_NAMES.maas} (read this file)`,
+    phase: "response",
+    replaceBody: [
+      {
+        value: `Path:  ${LAYER_NAMES.llm} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.nemo} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.ir} → ${LAYER_NAMES.openClaw}  then  ${LAYER_NAMES.landlock}`,
+        style: "add",
+        id: "p-path",
+      },
+    ],
   },
+  { step: 9, label: `5  ${LAYER_NAMES.maas} → ${LAYER_NAMES.nemo}` },
+  { step: 10, label: `4  ${LAYER_NAMES.nemo} → ${LAYER_NAMES.gw}` },
+  { step: 11, label: `3  ${LAYER_NAMES.gw} → ${LAYER_NAMES.ir}` },
+  { step: 12, label: `2  ${LAYER_NAMES.ir} → ${LAYER_NAMES.openClaw}` },
+  { step: 13, label: `7  ${LAYER_NAMES.landlock} →`, actions: [{ id: "l-files", style: "highlight" }] },
+  { step: 14, label: `7  ← ${LAYER_NAMES.landlock}` },
+  {
+    step: 15,
+    label: `8  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}`,
+    actions: [{ id: "l-net", style: "highlight" }, { id: "l-gw", style: "highlight" }],
+  },
+  { step: 16, label: `8  ${LAYER_NAMES.gw} → ${LAYER_NAMES.internet}` },
+  { step: 17, label: `8  ${LAYER_NAMES.internet} → ${LAYER_NAMES.gw}` },
+  { step: 18, label: `8  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}` },
+  { step: 19, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}` },
+  { step: 20, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser}` },
+  { step: 21, label: `9  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}`, actions: [{ id: "l-mlflow", style: "highlight" }] },
+  { step: 22, label: `9  ${LAYER_NAMES.gw} → ${LAYER_NAMES.mlflow}` },
 ];
 
 export const BASELINE_STEPS = [
   {
-    text: `${LAYER_NAMES.endUser} reaches ${LAYER_NAMES.gw} via ${LAYER_NAMES.controlUI}`,
+    text: `${LAYER_NAMES.endUser} reaches ${LAYER_NAMES.openClaw} through the ${LAYER_NAMES.gw}`,
     mode: "arrow",
     from: "user",
     to: "gw",
@@ -88,7 +119,7 @@ export const BASELINE_STEPS = [
     ...ARROW.userToGw,
   },
   {
-    text: `${LAYER_NAMES.gw} forwards prompt to ${LAYER_NAMES.openClaw}`,
+    text: `${LAYER_NAMES.gw} forwards the ${LAYER_NAMES.endUser} into ${LAYER_NAMES.openClaw}`,
     mode: "arrow",
     from: "gw",
     to: "oc",
@@ -97,7 +128,7 @@ export const BASELINE_STEPS = [
     ...ARROW.gwToOc,
   },
   {
-    text: `${LAYER_NAMES.openClaw} calls ${LAYER_NAMES.ir} — router injects API key`,
+    text: `${LAYER_NAMES.openClaw} calls ${LAYER_NAMES.ir} — the router injects the API key`,
     mode: "arrow",
     from: "oc",
     to: "ir",
@@ -106,7 +137,7 @@ export const BASELINE_STEPS = [
     ...ARROW.ocToIr,
   },
   {
-    text: `Call leaves through ${LAYER_NAMES.gw} — credentials at gateway`,
+    text: `The call leaves through the ${LAYER_NAMES.gw} — all outbound`,
     mode: "arrow",
     from: "ir",
     to: "gw",
@@ -115,77 +146,197 @@ export const BASELINE_STEPS = [
     ...ARROW.irToGw,
   },
   {
-    text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} direct (${LAYER_NAMES.nemo} off)`,
+    text: `${LAYER_NAMES.gw} forwards through ${LAYER_NAMES.nemo} (TrustyAI)`,
     mode: "arrow",
     from: "gw",
+    to: "nemo",
+    color: COLORS.platform,
+    num: 4,
+    ...ARROW.gwToNemo,
+  },
+  {
+    text: `${LAYER_NAMES.nemo} forwards to ${LAYER_NAMES.maas}`,
+    mode: "arrow",
+    from: "nemo",
     to: "maas",
-    color: COLORS.warn,
-    num: 3,
-    ...ARROW.gwToMaas,
+    color: COLORS.maas,
+    num: 5,
+    ...ARROW.nemoToMaas,
   },
   {
     text: `${LAYER_NAMES.maas} calls the ${LAYER_NAMES.llm}`,
     mode: "arrow",
     from: "maas",
     to: "llm",
-    color: COLORS.maas,
-    num: 4,
+    color: "#7ee787",
+    num: 6,
     ...ARROW.maasToLlm,
   },
   {
-    text: `Response returns to ${LAYER_NAMES.openClaw}`,
+    text: `${LAYER_NAMES.llm} responds — it tells the agent to read a file`,
+    mode: "arrow",
+    from: "llm",
+    to: "maas",
+    color: COLORS.maas,
+    num: 6,
+    ...ARROW.llmToMaas,
+  },
+  {
+    text: `Response returns through ${LAYER_NAMES.nemo}`,
+    mode: "arrow",
+    from: "maas",
+    to: "nemo",
+    color: COLORS.maas,
+    num: 5,
+    ...ARROW.maasToNemo,
+  },
+  {
+    text: `Response returns through the ${LAYER_NAMES.gw}`,
+    mode: "arrow",
+    from: "nemo",
+    to: "gw",
+    color: COLORS.maas,
+    num: 4,
+    ...ARROW.nemoToGw,
+  },
+  {
+    text: `${LAYER_NAMES.gw} returns to ${LAYER_NAMES.ir}`,
+    mode: "arrow",
+    from: "gw",
+    to: "ir",
+    color: COLORS.maas,
+    num: 3,
+    ...ARROW.gwToIr,
+  },
+  {
+    text: `Response returns to ${LAYER_NAMES.openClaw} — the model asked for a file`,
     mode: "arrow",
     from: "ir",
     to: "oc",
-    color: COLORS.secure,
+    color: COLORS.maas,
     num: 2,
     ...ARROW.irToOc,
   },
   {
-    text: `${LAYER_NAMES.openClaw} answers through ${LAYER_NAMES.gw}`,
+    text: `${LAYER_NAMES.openClaw} tries the file — ${LAYER_NAMES.landlock} is already locking it`,
+    mode: "arrow",
+    from: "oc",
+    to: "landlock",
+    color: COLORS.landlock,
+    num: 7,
+    ...ARROW.ocToLandlock,
+  },
+  {
+    text: `${LAYER_NAMES.landlock} returns to ${LAYER_NAMES.openClaw} — no secret files`,
+    mode: "arrow",
+    from: "landlock",
+    to: "oc",
+    color: COLORS.landlock,
+    num: 7,
+    ...ARROW.landlockToOc,
+  },
+  {
+    text: `${LAYER_NAMES.openClaw} curls out through the ${LAYER_NAMES.gw}`,
     mode: "arrow",
     from: "oc",
     to: "gw",
-    color: COLORS.secure,
+    color: COLORS.risk,
+    num: 8,
+    ...ARROW.ocToGw,
+  },
+  {
+    text: `${LAYER_NAMES.gw} forwards the request to the ${LAYER_NAMES.internet}`,
+    mode: "arrow",
+    from: "gw",
+    to: "internet",
+    color: COLORS.risk,
+    num: 8,
+    ...ARROW.gwToInternet,
+  },
+  {
+    text: `${LAYER_NAMES.internet} responds through the ${LAYER_NAMES.gw}`,
+    mode: "arrow",
+    from: "internet",
+    to: "gw",
+    color: COLORS.maas,
+    num: 8,
+    ...ARROW.internetToGw,
+  },
+  {
+    text: `Response returns to ${LAYER_NAMES.openClaw}`,
+    mode: "arrow",
+    from: "gw",
+    to: "oc",
+    color: COLORS.maas,
+    num: 8,
+    ...ARROW.gwToOcReturn,
+  },
+  {
+    text: `${LAYER_NAMES.openClaw} answers through the ${LAYER_NAMES.gw}`,
+    mode: "arrow",
+    from: "oc",
+    to: "gw",
+    color: COLORS.maas,
     num: 1,
     ...ARROW.ocToGwReply,
   },
   {
-    text: `${LAYER_NAMES.gw} returns answer to ${LAYER_NAMES.endUser}`,
+    text: `${LAYER_NAMES.gw} returns the answer to the ${LAYER_NAMES.endUser}`,
     mode: "arrow",
     from: "gw",
     to: "user",
-    color: COLORS.secure,
+    color: COLORS.maas,
     num: 1,
     ...ARROW.gwToUser,
   },
   {
-    text: `Trace span (background) → ${LAYER_NAMES.mlflow}`,
+    text: `Traces leave ${LAYER_NAMES.openClaw} through the ${LAYER_NAMES.gw}`,
     mode: "arrow",
     from: "oc",
+    to: "gw",
+    color: COLORS.trace,
+    num: 9,
+    ...ARROW.ocToGwTrace,
+  },
+  {
+    text: `${LAYER_NAMES.gw} forwards traces to ${LAYER_NAMES.mlflow}`,
+    mode: "arrow",
+    from: "gw",
     to: "mlflow",
-    ...TRACE_STEP_STYLE,
-    ...ARROW.ocToMlflow,
+    color: COLORS.trace,
+    num: 9,
+    ...ARROW.gwToMlflow,
   },
 ];
 
 /**
  * Legend item indices (buildLegend order) to highlight per baseline hop (1-based step).
- * 0 End user · Control UI · 1 Public egress · 2 OpenClaw · 3 Agent Sandbox
- * 4 Inference request · 5 OpenShell Gateway · 6 NeMo · 7 Inference response
- * 8 Landlock · 9 MLflow traces
+ * 0 End user · 1 Internet · 2 OpenClaw · BYOA harness · 3 Agent Sandbox
+ * 4 Inference hop · 5 OpenShell Gateway · 6 NeMo Guardrails · 7 MaaS / LLM · 8 MLflow traces
  */
 export const BASELINE_LEGEND_HOP_HIGHLIGHTS = {
   1: [0, 5],
   2: [5, 2],
   3: [2, 3, 4],
   4: [4, 5],
-  5: [5, 4],
-  6: [4],
-  7: [7, 2],
-  8: [7, 2, 5],
-  9: [7, 0, 5],
-  10: [9, 2],
+  5: [5, 6],
+  6: [6, 7],
+  7: [7],
+  8: [7],
+  9: [7, 6],
+  10: [6, 5],
+  11: [5, 4],
+  12: [4, 2],
+  13: [2, 3],
+  14: [3, 2],
+  15: [1, 5, 2],
+  16: [1, 5],
+  17: [1, 5],
+  18: [5, 2],
+  19: [2, 5],
+  20: [0, 5],
+  21: [8, 2, 5],
+  22: [8, 5],
 };
 
 // --- Scenario A ---
@@ -237,7 +388,7 @@ export const SCENARIO_A_STEPS = [
     to: "oc",
     color: COLORS.endUser,
     num: 1,
-    ...ARROW.gwToOc,
+    ...ARROW_SCENARIO_OC_GW.gwToOc,
   },
   {
     text: `${LAYER_NAMES.openClaw} calls ${LAYER_NAMES.ir}`,
@@ -282,7 +433,7 @@ export const SCENARIO_A_STEPS = [
     to: "gw",
     color: COLORS.secure,
     num: 1,
-    ...ARROW.ocToGwReply,
+    ...ARROW_SCENARIO_OC_GW.ocToGwReply,
   },
   {
     text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} — no key exposed`,
@@ -335,7 +486,7 @@ export const SCENARIO_B_STEPS = [
     to: "oc",
     color: COLORS.endUser,
     num: 1,
-    ...ARROW.gwToOc,
+    ...ARROW_SCENARIO_OC_GW.gwToOc,
   },
   {
     text: `${LAYER_NAMES.openClaw} tries to read outside workspace`,
@@ -362,7 +513,7 @@ export const SCENARIO_B_STEPS = [
     to: "gw",
     color: COLORS.secure,
     num: 1,
-    ...ARROW.ocToGwReply,
+    ...ARROW_SCENARIO_OC_GW.ocToGwReply,
   },
   {
     text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} — no sensitive data`,
@@ -521,7 +672,7 @@ export const SCENARIO_C_AFTER_STEPS = [
     to: "oc",
     color: COLORS.endUser,
     num: 1,
-    ...ARROW.gwToOc,
+    ...ARROW_SCENARIO_OC_GW_C_AFTER.gwToOc,
   },
   {
     text: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}`,
@@ -530,7 +681,7 @@ export const SCENARIO_C_AFTER_STEPS = [
     to: "gw",
     color: COLORS.platform,
     num: 2,
-    ...ARROW.ocToGw,
+    ...ARROW_SCENARIO_OC_GW_C_AFTER.ocToGw,
   },
   {
     text: `${LAYER_NAMES.gw} denies unauthorized egress`,
@@ -548,7 +699,7 @@ export const SCENARIO_C_AFTER_STEPS = [
     to: "gw",
     color: COLORS.secure,
     num: 1,
-    ...ARROW.ocToGwReply,
+    ...ARROW_SCENARIO_OC_GW_C_AFTER.ocToGwReply,
   },
   {
     text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · curl denied`,
@@ -637,7 +788,7 @@ export const SCENARIO_D_BEFORE_STEPS = [
     to: "oc",
     color: COLORS.endUser,
     num: 1,
-    ...ARROW.gwToOc,
+    ...ARROW_SCENARIO_OC_GW.gwToOc,
   },
   {
     text: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.ir}`,
@@ -673,7 +824,7 @@ export const SCENARIO_D_BEFORE_STEPS = [
     to: "gw",
     color: COLORS.warn,
     num: 1,
-    ...ARROW.ocToGwReply,
+    ...ARROW_SCENARIO_OC_GW.ocToGwReply,
   },
   {
     text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · unsafe output possible`,
@@ -703,7 +854,7 @@ export const SCENARIO_D_AFTER_STEPS = [
     to: "oc",
     color: COLORS.endUser,
     num: 1,
-    ...ARROW.gwToOc,
+    ...ARROW_SCENARIO_OC_GW.gwToOc,
   },
   {
     text: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.ir}`,
@@ -748,7 +899,7 @@ export const SCENARIO_D_AFTER_STEPS = [
     to: "gw",
     color: COLORS.secure,
     num: 1,
-    ...ARROW.ocToGwReply,
+    ...ARROW_SCENARIO_OC_GW.ocToGwReply,
   },
   {
     text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · jailbreak blocked`,
@@ -766,14 +917,14 @@ export const SCENARIO_D_AFTER_STEPS = [
 export const LAYER_BOARDS = {
   baseline: {
     headers: [
-      ...BASELINE_LAYER_HEADERS.slice(0, 5),
-      { value: "Egress          open  (demo)", style: "highlight", id: "l-egress" },
-      ...BASELINE_LAYER_HEADERS.slice(5),
+      { value: "Credentials     locked  (gateway holds the key)", style: "keep", id: "l-creds" },
+      { value: "Egress          via OpenShell Gateway", style: "keep", id: "l-gw" },
+      { value: "Files           locked  (Landlock)", style: "keep", id: "l-files" },
+      { value: "Guardrails      on  (NeMo on the hop)", style: "keep", id: "l-rails" },
+      { value: "Internet        curl  (Gateway egress)", style: "keep", id: "l-net" },
+      { value: "MLflow          on  (one server)", style: "keep", id: "l-mlflow" },
     ],
-    body: [
-      { value: "Demo initial state — Cambio 1 & 2 not applied", style: "add", id: "p-path" },
-      { value: `Inference: ${DIRECT_INFERENCE_PATH}`, style: "add", id: "p-probe" },
-    ],
+    body: [{ value: "Path:  (not on the hop yet)", style: "keep", id: "p-path" }],
   },
   "scenario-a": {
     headers: [
@@ -839,17 +990,12 @@ export const LAYER_BOARDS = {
 };
 
 export const PHASE_REST = {
-  baseline: {
-    nodeColors: { nemo: COLORS.dim, internet: COLORS.dim },
-  },
+  baseline: {},
   "scenario-a": {
     nodeColors: {
       nemo: COLORS.dim,
       internet: COLORS.dim,
       landlock: COLORS.dim,
-      maas: COLORS.dim,
-      llm: COLORS.dim,
-      mlflow: COLORS.dim,
     },
   },
   "scenario-b": {
@@ -1061,23 +1207,37 @@ function buildInferenceMaasLlmBlock() {
   };
 }
 
-function buildTraceDirectBlock() {
+function buildTraceGwBlock(arrows = ARROW) {
   return {
     steps: [
       {
-        text: `Trace span (background) → ${LAYER_NAMES.mlflow}`,
+        text: `Traces leave ${LAYER_NAMES.openClaw} through the ${LAYER_NAMES.gw}`,
         mode: "arrow",
         from: "oc",
-        to: "mlflow",
+        to: "gw",
+        color: COLORS.trace,
         ...TRACE_STEP_STYLE,
-        ...ARROW.ocToMlflow,
+        ...arrows.ocToGwTrace,
+      },
+      {
+        text: `${LAYER_NAMES.gw} forwards traces to ${LAYER_NAMES.mlflow}`,
+        mode: "arrow",
+        from: "gw",
+        to: "mlflow",
+        color: COLORS.trace,
+        ...TRACE_STEP_STYLE,
+        ...arrows.gwToMlflow,
       },
     ],
     mutations: [
       {
         step: 1,
-        label: `4  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.mlflow} · trace`,
+        label: `4  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}`,
         actions: [{ id: "l-mlflow", style: "highlight" }],
+      },
+      {
+        step: 2,
+        label: `4  ${LAYER_NAMES.gw} → ${LAYER_NAMES.mlflow}`,
       },
     ],
   };
@@ -1093,7 +1253,7 @@ const OVERALL_SCENARIO_A = composeOverallFlow([
     steps: SCENARIO_A_STEPS.slice(5),
     mutations: sliceMutations(SCENARIO_A_MUTATIONS, 6, 8),
   },
-  buildTraceDirectBlock(),
+  buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
 ]);
 
 const OVERALL_SCENARIO_B = composeOverallFlow([
@@ -1106,7 +1266,7 @@ const OVERALL_SCENARIO_B = composeOverallFlow([
     steps: SCENARIO_B_STEPS.slice(4),
     mutations: sliceMutations(SCENARIO_B_MUTATIONS, 5, 6),
   },
-  buildTraceDirectBlock(),
+  buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
 ]);
 
 const OVERALL_SCENARIO_C_BEFORE = composeOverallFlow([
@@ -1119,7 +1279,7 @@ const OVERALL_SCENARIO_C_BEFORE = composeOverallFlow([
     steps: SCENARIO_C_BEFORE_STEPS.slice(2),
     mutations: sliceMutations(SCENARIO_C_BEFORE_MUTATIONS, 3, 8),
   },
-  buildTraceDirectBlock(),
+  buildTraceGwBlock(),
 ]);
 
 const OVERALL_SCENARIO_C_AFTER = composeOverallFlow([
@@ -1132,7 +1292,7 @@ const OVERALL_SCENARIO_C_AFTER = composeOverallFlow([
     steps: SCENARIO_C_AFTER_STEPS.slice(2),
     mutations: sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 3, 6),
   },
-  buildTraceDirectBlock(),
+  buildTraceGwBlock(ARROW_SCENARIO_OC_GW_C_AFTER),
 ]);
 
 const OVERALL_SCENARIO_D_BEFORE = composeOverallFlow([
@@ -1145,7 +1305,7 @@ const OVERALL_SCENARIO_D_BEFORE = composeOverallFlow([
     steps: SCENARIO_D_BEFORE_STEPS.slice(4),
     mutations: sliceMutations(SCENARIO_D_BEFORE_MUTATIONS, 5, 7),
   },
-  buildTraceDirectBlock(),
+  buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
 ]);
 
 const OVERALL_SCENARIO_D_AFTER = composeOverallFlow([
@@ -1158,11 +1318,11 @@ const OVERALL_SCENARIO_D_AFTER = composeOverallFlow([
     steps: SCENARIO_D_AFTER_STEPS.slice(5),
     mutations: sliceMutations(SCENARIO_D_AFTER_MUTATIONS, 6, 8),
   },
-  buildTraceDirectBlock(),
+  buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
 ]);
 
 const FLOW_LABELS = {
-  baseline: "Baseline · demo initial",
+  baseline: "Overall Demo",
   "scenario-a": "A · Credentials",
   "scenario-b": "B · Files",
   "scenario-c-before": "C · Egress (before)",
@@ -1237,6 +1397,64 @@ export function buildOverallResponseComparison() {
   };
 }
 
+/** Node ids referenced by arrow steps (for legend filtering). */
+export function collectNodesFromSteps(steps) {
+  const ids = new Set();
+  for (const step of steps ?? []) {
+    if (step.from) ids.add(step.from);
+    if (step.to) ids.add(step.to);
+  }
+  return ids;
+}
+
+/** Layer-board header ids (`l-*`) touched by inspector mutations. */
+export function layerIdsFromMutations(mutations) {
+  const ids = new Set();
+  for (const m of mutations ?? []) {
+    for (const a of m.actions ?? []) {
+      if (a.id?.startsWith("l-")) ids.add(a.id);
+    }
+  }
+  return ids;
+}
+
+/** Keep only layer-board headers that apply to this scenario flow. */
+export function filterLayerBoard(board, layerIds) {
+  const idSet = layerIds instanceof Set ? layerIds : new Set(layerIds);
+  return {
+    ...board,
+    headers: (board.headers ?? []).filter((h) => idSet.has(h.id)),
+    body: board.body ?? [],
+  };
+}
+
+function buildFilteredLayerBoards() {
+  const mutations = buildOverallMutations();
+  const boards = {};
+  for (const [flowId, board] of Object.entries(LAYER_BOARDS)) {
+    boards[flowId] = filterLayerBoard(board, layerIdsFromMutations(mutations[flowId]));
+  }
+  return boards;
+}
+
+/** Steps, mutations, layer board, and phase rest for one overall-map scenario flow. */
+export function getScenarioFlowBundle(flowId) {
+  const flows = buildOverallFlows();
+  const mutations = buildOverallMutations();
+  const flow = flows[flowId];
+  if (!flow) {
+    throw new Error(`Unknown scenario flow: ${flowId}`);
+  }
+  return {
+    flowId,
+    label: flow.label,
+    steps: flow.steps,
+    mutations: mutations[flowId],
+    layerBoard: LAYER_BOARDS[flowId],
+    phaseRest: PHASE_REST[flowId] ?? {},
+  };
+}
+
 /** Full node set for overall map (all layers visible). */
 export function buildOverallNodes() {
   return pickNodes(
@@ -1261,4 +1479,4 @@ export function buildOverallNodes() {
   );
 }
 
-export { OVERALL_CANVAS, OVERALL_FLOW_ORDER };
+export { OVERALL_CANVAS, OVERALL_FLOW_ORDER, buildFilteredLayerBoards };
