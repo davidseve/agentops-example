@@ -1,0 +1,59 @@
+---
+description: >-
+  Demo test logic (scenarios, log rules, E2E assertions) requires matching unit
+  tests in the same session. Run validate-demo-ui.sh before finishing.
+globs: >-
+  docs/demo/**/observability-log-rules.js,
+  docs/demo/scenarios/**/*.js,
+  docs/demo/v1/narrative-data.js,
+  docs/demo/v1/narrative-ui.js,
+  docs/demo/v1/observability-panel.js,
+  tests/ui-helpers.ts,
+  tests/demo-prompts.ts
+alwaysApply: false
+---
+
+# Demo UI — Test Coverage Required
+
+When editing demo **test-related logic** (scenario flows, log classification, narrative prompts, E2E assertion helpers), add or update the matching unit tests in the **same session**.
+
+## Change → test map
+
+| Change | Required test file |
+|---|---|
+| Log classification, hints, baseline, step overrides | [`tests/observability-log-rules.spec.ts`](../../tests/observability-log-rules.spec.ts) |
+| Scenario hops, flows, responses, overlays, prompts | [`tests/demo-scenario-consistency.spec.ts`](../../tests/demo-scenario-consistency.spec.ts) |
+| E2E assertion patterns (`hasCredentialProbeEvidence`, network/guardrails checks) | [`tests/ui-helpers.unit.spec.ts`](../../tests/ui-helpers.unit.spec.ts) |
+| Presentation HTML/JS styling | [`scripts/validate-demo-external-css.sh`](../../scripts/validate-demo-external-css.sh) — see [`demo-external-css.mdc`](./demo-external-css.mdc) |
+| New demo scenario (E, F, …) | Extend `demo-prompts.ts`, `narrative-data.js`, `overall-flows.js` **and** all three specs above |
+
+## Source files under test
+
+| Module | Spec |
+|---|---|
+| `docs/demo/v1/observability-log-rules.js` | `observability-log-rules.spec.ts` |
+| `docs/demo/scenarios/overall-flows.js`, `overall-response-maps.js`, `scenario-responses.js` | `demo-scenario-consistency.spec.ts` |
+| `docs/demo/v1/narrative-data.js` + `tests/demo-prompts.ts` | `demo-scenario-consistency.spec.ts` |
+| `tests/ui-helpers.ts` | `ui-helpers.unit.spec.ts` |
+
+Pure layout constants live in `docs/demo/scenarios/scenario-layout.js` (no FlowStory/DOM) so scenario modules remain importable in Node unit tests.
+
+## Gate before done
+
+From repo root:
+
+```bash
+./scripts/validate-demo-ui.sh
+```
+
+Exit code `0` = pass. Non-zero = fix tests or implementation, then re-run.
+
+## Do not
+
+- Add classification rules or scenario hops without a failing-then-passing fixture
+- Rely on cluster E2E (`demo-narrative.spec.ts`) as the only guard for presenter data
+- Skip tests when only “renaming” hop labels if message content or step order changes
+
+## Workflow
+
+For refactor or audit workflows, use the **`demo-ui-tests`** skill.
