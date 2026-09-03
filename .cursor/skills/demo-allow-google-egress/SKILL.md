@@ -2,7 +2,7 @@
 name: demo-allow-google-egress
 description: >-
   Live demo Change 1: allowlist google.com egress for Test C after default deny.
-  Use during demo-narrativa-v1 phase 2, selective egress change,
+  Use during demo-narrative-v1 phase 2, selective egress change,
   demo-allow-google-egress, or after curl to google.com is blocked on stage.
 ---
 
@@ -34,7 +34,7 @@ Google egress allowed — curl to google.com should succeed; github.com remains 
 
 Repeat Test C prompt in Control UI — `curl -sI https://google.com` should succeed.
 
-Update `v1/live.html` step nav → egress **open** (selective allowlist; auto-updates).
+Update `v3/live.html` step nav → egress **open** (selective allowlist; auto-updates).
 
 ## Verify (optional, post-change)
 

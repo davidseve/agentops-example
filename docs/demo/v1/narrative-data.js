@@ -1,5 +1,5 @@
 /**
- * Single source of truth for demo narrative v1 steps (docs/demo-narrativa-v1.md).
+ * Single source of truth for demo narrative v1 steps (docs/demo-narrative-v1.md).
  * Consumed by v1/live.html via narrative-ui.js
  */
 

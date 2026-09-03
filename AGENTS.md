@@ -97,7 +97,7 @@ This maps demo features to specific Red Hat products/components:
 
 ## Demo Narrative
 
-Active live script (~9–10 min): [`docs/demo-narrativa-v1.md`](docs/demo-narrativa-v1.md) (Spanish) + [`docs/demo-script.md`](docs/demo-script.md) (English).
+Active live script (~9–10 min): [`docs/demo-narrative-v1.md`](docs/demo-narrative-v1.md) (Spanish) + [`docs/demo-script.md`](docs/demo-script.md) (English).
 
 1. **Context** (1–2 min): Architecture map via [`docs/demo/overall-demo-architecture.html`](docs/demo/overall-demo-architecture.html) — skill: `demo-presenter-panel`
 2. **Tests A & B** (2–3 min): API key not in sandbox; `/etc/shadow` blocked — skill: `demo-present`
@@ -108,7 +108,7 @@ Active live script (~9–10 min): [`docs/demo-narrativa-v1.md`](docs/demo-narrat
 
 Backstage install (before stage): `demo-backstage-install` → `demo-backstage-prep` → `demo-verify`. After AWS sleep: `demo-warmup` (not full reinstall). Reset between rehearsals: `demo-reset`.
 
-EvalHub/Garak extension (second namespace, precomputed evals): [`docs/demo-narrativa-v2.md`](docs/demo-narrativa-v2.md) — nice-to-have, not part of the active script.
+EvalHub/Garak extension (second namespace, precomputed evals): [`docs/demo-narrative-v2.md`](docs/demo-narrative-v2.md) — nice-to-have, not part of the active script.
 
 ## Cursor Skills
 
@@ -129,7 +129,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `guardrails-cluster-install` | Deploy/validate/undeploy NeMo Guardrails (TrustyAI) — see [nemo-guardrails-installation.md](docs/nemo-guardrails-installation.md) |
 | `launch-openclaw` | Launch OpenClaw in sandbox — demo v1 uses `config/openshell/default.yaml` (MLflow-only egress) |
 
-### Demo v1 ([demo-narrativa-v1.md](docs/demo-narrativa-v1.md))
+### Demo v1 ([demo-narrative-v1.md](docs/demo-narrative-v1.md))
 
 | Skill | When to use |
 |---|---|
@@ -138,7 +138,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `demo-backstage-prep` | Pre-stage checklist before going live |
 | `demo-verify` | Validate demo initial state (`VERIFY_PROFILE=demo`) |
 | `demo-present` | Master live runbook (phases 0–5) |
-| `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v1/live.html` panel — log highlight rules: [demo-scenario-logs.md](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules) |
+| `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v3/live.html` panel (v1/v2 deprecated) — log highlight rules: [demo-scenario-logs.md](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules) |
 | `demo-allow-google-egress` | Live Change 1 — allowlist google.com egress for Test C |
 | `demo-enable-guardrails` | Live Change 2 — switch inference to NeMo |
 | `demo-reset` | Reset between rehearsals (direct MaaS + MLflow-only egress policy) |
@@ -184,8 +184,8 @@ agentops-showcase/
 │   ├── adr/                       # Architecture Decision Records
 │   ├── demo/                      # Presenter UI + overall-demo-architecture.html
 │   ├── demo-script.md             # Live demo script (English)
-│   ├── demo-narrativa-v1.md       # Active live demo narrative (Spanish)
-│   ├── demo-narrativa-v2.md       # EvalHub/Garak extension (nice-to-have)
+│   ├── demo-narrative-v1.md       # Active live demo narrative (Spanish)
+│   ├── demo-narrative-v2.md       # EvalHub/Garak extension (nice-to-have)
 │   └── github-actions.md          # CI workflows
 ├── deploy/
 │   ├── Makefile                   # deploy-all, deploy-openshell, validate, demo, …

@@ -151,8 +151,9 @@ print(f"    Cluster: {oc_user} · sandbox reachable: {sandbox} · MLflow experim
 if mlflow_url:
     print(f"    MLflow UI: {mlflow_url}")
 print()
-print(f"    Live companion (v1): http://127.0.0.1:{http_port}/v1/live.html")
-print(f"    Live companion (v2): http://127.0.0.1:{http_port}/v2/live.html")
+print(f"    Live companion (v3, recommended): http://127.0.0.1:{http_port}/v3/live.html")
+print(f"    Live companion (v1, deprecated):  http://127.0.0.1:{http_port}/v1/live.html")
+print(f"    Live companion (v2, deprecated):  http://127.0.0.1:{http_port}/v2/live.html")
 print(f"    Script runner API:   http://127.0.0.1:{proxy_port}/api/demo/run")
 print(f"    Architecture map: http://127.0.0.1:{http_port}/overall-demo-architecture.html")
 if apps_domain:
@@ -169,7 +170,7 @@ start_servers() {
   python3 "${PROXY_SCRIPT}" --port "${PROXY_PORT}" &
   PIDS+=("$!")
 
-  echo "==> Live companion UI: http://127.0.0.1:${HTTP_PORT}/v1/live.html (v2: /v2/live.html)"
+  echo "==> Live companion UI: http://127.0.0.1:${HTTP_PORT}/v3/live.html (v1/v2 deprecated)"
   (
     cd "${DEMO_DIR}"
     python3 -m http.server "${HTTP_PORT}"

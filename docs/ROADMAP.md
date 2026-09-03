@@ -53,7 +53,7 @@
 - [x] Decide agent use case (what the agent actually does)
 - [x] Create detailed architecture document with deployment topology — [AGENT-SANDBOX-AND-OPENSHELL.md](AGENT-SANDBOX-AND-OPENSHELL.md) + [demo/overall-demo-architecture.html](demo/overall-demo-architecture.html)
 - [x] Define guardrails policies (self-check input/output, jailbreak) — [deploy/helm/guardrails/files/](../deploy/helm/guardrails/files/)
-- [x] Design the demo narrative and attack scenarios — active script [`demo-narrativa-v1.md`](demo-narrativa-v1.md); EvalHub extension [`demo-narrativa-v2.md`](demo-narrativa-v2.md)
+- [x] Design the demo narrative and attack scenarios — active script [`demo-narrative-v1.md`](demo-narrative-v1.md); EvalHub extension [`demo-narrative-v2.md`](demo-narrative-v2.md)
 
 
 
@@ -64,7 +64,7 @@
 - [x] Playwright guardrails E2E (`tests/guardrails-ui.spec.ts`, `make -C deploy test-guardrails`)
 - [x] Configure MLflow tracing integration
 - [x] Deploy and validate on RHOAI 3.x cluster
-- [ ] Implement attack scenarios for the security demo — scripts + narrative in [`demo-narrativa-v1.md`](demo-narrativa-v1.md); validate Prueba C egress on cluster
+- [ ] Implement attack scenarios for the security demo — scripts + narrative in [`demo-narrative-v1.md`](demo-narrative-v1.md); validate Prueba C egress on cluster
 - [ ] (Nice-to-have) EvalHub + GARC red teaming setup
 - [ ] (Nice-to-have) Cost tracking dashboard
 
@@ -74,7 +74,7 @@
 
 - [x] Scaffold Helm charts for one-command deployment — RHOAI + OpenShell: `[deploy/helm/openshell/](../deploy/helm/openshell/)` + `make -C deploy deploy-openshell`
 - [x] Refactor OpenShell wrapper chart (`0.3.0`): absorb namespace + SCC RoleBinding into Helm; Agent Sandbox via OLM only (OSC 1.13); retire kustomize + SCC script + raw `v0.5.1` manifest — see [ADR-0003](adr/0003-openshell-deployment-on-openshift.md)
-- [x] Write step-by-step demo script with timing marks (~9–10 min live) — [`demo-script.md`](demo-script.md) (English); narrative [`demo-narrativa-v1.md`](demo-narrativa-v1.md) (Spanish)
+- [x] Write step-by-step demo script with timing marks (~9–10 min live) — [`demo-script.md`](demo-script.md) (English); narrative [`demo-narrative-v1.md`](demo-narrative-v1.md) (Spanish)
 - [x] Create health-check script (`tests/health-check.sh`)
 - [x] Create warm-up script — skill `demo-warmup`, script `scripts/demo-warmup.sh`
 - [ ] Record fallback video
@@ -90,7 +90,7 @@
 
 ### Progressive network-policy unlock for the Security Attack demo
 
-> **Active demo narrative.** The live script ([`demo-narrativa-v1.md`](demo-narrativa-v1.md)) starts with MaaS + MLflow already reachable and **default-deny egress** (`default.yaml`). Test C runs blocked first; Change 1 applies selective google.com allowlist via `demo-allow-google-egress.sh`.
+> **Active demo narrative.** The live script ([`demo-narrative-v1.md`](demo-narrative-v1.md)) starts with MaaS + MLflow already reachable and **default-deny egress** (`default.yaml`). Test C runs blocked first; Change 1 applies selective google.com allowlist via `demo-allow-google-egress.sh`.
 
 Found while comparing this project against a related OpenShell/OpenCode reference demo
 ([r3v5/agent-ops,](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing) `opencode-vertex-tracing`).
@@ -102,7 +102,7 @@ Active v1 demo now aligns with that unlock direction for egress:
 
 - [x] Demo-initial policy with default deny — [`config/openshell/default.yaml`](../config/openshell/default.yaml)
 - [x] Live allowlist script — [`scripts/demo-allow-google-egress.sh`](../scripts/demo-allow-google-egress.sh) applies [`config/openshell/google-egress.yaml`](../config/openshell/google-egress.yaml)
-- [x] Narrative + timed script — [`demo-narrativa-v1.md`](demo-narrativa-v1.md), [`demo-script.md`](demo-script.md)
+- [x] Narrative + timed script — [`demo-narrative-v1.md`](demo-narrative-v1.md), [`demo-script.md`](demo-script.md)
 - [ ] Keep `config/openshell/default.yaml` as CI / `validate-security` baseline (unchanged)
 - [ ] Optional: document per-endpoint `openshell policy update --add-endpoint` as an alternate Change 1 presentation
 

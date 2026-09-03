@@ -6,34 +6,39 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <title>AgentOps — Demo UI launcher</title>
 <link rel="stylesheet" href="./v1/narrative.css">
+<link rel="stylesheet" href="./v3/narrative-v3.css">
 <link rel="stylesheet" href="./index.css">
 </head>
-<body class="nr-page">
+<body class="nr-page nr-v3">
 
-<header class="nr-header">
-  <h1>AgentOps — Demo UI launcher</h1>
-  <span class="nr-tagline">UI flows v1–v3 · narrative content in demo-narrativa-v1.md</span>
-</header>
+<div class="nr-v3-chrome">
+  <header class="nr-header nr-v3-header">
+    <h1>AgentOps — Demo UI launcher</h1>
+    <span class="nr-tagline">UI flows v1–v3 · narrative content in demo-narrative-v1.md</span>
+    <a href="./overall-demo-architecture.html">Architecture</a>
+    <a href="./v3/live.html">Live companion (v3)</a>
+  </header>
+</div>
 
 <div class="launcher">
   <h2>Start the server</h2>
   <pre>cd docs/demo && python3 -m http.server 8765</pre>
 
   <h2>Overall demo architecture (phase 0)</h2>
-  <table>
+  <table class="launcher-table launcher-table--phase0">
     <tbody>
       <tr class="stub">
         <td><a href="./layers-logos.html">layers-logos.html</a> <span class="badge badge-deprecated">deprecated</span></td>
         <td>Superseded by <a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> — original FlowStory map with logos</td>
       </tr>
-      <tr>
-        <td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a></td>
+      <tr class="stub">
+        <td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> <span class="badge badge-tbd">to be decided</span></td>
         <td>FlowStory walk-through — 7 flows in dropdown; shortcuts <code>0</code>, <code>a</code>–<code>d</code></td>
       </tr>
     </tbody>
   </table>
 
-  <h2>Scenario diagrams (tests A–D)</h2>
+  <h2>Scenario diagrams (tests A–D) <span class="badge badge-tbd">to be decided</span></h2>
   <p class="nr-meta nr-meta--tight">
     Security-focused FlowStory pages (~6–8 hops). Use the overall map above for the complete stack path.
   </p>
@@ -42,22 +47,22 @@
       <tr><th>Test</th><th>Diagram</th><th>When</th></tr>
     </thead>
     <tbody>
-      <tr>
+      <tr class="stub">
         <td>A</td>
         <td><a href="./scenarios/test-a-credentials.html">test-a-credentials</a></td>
         <td>API key probe — credentials locked at gateway</td>
       </tr>
-      <tr>
+      <tr class="stub">
         <td>B</td>
         <td><a href="./scenarios/test-b-files.html">test-b-files</a></td>
         <td><code>/etc/shadow</code> — Landlock already active</td>
       </tr>
-      <tr>
+      <tr class="stub">
         <td>C</td>
         <td><a href="./scenarios/test-c-egress.html">test-c-egress</a></td>
         <td>curl google.com — Before / After toggle (<code>1</code>/<code>2</code> or <code>b</code>/<code>a</code>)</td>
       </tr>
-      <tr>
+      <tr class="stub">
         <td>D</td>
         <td><a href="./scenarios/test-d-guardrails.html">test-d-guardrails</a></td>
         <td>Network recon script — Before / After toggle</td>
@@ -66,25 +71,25 @@
   </table>
 
   <h2>Live companion flows</h2>
-  <table>
+  <table class="launcher-table launcher-table--companion">
     <thead>
       <tr><th>Flow</th><th>Panel</th><th>Description</th><th>Open</th></tr>
     </thead>
     <tbody>
-      <tr>
-        <td>v1</td>
+      <tr class="stub">
+        <td>v1 <span class="badge badge-deprecated">deprecated</span></td>
         <td><code>v1/live.html</code></td>
         <td>Split panel: narrative steps, matrix, mini-diagram, YAML diff</td>
         <td><a href="./v1/live.html">Open</a></td>
       </tr>
-      <tr class="recommended">
-        <td>v2 <span class="badge">recommended</span></td>
+      <tr class="stub">
+        <td>v2 <span class="badge badge-deprecated">deprecated</span></td>
         <td><code>v2/live.html</code></td>
         <td>Compact panel — no sidebar, full-width narrative + observability</td>
         <td><a href="./v2/live.html">Open</a></td>
       </tr>
-      <tr>
-        <td>v3</td>
+      <tr class="recommended">
+        <td>v3 <span class="badge">recommended</span></td>
         <td><code>v3/live.html</code></td>
         <td>Compact panel — step 0 embeds baseline overall map in-card (no flow dropdown); A–D via step nav</td>
         <td><a href="./v3/live.html">Open</a></td>
@@ -96,9 +101,10 @@
   <table>
     <tbody>
       <tr><td>Primary</td><td>OpenClaw Control UI</td></tr>
-      <tr><td>Secondary (split panel)</td><td><a href="./v1/live.html">v1/live.html</a></td></tr>
-      <tr class="recommended"><td>Secondary (recommended)</td><td><a href="./v2/live.html">v2/live.html</a></td></tr>
-      <tr><td>Phase 0 only</td><td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> <span class="badge">recommended</span></td></tr>
+      <tr class="stub"><td>Secondary (split panel)</td><td><a href="./v1/live.html">v1/live.html</a> <span class="badge badge-deprecated">deprecated</span></td></tr>
+      <tr class="stub"><td>Secondary (compact)</td><td><a href="./v2/live.html">v2/live.html</a> <span class="badge badge-deprecated">deprecated</span></td></tr>
+      <tr class="recommended"><td>Secondary (recommended)</td><td><a href="./v3/live.html">v3/live.html</a> <span class="badge">recommended</span></td></tr>
+      <tr class="stub"><td>Phase 0 only</td><td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> <span class="badge badge-tbd">to be decided</span></td></tr>
       <tr class="stub"><td>Phase 0 (legacy)</td><td><a href="./layers-logos.html">layers-logos.html</a> <span class="badge badge-deprecated">deprecated</span></td></tr>
     </tbody>
   </table>
@@ -123,7 +129,7 @@
   </ul>
 
   <p class="nr-meta nr-meta--footer">
-    Narrative: <a href="../demo-narrativa-v1.md">demo-narrativa-v1.md</a> ·
+    Narrative: <a href="../demo-narrative-v1.md">demo-narrative-v1.md</a> ·
     Script: <a href="../demo-script.md">demo-script.md</a>
   </p>
 </div>

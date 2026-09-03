@@ -2,7 +2,7 @@
 name: mlflow-tracing-validate
 description: >-
   Validate and present MLflow traces from the OpenClaw demo session: validate-
-  traces, test-mlflow, GenAI Studio. Use during demo-narrativa-v1 phase 4,
+  traces, test-mlflow, GenAI Studio. Use during demo-narrative-v1 phase 4,
   show MLflow traces, observability block, or verify mlflow-openclaw plugin.
 ---
 

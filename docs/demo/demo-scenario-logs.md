@@ -1,6 +1,6 @@
 # Demo scenario logs runbook
 
-> Which logs to inspect and what to search for per component during Tests A–D (`demo-narrativa-v1`).
+> Which logs to inspect and what to search for per component during Tests A–D (`demo-narrative-v1`).
 >
 > **Related:** [demo-script.md](../demo-script.md) (presenter script) · [demo-scenario-considerations.md](../demo-scenario-considerations.md) (what each test proves) · [demo/README.md](README.md) (UI launcher and observability panel)
 
@@ -10,12 +10,14 @@ This guide focuses on **runtime log evidence** — not FlowStory hop narration o
 
 ## How to access logs
 
-### v1 live companion (recommended)
+### v3 live companion (recommended)
 
 ```bash
 ./scripts/demo-presenter-serve.sh
-# http://127.0.0.1:8765/v1/live.html  — Cluster observability panel
+# http://127.0.0.1:8765/v3/live.html  — Cluster observability panel
 ```
+
+Deprecated: `v1/live.html`, `v2/live.html` (same proxy and panel implementation).
 
 The panel polls the local proxy at `http://127.0.0.1:8766` ([`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py)). Requires logged-in `oc` and `openshell` on the presenter laptop; binds to `127.0.0.1` only.
 
@@ -58,7 +60,7 @@ oc -n openshell logs -l app.kubernetes.io/name=nemo-guardrails --tail=80
 ```mermaid
 flowchart LR
   subgraph presenter [Presenter laptop]
-    LivePanel[v1/live.html]
+    LivePanel[v3/live.html]
     Proxy[demo-observability-proxy]
   end
   subgraph cluster [OpenShift cluster]

@@ -1,8 +1,8 @@
 ---
 name: demo-presenter-panel
 description: >-
-  Serve and open the FlowStory demo panels (overall-demo-architecture.html + v1 live companion)
-  for demo-narrativa-v1. Use when starting the architecture walk-through,
+  Serve and open the FlowStory demo panels (overall-demo-architecture.html + v3 live companion)
+  for demo-narrative-v1. Use when starting the architecture walk-through,
   opening demo panels, pantalla partida, or docs/demo presentation UI.
 ---
 
@@ -49,17 +49,19 @@ Requires logged-in `oc` and `openshell` on the presenter's workstation. The prox
 
 | Page | URL | When |
 |---|---|---|
-| Launcher | `http://127.0.0.1:8765/index.html` | Pick flow v1–v3 |
+| Launcher | `http://127.0.0.1:8765/index.html` | Pick flow v1–v3 (v3 recommended) |
 | Overall demo architecture | `http://127.0.0.1:8765/overall-demo-architecture.html` | Phase 0 + full flows A–D (security + inference + MLflow) |
 | Scenario A (credentials) | `http://127.0.0.1:8765/scenarios/test-a-credentials.html` | Test A — security only (~8 hops) |
 | Scenario B (files) | `http://127.0.0.1:8765/scenarios/test-b-files.html` | Test B — Landlock / `/etc/shadow` |
 | Scenario C (egress) | `http://127.0.0.1:8765/scenarios/test-c-egress.html` | Test C — Before/After Change 1 (`1`/`2` or `b`/`a`) |
 | Scenario D (guardrails) | `http://127.0.0.1:8765/scenarios/test-d-guardrails.html` | Test D — Before/After Change 2 |
-| Live companion (v1) | `http://127.0.0.1:8765/v1/live.html` | Recommended — phases 1–5 + cluster observability panel |
+| Live companion (v3) | `http://127.0.0.1:8765/v3/live.html` | **Recommended** — step 0 embeds overall map; A–D in-card FlowStory + observability + script runner |
+| Live companion (v1) | `http://127.0.0.1:8765/v1/live.html` | Deprecated — split panel |
+| Live companion (v2) | `http://127.0.0.1:8765/v2/live.html` | Deprecated — compact panel (superseded by v3) |
 
-## Cluster observability (v1)
+## Cluster observability (v3)
 
-When using `demo-presenter-serve.sh`, `v1/live.html` includes a **Cluster observability** panel below the step card:
+When using `demo-presenter-serve.sh`, `v3/live.html` includes a **Cluster observability** panel below the step card (shared implementation with deprecated v1):
 
 | Tab | Source |
 |---|---|
@@ -76,9 +78,11 @@ The panel polls `http://127.0.0.1:8766` and suggests a tab when you advance demo
 | Window | Content |
 |---|---|
 | Primary | OpenClaw Control UI (`https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/`) |
-| Secondary | `v1/live.html` — copy prompts; layer board updates on step nav |
+| Secondary | `v3/live.html` — copy prompts; embedded FlowStory maps update on step nav |
 
-Optional third monitor: `overall-demo-architecture.html` for Phase 0 and full flows (dropdown / nav A–D / shortcuts `0`/`a`–`d`). Use `test-*` for security-only rehearsal.
+Optional third monitor: `overall-demo-architecture.html` for Phase 0 only (v3 step 0 embeds this in-panel). Use `test-*` for security-only rehearsal.
+
+Deprecated split-screen companions: `v1/live.html`, `v2/live.html`.
 
 ## Overall map controls
 
@@ -90,9 +94,9 @@ Optional third monitor: `overall-demo-architecture.html` for Phase 0 and full fl
 | `←` / `→` / clicker | Advance hops within active flow |
 | Layer board (fixed panel) | Updates per flow — not a dropdown |
 
-## Layer board (v1)
+## Layer board (v3 embedded maps)
 
-`v1/live.html` updates automatically when advancing steps:
+`v3/live.html` step 0 and scenario tabs mount FlowStory maps that update layer state when advancing steps:
 
 | After | Update |
 |---|---|
@@ -101,8 +105,10 @@ Optional third monitor: `overall-demo-architecture.html` for Phase 0 and full fl
 | Test D (before) | Guardrails **off** (grey) |
 | `demo-enable-guardrails` | Guardrails **on** (green) |
 
+Deprecated `v1/live.html` had a fixed sidebar layer board with the same state transitions.
+
 ## Related skills
 
 - Full runbook: `demo-present`
 - Pre-stage: `demo-backstage-prep`
-- Narrative: [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md)
+- Narrative: [`docs/demo-narrative-v1.md`](../../docs/demo-narrative-v1.md)

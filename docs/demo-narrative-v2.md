@@ -195,4 +195,4 @@ El ítem deferred del ROADMAP (“default-deny y ir **abriendo** MaaS/MLflow”)
 - Host concreto del `curl` (debe verse el 200 y luego el bloqueo).
 - Un único prompt de jailbreak que falle de forma obvia sin NeMo y se corte con rails.
 - Nombres de namespaces live vs evaluation (cuando existan).
-- Dónde vive el panel: arquitectura general en [`overall-demo-architecture.html`](demo/overall-demo-architecture.html); companion en [`v1/live.html`](demo/v1/live.html).
+- Dónde vive el panel: companion en [`v3/live.html`](demo/v3/live.html) (`v1`/`v2` deprecated); arquitectura general embebida en step 0.

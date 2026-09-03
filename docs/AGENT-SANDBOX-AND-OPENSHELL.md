@@ -575,7 +575,7 @@ The sandbox policy controls what the agent can do at runtime:
 
 `curl` is not listed under `mlflow_direct`; MLflow API validation from scripts uses `oc exec` outside the sandbox netns. `inference.local` needs no explicit binary allowlist.
 
-See [`demo-narrativa-v1.md`](demo-narrativa-v1.md) for the live narrative and [`scripts/demo-allow-google-egress.sh`](../scripts/demo-allow-google-egress.sh) / [`scripts/demo-reset.sh`](../scripts/demo-reset.sh) for on-stage policy toggles.
+See [`demo-narrative-v1.md`](demo-narrative-v1.md) for the live narrative and [`scripts/demo-allow-google-egress.sh`](../scripts/demo-allow-google-egress.sh) / [`scripts/demo-reset.sh`](../scripts/demo-reset.sh) for on-stage policy toggles.
 
 ---
 

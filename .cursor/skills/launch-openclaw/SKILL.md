@@ -22,7 +22,7 @@ Imperative runtime step: register CLI gateway, create sandbox (if missing), wire
 
 ## Demo v1 (required env)
 
-For [`demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md), use the MLflow-only default policy and direct MaaS:
+For [`demo-narrative-v1.md`](../../docs/demo-narrative-v1.md), use the MLflow-only default policy and direct MaaS:
 
 ```bash
 POLICY_FILE=config/openshell/default.yaml \

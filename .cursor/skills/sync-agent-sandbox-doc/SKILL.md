@@ -26,7 +26,7 @@ Triggered automatically by the `agent-sandbox-doc-sync` rule when matched files 
 | `scripts/launch-openclaw.sh` changed | New setup step, env var, `OPENCLAW_PIN`, image `--from` |
 | Helm openshell/operators/ui-proxy changed | Chart version, SCC, values, new template |
 | `config/openshell/default.yaml` changed | Network/filesystem policy (CI final state) |
-| `config/openshell/google-egress.yaml` or `scripts/demo-*.sh` changed | Demo v1 policy / live scripts — also update [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md), [`docs/demo-script.md`](../../docs/demo-script.md) |
+| `config/openshell/google-egress.yaml` or `scripts/demo-*.sh` changed | Demo v1 policy / live scripts — also update [`docs/demo-narrative-v1.md`](../../docs/demo-narrative-v1.md), [`docs/demo-script.md`](../../docs/demo-script.md) |
 | `deploy/Makefile` validate/deploy targets changed | `validate-openclaw`, `deploy-openshell` waits |
 | Version pin bumped | Operator CSV, OpenShell chart, npm pin |
 | First validation of a new topology | e.g. switching to `sidecar` supervisor topology |
@@ -55,7 +55,7 @@ Sync progress:
 | `deploy/Makefile` (`deploy-openshell`, `validate-*`) | §2 How deploy-openshell works, §8 Validation, §9 Quick Reference |
 | `scripts/launch-openclaw.sh` | §3 Phase 6, **§5 Launch Script** (primary) |
 | `config/openshell/default.yaml` | §1 Landlock / policy, §7 Policy anatomy (CI final) |
-| `config/openshell/google-egress.yaml` | §7 Policy anatomy (Change 1 — link to demo-narrativa-v1) |
+| `config/openshell/google-egress.yaml` | §7 Policy anatomy (Change 1 — link to demo-narrative-v1) |
 | `scripts/demo-*.sh` | §7 Policy anatomy, §9 Quick Reference (demo live scripts) |
 | `config/openclaw.json.tpl` | §5 (auth, plugins, tracing env) |
 | `OPENCLAW_PIN` / image `--from` | §6 Version Pinning |

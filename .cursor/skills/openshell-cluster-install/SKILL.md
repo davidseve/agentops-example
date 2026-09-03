@@ -23,7 +23,7 @@ For cluster operations prefer the `openshift-mcp` skill; fall back to `oc`/`make
 
 | User intent | Action |
 |---|---|
-| Deploy **full demo v1 stack** (narrativa-v1 backstage) | **`demo-backstage-install`** skill — not `cluster-lifecycle full` alone |
+| Deploy **full demo v1 stack** (narrative-v1 backstage) | **`demo-backstage-install`** skill — not `cluster-lifecycle full` alone |
 | Deploy **CI full stack** (RHOAI + OpenShell + hardened policy) | `./scripts/cluster-lifecycle.sh full` |
 | Deploy OpenShell on OpenShift only | `APPS_DOMAIN=<domain> make -C deploy deploy-openshell` |
 | First-time cluster setup | `make -C deploy deploy-operators` then deploy (must come after RHOAI — ADR-0003) |
