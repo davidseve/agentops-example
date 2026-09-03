@@ -156,7 +156,7 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 
 | Flow | URL | When |
 |------|-----|------|
-| v3 | [v3/live.html](v3/live.html) | **Recommended** — tab **Overall Demo** embeds the baseline stack map in-card (layers dock, legend; flow chosen via step nav); tabs **A–D** (C/D sub-steps before/after) mount in-card FlowStory canvas maps (`scenario-a` … `scenario-d-after`) plus baseline/change YAML panels; **MLflow** and **close** keep narrative + observability + script runner |
+| v3 | [v3/live.html](v3/live.html) | **Recommended** — tab **Overall Demo** embeds the baseline stack map in-card (layers dock, legend; flow chosen via step nav); tabs **A–D** (C/D sub-steps before/after) mount in-card FlowStory canvas maps (`scenario-a` … `scenario-d-after`) plus baseline/change YAML panels; MLflow traces via observability panel on any step (no dedicated ML nav item); **close** omitted from step nav |
 | v1 | [v1/live.html](v1/live.html) | Deprecated — split panel: narrative steps, matrix, diagram, YAML, cluster observability |
 | v2 | [v2/live.html](v2/live.html) | Deprecated — compact variant; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); superseded by v3 |
 

@@ -2,7 +2,7 @@
  * v3 live companion UI — step 0 + scenario tabs: FlowStory in-card embed.
  */
 
-import { NAV_GROUPS, STEP_IDS } from "../v1/narrative-data.js";
+import { NAV_GROUPS, STEP_IDS, V3_EXCLUDED_NAV_IDS } from "../v1/narrative-data.js";
 import { initNarrativeUI } from "../v1/narrative-ui.js?v=56";
 import { destroyOverallEmbed, mountOverallEmbed } from "./overall-embed.js?v=48";
 import { destroyScenarioCanvas, mountScenarioCanvas } from "./scenario-canvas-embed.js?v=50";
@@ -11,11 +11,11 @@ import {
   releaseV3ScenarioCanvasHeight,
 } from "../scenarios/shared-scenario.js?v=54";
 
-export const V3_NAV_GROUPS = NAV_GROUPS.filter((g) => g.id !== "close").map((g) =>
+export const V3_NAV_GROUPS = NAV_GROUPS.filter((g) => !V3_EXCLUDED_NAV_IDS.has(g.id)).map((g) =>
   g.id === "0" ? { ...g, label: "Overall Demo" } : g
 );
 
-export const V3_STEP_IDS = STEP_IDS.filter((id) => id !== "close");
+export const V3_STEP_IDS = STEP_IDS.filter((id) => !V3_EXCLUDED_NAV_IDS.has(id));
 
 const SCENARIO_CANVAS_STEPS = new Set([
   "A",
