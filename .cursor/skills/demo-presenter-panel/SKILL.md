@@ -50,9 +50,10 @@ Requires logged-in `oc` and `openshell` on the presenter's workstation. The prox
 | Page | URL | When |
 |---|---|---|
 | Live companion (v3) | `http://127.0.0.1:8765/demo/v3/live.html` | **On stage** — step 0 embeds overall map; A–D in-card FlowStory + observability + script runner |
-| Launcher | `http://127.0.0.1:8765/demo/index.html` | Offline rehearsal; links to v3 and deprecated flows |
+| Live companion (v4) | `http://127.0.0.1:8765/demo/v4/live.html` | Experimental compact canvas — not for live demos |
+| Launcher | `http://127.0.0.1:8765/demo/index.html` | Offline rehearsal; links to v3, v4, and deprecated flows |
 
-Deprecated (dev/bookmarks only): `overall-demo-architecture.html`, `scenarios/test-*.html`, `v1/live.html`, `v2/live.html`, `v4/live.html`. See [`docs/demo/README.md`](../../docs/demo/README.md) § Deprecated.
+Deprecated (dev/bookmarks only): `overall-demo-architecture.html`, `scenarios/test-*.html`, `v1/live.html`, `v2/live.html`. See [`docs/demo/README.md`](../../docs/demo/README.md) § Deprecated.
 
 ## Cluster observability (v3)
 

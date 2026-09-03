@@ -170,6 +170,21 @@ test.describe('demo scenario consistency', () => {
     expect(after).toContain('/usr/bin/curl');
   });
 
+  test('step C-after v3 yaml panel shows egress diff without terminal or expected output', () => {
+    const stepCAfter = NARRATIVE.steps['C-after'];
+    expect(stepCAfter.yamlPanelV3).toBe(YAML_PANELS.egressAfterV3);
+    expect(stepCAfter.yamlPanelV3?.title).toContain('network egress allowed');
+    expect(stepCAfter.yamlPanelV3?.fileBefore).toBe('config/openshell/default.yaml');
+    expect(stepCAfter.yamlPanelV3?.fileAfter).toBe('config/openshell/google-egress.yaml');
+    expect(stepCAfter.yamlPanelV3?.command).toBeUndefined();
+    expect(stepCAfter.yamlPanelV3?.expectedOutput).toBeUndefined();
+    expect(stepCAfter.yamlPanelV3?.defaultOpen).toBe(false);
+    expect(stepCAfter.yamlPanelV3?.note).toContain('openshell policy set');
+    const afterV3 = stepCAfter.yamlPanelV3?.after ?? '';
+    expect(afterV3).toContain('demo_egress_google');
+    expect(afterV3).toContain('google.com');
+  });
+
   test('step C-after v4 yaml panel shows egress diff without terminal or expected output', () => {
     const stepCAfter = NARRATIVE.steps['C-after'];
     expect(stepCAfter.yamlPanelV4).toBe(YAML_PANELS.egressAfterV4);
@@ -180,9 +195,9 @@ test.describe('demo scenario consistency', () => {
     expect(stepCAfter.yamlPanelV4?.expectedOutput).toBeUndefined();
     expect(stepCAfter.yamlPanelV4?.defaultOpen).toBe(false);
     expect(stepCAfter.yamlPanelV4?.note).toContain('openshell policy set');
-    const after = stepCAfter.yamlPanelV4?.after ?? '';
-    expect(after).toContain('demo_egress_google');
-    expect(after).toContain('google.com');
+    const afterV4 = stepCAfter.yamlPanelV4?.after ?? '';
+    expect(afterV4).toContain('demo_egress_google');
+    expect(afterV4).toContain('google.com');
   });
 
   test('step D-before baseline yaml panel documents OpenShell direct MaaS inference route', () => {
@@ -209,6 +224,26 @@ test.describe('demo scenario consistency', () => {
     expect(before).toContain('maas-direct');
     expect(after).toContain('maas-guardrailed');
     expect(after).toContain('NeMo Guardrails → MaaS');
+  });
+
+  test('step D-after v3 yaml panel shows guardrailed route and prompts.yml filter', () => {
+    const stepDAfter = NARRATIVE.steps['D-after'];
+    expect(stepDAfter.yamlPanelV3).toBe(YAML_PANELS.guardrailsAfterV3);
+    expect(stepDAfter.yamlPanelV3?.title).toContain('NeMo Guardrails on the hop');
+    expect(stepDAfter.yamlPanelV3?.command).toBeUndefined();
+    expect(stepDAfter.yamlPanelV3?.expectedOutput).toBeUndefined();
+    expect(stepDAfter.yamlPanelV3?.defaultOpen).toBe(false);
+    const v3Columns = stepDAfter.yamlPanelV3?.columns ?? [];
+    expect(v3Columns).toHaveLength(2);
+    expect(v3Columns[0]?.label).toBe('inference route · maas-guardrailed');
+    expect(v3Columns[0]?.snippet).toContain('maas-guardrailed');
+    expect(v3Columns[0]?.snippet).toContain('NeMo Guardrails → MaaS');
+    expect(v3Columns[1]?.label).toContain('prompts.yml');
+    expect(v3Columns[1]?.snippet).toContain('self_check_input');
+    expect(v3Columns[1]?.snippet).toContain('network scanning');
+    expect(v3Columns[1]?.snippet).toContain('security reconnaissance');
+    expect(stepDAfter.yamlPanelV3?.note).toContain('openshell inference set');
+    expect(stepDAfter.yamlPanelV3?.note).toContain('network scanning');
   });
 
   test('step D-after v4 yaml panel shows guardrailed route and prompts.yml filter', () => {

@@ -73,7 +73,8 @@ Use `demo-presenter-panel` skill or:
 
 The script prints URLs when ready:
 
-- Live companion (v3): `http://127.0.0.1:8765/demo/v3/live.html`
+- Live companion (v3, recommended): `http://127.0.0.1:8765/demo/v3/live.html`
+- Live companion (v4, experimental): `http://127.0.0.1:8765/demo/v4/live.html`
 - Launcher: `http://127.0.0.1:8765/demo/index.html`
 
 If port `8765` or `8766` is already in use: `lsof -ti :8765 | xargs kill` (or `:8766`).

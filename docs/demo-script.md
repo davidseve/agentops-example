@@ -39,7 +39,9 @@ Open panels (preflight + UI + observability proxy):
 ```bash
 ./scripts/demo-presenter-serve.sh --check-only   # optional dry-run
 ./scripts/demo-presenter-serve.sh
+# http://127.0.0.1:8765/demo/index.html       — launcher
 # http://127.0.0.1:8765/demo/v3/live.html     — live companion (step 0 = architecture map)
+# http://127.0.0.1:8765/demo/v4/live.html     — experimental compact canvas
 ```
 
 Log troubleshooting per scenario: [`docs/demo/demo-scenario-logs.md`](demo/demo-scenario-logs.md).
