@@ -33,6 +33,7 @@ import {
   OVERALL_OVERLAYS,
   OVERALL_RESPONSES,
 } from '../docs/demo/scenarios/overall-response-maps.js';
+import { SCENARIO_CANVAS_CONFIG } from '../docs/demo/v3/scenario-canvas-config.js';
 import { PROMPT_A, PROMPT_B, PROMPT_C, PROMPT_D } from './demo-prompts';
 
 const EXPECTED_FLOW_IDS = [
@@ -163,6 +164,50 @@ test.describe('demo scenario consistency', () => {
     expect(after).toContain('/usr/bin/curl');
   });
 
+  test('step D-before baseline yaml panel documents OpenShell direct MaaS inference route', () => {
+    const stepDBefore = NARRATIVE.steps['D-before'];
+    expect(stepDBefore.yamlPanel).toBe(YAML_PANELS.inferenceBaseline);
+    expect(stepDBefore.yamlPanel?.title).toContain('direct MaaS');
+    const snippet = stepDBefore.yamlPanel?.snippet ?? '';
+    expect(snippet).toContain('maas-direct');
+    expect(snippet).toContain('inference.local → MaaS');
+    expect(snippet).not.toContain('maas-guardrailed');
+    expect(stepDBefore.yamlPanel?.defaultOpen).toBe(false);
+  });
+
+  test('step D-after yaml panel documents NeMo Guardrails inference rewire', () => {
+    const stepDAfter = NARRATIVE.steps['D-after'];
+    expect(stepDAfter.yamlPanel).toBe(YAML_PANELS.guardrails);
+    expect(stepDAfter.yamlPanel?.title).toContain('NeMo Guardrails on the hop');
+    expect(stepDAfter.yamlPanel?.fileBefore).toBe('inference route · maas-direct');
+    expect(stepDAfter.yamlPanel?.fileAfter).toBe('inference route · maas-guardrailed');
+    expect(stepDAfter.yamlPanel?.command).toBe('./scripts/demo-enable-guardrails.sh');
+    expect(stepDAfter.yamlPanel?.defaultOpen).toBe(false);
+    const before = stepDAfter.yamlPanel?.before ?? '';
+    const after = stepDAfter.yamlPanel?.after ?? '';
+    expect(before).toContain('maas-direct');
+    expect(after).toContain('maas-guardrailed');
+    expect(after).toContain('NeMo Guardrails → MaaS');
+  });
+
+  test('step D-after v3 yaml panel shows guardrailed route and prompts.yml filter', () => {
+    const stepDAfter = NARRATIVE.steps['D-after'];
+    expect(stepDAfter.yamlPanelV3).toBe(YAML_PANELS.guardrailsAfterV3);
+    expect(stepDAfter.yamlPanelV3?.title).toContain('NeMo Guardrails on the hop');
+    expect(stepDAfter.yamlPanelV3?.command).toBeUndefined();
+    expect(stepDAfter.yamlPanelV3?.expectedOutput).toBeUndefined();
+    expect(stepDAfter.yamlPanelV3?.defaultOpen).toBe(false);
+    const columns = stepDAfter.yamlPanelV3?.columns ?? [];
+    expect(columns).toHaveLength(2);
+    expect(columns[0]?.label).toBe('inference route · maas-guardrailed');
+    expect(columns[0]?.snippet).toContain('maas-guardrailed');
+    expect(columns[0]?.snippet).toContain('NeMo Guardrails → MaaS');
+    expect(columns[1]?.label).toContain('prompts.yml');
+    expect(columns[1]?.snippet).toContain('self_check_input');
+    expect(columns[1]?.snippet).toContain('network scanning');
+    expect(columns[1]?.snippet).toContain('security reconnaissance');
+  });
+
   test('scenario C after oc ↔ gw lanes are centered on OpenClaw', () => {
     const ocBottomOffsets = [
       ARROW_SCENARIO_OC_GW_C_AFTER.gwToOc.toXOff,
@@ -240,6 +285,17 @@ test.describe('demo scenario consistency', () => {
       expect(OVERALL_RESPONSES[flowId], `OVERALL_RESPONSES.${flowId}`).toBeTruthy();
       expect(OVERALL_OVERLAYS[flowId], `OVERALL_OVERLAYS.${flowId}`).toBeTruthy();
       expect(mutations[flowId]?.length, `mutations.${flowId}`).toBeGreaterThan(0);
+    }
+  });
+
+  test('v3 scenario canvas config maps to valid overall flows', () => {
+    const flows = buildOverallFlows();
+
+    for (const [stepId, { flowId, buildOptions }] of Object.entries(SCENARIO_CANVAS_CONFIG)) {
+      expect(flows[flowId], `missing overall flow for v3 step ${stepId}`).toBeTruthy();
+      expect(flows[flowId].steps.length, `${stepId} flow steps`).toBeGreaterThan(0);
+      expect(buildOptions.title.length, `${stepId} title`).toBeGreaterThan(0);
+      expect(EXPECTED_FLOW_IDS, `${stepId} flowId registered`).toContain(flowId);
     }
   });
 });

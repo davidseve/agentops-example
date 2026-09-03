@@ -28,13 +28,20 @@ const IN_DOC_LAYERS_MODES = ["bottom", "off", "top"];
 export const LAYERS_RIGHT_PANEL_WIDTH = 380;
 const V3_STEP_SCENARIO_CANVAS_LOCK_VAR = "--nr-v3-step-scenario-canvas-locked-height";
 
+function isV3CanvasEmbedStep() {
+  return document.body.classList.contains("nr-v3-step-canvas");
+}
+
+/** @deprecated Use isV3CanvasEmbedStep */
 function isV3ScenarioCanvasStep() {
-  return document.body.classList.contains("nr-v3-step-scenario");
+  return isV3CanvasEmbedStep();
 }
 
 export function captureV3ScenarioCanvasHeight() {
-  if (!isV3ScenarioCanvasStep()) return;
-  const wrap = document.querySelector(".nr-v3-scenario-mounted .fs-overall-canvas-wrap");
+  if (!isV3CanvasEmbedStep()) return;
+  const wrap = document.querySelector(
+    ".nr-v3-scenario-mounted .fs-overall-canvas-wrap, .nr-v3-overall-mounted .fs-overall-canvas-wrap"
+  );
   if (!wrap) return;
   const height = Math.round(wrap.getBoundingClientRect().height);
   if (height > 0) {
@@ -252,7 +259,7 @@ export function wireLayersDock(viz, options = {}) {
   }
 
   function apply() {
-    if (inDocumentEmbed && mode === "off" && isV3ScenarioCanvasStep()) {
+    if (inDocumentEmbed && mode === "off" && isV3CanvasEmbedStep()) {
       releaseV3ScenarioCanvasHeight();
     }
     document.body.classList.toggle("fs-layers-ui--off", mode === "off");
@@ -288,7 +295,7 @@ export function wireLayersDock(viz, options = {}) {
       inDocumentEmbed &&
       prevMode === "off" &&
       mode !== "off" &&
-      isV3ScenarioCanvasStep()
+      isV3CanvasEmbedStep()
     ) {
       captureV3ScenarioCanvasHeight();
     }

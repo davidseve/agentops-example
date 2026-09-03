@@ -581,3 +581,43 @@ body.fs-scenario-phase-after #fs-canvas {
   padding: 24px;
   color: #f85149;
 }
+
+/* Ephemeral proxy-offline hint (fixed; no document flow) */
+.nr-proxy-offline-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 400;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #8a4b00;
+  background: #fff8e6;
+  border: 1px solid #f0d9a8;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+  animation: nr-proxy-offline-toast 5s ease forwards;
+}
+
+@keyframes nr-proxy-offline-toast {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  8% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  75% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+}

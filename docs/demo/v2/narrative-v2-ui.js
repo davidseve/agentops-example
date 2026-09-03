@@ -12,7 +12,7 @@ import {
 } from "./baseline-diagram.js";
 
 const STEP0_BODY_REPLACEMENT =
-  "BYOA agent in OpenShell sandbox — inference.local → (NeMo, grey) → MaaS; MLflow traces from the first token.";
+  "You bring the agent (OpenClaw); Red Hat provides the OpenShell sandbox, inference.local routing, and MLflow tracing from the first token — NeMo Guardrails stay off and egress is MLflow-only until we change them live.";
 
 export const LAYOUT_STORAGE_KEY = "v2-baseline-layout";
 

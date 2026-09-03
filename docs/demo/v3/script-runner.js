@@ -3,10 +3,13 @@
  */
 
 import { DEMO_SCRIPT_ACTIONS } from "../v1/narrative-data.js";
+import { showProxyOfflineToast } from "../shared/proxy-offline-toast.js";
 
 const DEFAULT_PROXY_URL = "http://127.0.0.1:8766";
 const FETCH_TIMEOUT_MS = 130_000;
 const PROXY_OFFLINE_TITLE = "Start ./scripts/demo-presenter-serve.sh to enable script runner";
+const PROXY_OFFLINE_TOAST =
+  "Script runner requires ./scripts/demo-presenter-serve.sh (observability proxy on :8766).";
 
 function escapeHtml(s) {
   return String(s)
@@ -191,26 +194,9 @@ function wireCommandElements(root, { proxyState, proxyUrl, observability, runner
   });
 }
 
-function ensureProxyBanner(root, navEl, proxyState) {
-  let banner = root.querySelector(".nr-script-proxy-banner");
-  if (proxyState !== "offline") {
-    banner?.remove();
-    return;
-  }
-
-  if (banner) return;
-
-  banner = document.createElement("p");
-  banner.className = "nr-script-proxy-banner";
-  banner.textContent =
-    "Script runner requires ./scripts/demo-presenter-serve.sh (observability proxy on :8766).";
-  const main = root.querySelector(".nr-main");
-  if (main) {
-    main.insertBefore(banner, main.firstChild);
-    return;
-  }
-  if (navEl?.parentElement) {
-    navEl.parentElement.insertBefore(banner, navEl.nextSibling);
+function maybeShowProxyOfflineToast(proxyState, runnerEnabled) {
+  if (proxyState === "offline" && runnerEnabled) {
+    showProxyOfflineToast(PROXY_OFFLINE_TOAST);
   }
 }
 
@@ -239,19 +225,17 @@ export async function initScriptRunner({
   navEl = null,
   proxyUrl = DEFAULT_PROXY_URL,
   observability = null,
-  /** Narrative step ids where script runner UI and proxy banner are suppressed. */
+  /** Narrative step ids where script runner UI is suppressed. */
   skipSteps = ["0"],
 } = {}) {
   const skipStepIds = new Set(skipSteps);
   let currentStepId = parseStepIdFromHash();
   let proxyState = "checking";
 
-  const syncRunnerUi = () => {
+  const syncRunnerUi = ({ showToast = false } = {}) => {
     const runnerEnabled = isRunnerStep(currentStepId, skipStepIds);
-    if (runnerEnabled) {
-      ensureProxyBanner(root, navEl, proxyState);
-    } else {
-      root.querySelector(".nr-script-proxy-banner")?.remove();
+    if (showToast) {
+      maybeShowProxyOfflineToast(proxyState, runnerEnabled);
     }
     wireCommandElements(root, {
       proxyState,
@@ -267,14 +251,14 @@ export async function initScriptRunner({
     proxyState = resolvedState;
     const runnerEnabled = isRunnerStep(currentStepId, skipStepIds);
     if (runnerEnabled) {
-      ensureProxyBanner(root, navEl, proxyState);
+      maybeShowProxyOfflineToast(proxyState, runnerEnabled);
     }
     applyProxyStateToAllRunBlocks(root, proxyState);
   });
 
   root.addEventListener("nr:step-change", (event) => {
     currentStepId = event.detail?.stepId ?? parseStepIdFromHash();
-    syncRunnerUi();
+    syncRunnerUi({ showToast: true });
   });
 
   return {

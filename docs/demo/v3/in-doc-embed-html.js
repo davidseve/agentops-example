@@ -103,11 +103,11 @@ export function buildInDocEmbedHtml() {
     </div>`;
 }
 
-/** Full overall map — same controls as overall-demo-architecture.html. */
+/** v3 Overall Demo step 0 — in-card shell without flow select (step chosen in nav). */
 export function buildOverallInDocEmbedHtml() {
   return `
     <div class="fs-overall-in-doc-inner">
-      ${buildOverallFlowBarHtml()}
+      ${buildScenarioFlowBarHtml()}
       ${buildInDocDiagramBodyHtml()}
     </div>`;
 }

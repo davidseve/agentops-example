@@ -571,7 +571,17 @@ export function renderYamlPanel(container, yamlPanel) {
   container.hidden = false;
 
   let body = "";
-  if (yamlPanel.before && yamlPanel.after) {
+  if (yamlPanel.columns?.length) {
+    body = `<div class="nr-yaml-diff nr-yaml-columns">${yamlPanel.columns
+      .map((col) => {
+        const colClass = col.className ? ` nr-yaml-col--${col.className}` : "";
+        return `<div class="nr-yaml-col${colClass}">
+        <h4>${escapeHtml(col.label)}</h4>
+        <pre class="nr-yaml-pre">${escapeHtml(col.snippet)}</pre>
+      </div>`;
+      })
+      .join("")}</div>`;
+  } else if (yamlPanel.before && yamlPanel.after) {
     body = `<div class="nr-yaml-diff">
       <div class="nr-yaml-col before">
         <h4>Before (${escapeHtml(yamlPanel.fileBefore ?? "initial")})</h4>
@@ -711,7 +721,7 @@ export function renderStepCard(
   container.innerHTML = `
     ${subNav}
     <div class="nr-card">
-      <h2>${escapeHtml(buildStepSelectLabel(step.id))}</h2>
+      <h2>${escapeHtml(step.id === "0" ? step.title : buildStepSelectLabel(step.id))}</h2>
       <p class="nr-meta">${escapeHtml(step.timing)}</p>
       <div class="nr-body">${bodyHtml}</div>
       ${actionsHtml}
@@ -860,6 +870,7 @@ export function initNarrativeUI({
   navEl: navElOption = null,
   dualActionsRow = false,
   navMode = "buttons",
+  resolveYamlPanel = (step) => step.yamlPanel,
 }) {
   const navEl = navElOption ?? root.querySelector("[data-nr-nav]");
   const layerEl = root.querySelector("[data-nr-layers]");
@@ -899,7 +910,7 @@ export function initNarrativeUI({
       dualActionsRow,
       navMode,
     });
-    renderYamlPanel(yamlEl, step.yamlPanel);
+    renderYamlPanel(yamlEl, resolveYamlPanel(step));
     if (navMode === "select") {
       updateNavSelect(navEl, stepId);
     } else {
