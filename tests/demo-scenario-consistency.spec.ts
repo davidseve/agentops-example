@@ -5,7 +5,7 @@
  * and tests/demo-prompts.ts — see docs/demo-scenario-considerations.md.
  */
 import { test, expect } from '@playwright/test';
-import { NARRATIVE, NAV_GROUPS, STEP_IDS, YAML_PANELS } from '../docs/demo/v1/narrative-data.js';
+import { NARRATIVE, NAV_GROUPS, STEP_IDS, V3_EXCLUDED_NAV_IDS, YAML_PANELS } from '../docs/demo/v1/narrative-data.js';
 import {
   SCENARIO_A_MUTATIONS,
   SCENARIO_A_STEPS,
@@ -164,6 +164,21 @@ test.describe('demo scenario consistency', () => {
     expect(after).toContain('/usr/bin/curl');
   });
 
+  test('step C-after v3 yaml panel shows egress diff without terminal or expected output', () => {
+    const stepCAfter = NARRATIVE.steps['C-after'];
+    expect(stepCAfter.yamlPanelV3).toBe(YAML_PANELS.egressAfterV3);
+    expect(stepCAfter.yamlPanelV3?.title).toContain('network egress allowed');
+    expect(stepCAfter.yamlPanelV3?.fileBefore).toBe('config/openshell/default.yaml');
+    expect(stepCAfter.yamlPanelV3?.fileAfter).toBe('config/openshell/google-egress.yaml');
+    expect(stepCAfter.yamlPanelV3?.command).toBeUndefined();
+    expect(stepCAfter.yamlPanelV3?.expectedOutput).toBeUndefined();
+    expect(stepCAfter.yamlPanelV3?.defaultOpen).toBe(false);
+    expect(stepCAfter.yamlPanelV3?.note).toContain('openshell policy set');
+    const after = stepCAfter.yamlPanelV3?.after ?? '';
+    expect(after).toContain('demo_egress_google');
+    expect(after).toContain('google.com');
+  });
+
   test('step D-before baseline yaml panel documents OpenShell direct MaaS inference route', () => {
     const stepDBefore = NARRATIVE.steps['D-before'];
     expect(stepDBefore.yamlPanel).toBe(YAML_PANELS.inferenceBaseline);
@@ -206,6 +221,18 @@ test.describe('demo scenario consistency', () => {
     expect(columns[1]?.snippet).toContain('self_check_input');
     expect(columns[1]?.snippet).toContain('network scanning');
     expect(columns[1]?.snippet).toContain('security reconnaissance');
+    expect(stepDAfter.yamlPanelV3?.note).toContain('openshell inference set');
+    expect(stepDAfter.yamlPanelV3?.note).toContain('network scanning');
+  });
+
+  test('v3 nav excludes MLflow and close steps', () => {
+    const v3StepIds = STEP_IDS.filter((id) => !V3_EXCLUDED_NAV_IDS.has(id));
+    const v3NavGroups = NAV_GROUPS.filter((g) => !V3_EXCLUDED_NAV_IDS.has(g.id));
+    expect(v3StepIds).not.toContain('ML');
+    expect(v3StepIds).not.toContain('close');
+    expect(v3NavGroups.map((g) => g.id)).not.toContain('ML');
+    expect(v3NavGroups.map((g) => g.id)).not.toContain('close');
+    expect(v3StepIds).toEqual(v3NavGroups.flatMap((g) => g.steps));
   });
 
   test('scenario C after oc ↔ gw lanes are centered on OpenClaw', () => {
