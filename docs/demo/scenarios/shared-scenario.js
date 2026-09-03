@@ -4,6 +4,7 @@
 
 import { FlowStory } from "../shared/vendor/flowstory.min.js";
 import { setLogosEnabled } from "../shared/logo-renderer.js";
+import { OVERALL_IN_DOC, syncCanvasWrapLegend } from "./overall-in-doc-resize.js";
 
 
 export * from "./scenario-layout.js";
@@ -23,7 +24,33 @@ import {
 } from "./scenario-layout.js";
 
 const LAYERS_DOCK_MODES = ["right", "off", "top", "bottom"];
+const IN_DOC_LAYERS_MODES = ["bottom", "off", "top"];
 export const LAYERS_RIGHT_PANEL_WIDTH = 380;
+const V3_STEP_SCENARIO_CANVAS_LOCK_VAR = "--nr-v3-step-scenario-canvas-locked-height";
+
+function isV3ScenarioCanvasStep() {
+  return document.body.classList.contains("nr-v3-step-scenario");
+}
+
+export function captureV3ScenarioCanvasHeight() {
+  if (!isV3ScenarioCanvasStep()) return;
+  const wrap = document.querySelector(".nr-v3-scenario-mounted .fs-overall-canvas-wrap");
+  if (!wrap) return;
+  const height = Math.round(wrap.getBoundingClientRect().height);
+  if (height > 0) {
+    document.documentElement.style.setProperty(V3_STEP_SCENARIO_CANVAS_LOCK_VAR, `${height}px`);
+  }
+}
+
+export function releaseV3ScenarioCanvasHeight() {
+  document.documentElement.style.removeProperty(V3_STEP_SCENARIO_CANVAS_LOCK_VAR);
+}
+
+/** @deprecated Use captureV3ScenarioCanvasHeight */
+export const captureV3StepACanvasHeight = captureV3ScenarioCanvasHeight;
+
+/** @deprecated Use releaseV3ScenarioCanvasHeight */
+export const releaseV3StepACanvasHeight = releaseV3ScenarioCanvasHeight;
 
 function isLayersRightMode() {
   return (
@@ -161,30 +188,63 @@ function patchEngineLayoutForTopPanel(viz) {
     this._ox = (this.W - this.logicalWidth * this._sc) / 2;
     this._oy = top + (availH - this.logicalHeight * this._sc) * 0.04;
     this.draw();
+    syncCanvasWrapLegend(this);
   };
 }
 
-/** Flow bar on top; layers stack toggles Right → Off → Top → Bottom. */
-export function wireLayersDock(viz) {
+/** Flow bar on top; layers stack toggles Right → Off → Top → Bottom (v3 in-doc: off by default, no toggle). */
+export function wireLayersDock(viz, options = {}) {
+  const { inDocumentEmbed = false, embedRoot = null } = options;
   const stack = document.getElementById("fs-layers-stack");
   const toggle = document.getElementById("fs-layers-toggle");
   const flowDock = document.getElementById("fs-top-dock");
   const layersDock = document.getElementById("fs-layers-dock");
-  if (!stack || !toggle || !flowDock || !layersDock) return null;
+  if (!stack || !flowDock || !layersDock) return null;
+  if (!toggle && !inDocumentEmbed) return null;
 
-  document.body.classList.add("fs-has-top-panel");
+  const layoutRoot =
+    embedRoot ??
+    (inDocumentEmbed ? document.querySelector(OVERALL_IN_DOC.innerSelector) : null);
+  const modes = inDocumentEmbed ? IN_DOC_LAYERS_MODES : LAYERS_DOCK_MODES;
 
-  let mode = readLayersDockMode();
+  if (!inDocumentEmbed) {
+    document.body.classList.add("fs-has-top-panel");
+  }
+
+  let mode = inDocumentEmbed ? "off" : readLayersDockMode();
+  if (inDocumentEmbed) {
+    if (mode === "right") mode = "bottom";
+    if (!modes.includes(mode)) mode = "off";
+  }
+
+  function syncInDocLayout() {
+    if (!layoutRoot) return;
+    layoutRoot.classList.remove(
+      OVERALL_IN_DOC.layersOffClass,
+      OVERALL_IN_DOC.layersTopClass,
+      OVERALL_IN_DOC.layersBottomClass,
+    );
+    if (mode === "off") layoutRoot.classList.add(OVERALL_IN_DOC.layersOffClass);
+    else if (mode === "top") layoutRoot.classList.add(OVERALL_IN_DOC.layersTopClass);
+    else layoutRoot.classList.add(OVERALL_IN_DOC.layersBottomClass);
+  }
 
   function syncToggle() {
-    const labels = {
-      off: "Layers: Off",
-      right: "Layers: Right",
-      top: "Layers: Top",
-      bottom: "Layers: Bottom",
-    };
-    toggle.textContent = labels[mode];
-    toggle.classList.toggle("fs-layers-toggle--right", mode === "right");
+    if (!toggle) return;
+    const labels = inDocumentEmbed
+      ? {
+          off: "Layers: Off",
+          bottom: "Layers: Bottom",
+          top: "Layers: Top",
+        }
+      : {
+          off: "Layers: Off",
+          right: "Layers: Right",
+          top: "Layers: Top",
+          bottom: "Layers: Bottom",
+        };
+    toggle.textContent = labels[mode] ?? "Layers";
+    toggle.classList.toggle("fs-layers-toggle--right", !inDocumentEmbed && mode === "right");
     toggle.classList.toggle("fs-layers-toggle--top", mode === "top");
     toggle.classList.toggle("fs-layers-toggle--bottom", mode === "bottom");
     toggle.classList.toggle("fs-layers-toggle--on", mode !== "off");
@@ -192,22 +252,46 @@ export function wireLayersDock(viz) {
   }
 
   function apply() {
+    if (inDocumentEmbed && mode === "off" && isV3ScenarioCanvasStep()) {
+      releaseV3ScenarioCanvasHeight();
+    }
     document.body.classList.toggle("fs-layers-ui--off", mode === "off");
-    document.body.classList.toggle("fs-layers-pos-right", mode === "right");
+    document.body.classList.toggle("fs-layers-pos-right", !inDocumentEmbed && mode === "right");
     document.body.classList.toggle("fs-layers-pos-top", mode === "top");
-    document.body.classList.toggle("fs-layers-pos-bottom", mode === "bottom");
+    document.body.classList.toggle(
+      "fs-layers-pos-bottom",
+      inDocumentEmbed ? mode === "bottom" : mode === "bottom",
+    );
+    if (inDocumentEmbed) syncInDocLayout();
     stack.hidden = mode === "off";
     stack.setAttribute("aria-hidden", mode === "off" ? "true" : "false");
+    layersDock.hidden = mode === "off";
+    layersDock.setAttribute("aria-hidden", mode === "off" ? "true" : "false");
     syncToggle();
     localStorage.setItem(LAYERS_DOCK_MODE_KEY, mode);
     localStorage.setItem(LAYERS_DOCK_VISIBLE_KEY, mode === "off" ? "false" : "true");
     scheduleSyncLayersDockHeight(viz);
     refreshScenarioHeader(viz);
+    document.dispatchEvent(
+      new CustomEvent("nr:layers-mode-change", {
+        bubbles: true,
+        detail: { mode, visible: mode !== "off" },
+      }),
+    );
   }
 
-  toggle.addEventListener("click", () => {
-    const idx = LAYERS_DOCK_MODES.indexOf(mode);
-    mode = LAYERS_DOCK_MODES[(idx + 1) % LAYERS_DOCK_MODES.length];
+  toggle?.addEventListener("click", () => {
+    const prevMode = mode;
+    const idx = modes.indexOf(mode);
+    mode = modes[(idx + 1) % modes.length];
+    if (
+      inDocumentEmbed &&
+      prevMode === "off" &&
+      mode !== "off" &&
+      isV3ScenarioCanvasStep()
+    ) {
+      captureV3ScenarioCanvasHeight();
+    }
     apply();
   });
 
@@ -588,6 +672,71 @@ function hideNodePopup() {
   el.style.display = "none";
 }
 
+/** In-document embed: FlowStory positions #fs-highlight-box in canvas-local px (fullscreen assumption). */
+function applyInDocHighlightViewport(viz, node) {
+  const box = document.getElementById("fs-highlight-box");
+  const canvas = viz._canvas || document.getElementById("fs-canvas");
+  const engine = viz._engine;
+  if (!box || !canvas || !engine?.tx || !engine?.ty || !engine?.ts || !node) return;
+
+  const rect = canvas.getBoundingClientRect();
+  box.style.left = `${Math.round(rect.left + engine.tx(node.x))}px`;
+  box.style.top = `${Math.round(rect.top + engine.ty(node.y))}px`;
+  box.style.width = `${Math.round(engine.ts(node.w))}px`;
+  box.style.height = `${Math.round(engine.ts(node.h))}px`;
+}
+
+function syncInDocHighlightIfOpen(viz) {
+  const overlay = viz._overlay;
+  const box = document.getElementById("fs-highlight-box");
+  if (!overlay?.highlightKey || !box || box.style.display === "none") return;
+  const node = viz.state?.nodes?.[overlay.highlightKey];
+  if (!node) return;
+  applyInDocHighlightViewport(viz, node);
+}
+
+function suppressInDocOverlayBackdrop(overlay) {
+  const backdrop = overlay?._dom?.overlay;
+  if (backdrop) backdrop.style.display = "none";
+}
+
+/**
+ * Fix node highlight ring in v3 in-card / in-doc embeds without changing layout CSS.
+ * Keeps the highlight box; suppresses the fullscreen overlay backdrop only.
+ */
+export function wireInDocHighlightOverlay(viz, { signal } = {}) {
+  const overlay = viz._overlay;
+  if (!overlay || overlay._inDocHighlightPatched) return () => {};
+  overlay._inDocHighlightPatched = true;
+
+  const origShow = overlay.show.bind(overlay);
+  overlay.show = (nodeId, node, tooltip, ctx) => {
+    origShow(nodeId, node, tooltip, ctx);
+    if (node) applyInDocHighlightViewport(viz, node);
+    suppressInDocOverlayBackdrop(overlay);
+  };
+
+  const sync = () => syncInDocHighlightIfOpen(viz);
+  window.addEventListener("resize", sync, { passive: true, signal });
+
+  const mainEl = document.querySelector(".nr-main");
+  mainEl?.addEventListener("scroll", sync, { passive: true, signal });
+
+  let resizeObserver = null;
+  const canvas = viz._canvas || document.getElementById("fs-canvas");
+  const wrap = canvas?.closest?.(".fs-overall-canvas-wrap");
+  if (typeof ResizeObserver !== "undefined" && wrap) {
+    resizeObserver = new ResizeObserver(sync);
+    resizeObserver.observe(wrap);
+  }
+
+  return () => {
+    resizeObserver?.disconnect();
+    overlay.show = origShow;
+    overlay._inDocHighlightPatched = false;
+  };
+}
+
 function positionNodePopup(viz, node, el) {
   const engine = viz._engine;
   const canvas = viz._canvas || document.getElementById("fs-canvas");
@@ -717,8 +866,7 @@ export function wireResponseComparison(viz, diagram, config) {
       viz.closeOverlay?.();
       return;
     }
-    const lines = responseMap[stepOneBased];
-    showNodePopup(viz, diagram, cfg, lines);
+    showNodePopup(viz, diagram, cfg, responseMap[stepOneBased]);
   }
 
   function syncStepPresentation(stepOneBased) {
@@ -836,7 +984,52 @@ export function normalizeLightupBadges(diagram) {
   return diagram;
 }
 
+const SCENARIO_BODY_LAYOUT_CLASSES = [
+  "fs-has-top-panel",
+  "fs-layers-ui--off",
+  "fs-layers-pos-right",
+  "fs-layers-pos-top",
+  "fs-layers-pos-bottom",
+  "fs-scenario-phase-before",
+  "fs-scenario-phase-after",
+];
+
+let scenarioDiagramSession = null;
+let scenarioDiagramInitGeneration = 0;
+
+function abandonStaleScenarioViz(viz) {
+  if (!viz) return;
+  viz.closeOverlay?.();
+  viz._engine?.stop?.();
+  if (window.__flowstory === viz) {
+    window.__flowstory = null;
+  }
+}
+
+/** Remove FlowStory layout classes from body (e.g. after v3 overall embed teardown). */
+export function stripScenarioDiagramBodyClasses() {
+  for (const cls of SCENARIO_BODY_LAYOUT_CLASSES) {
+    document.body.classList.remove(cls);
+  }
+  releaseV3ScenarioCanvasHeight();
+}
+
+/** Tear down window listeners and viz state from a prior initScenarioDiagram call. */
+export function disposeScenarioDiagramSession() {
+  if (scenarioDiagramSession) {
+    scenarioDiagramSession.dispose();
+    scenarioDiagramSession = null;
+  }
+  scenarioDiagramInitGeneration += 1;
+}
+
 export async function initScenarioDiagram(diagram, options = {}) {
+  disposeScenarioDiagramSession();
+  const initGeneration = scenarioDiagramInitGeneration;
+  const sessionAc = new AbortController();
+  const { signal } = sessionAc;
+  let inspObserver = null;
+  let inDocHighlightTeardown = null;
   const {
     headerTitle,
     tagline = "Your Agent. Our Platform. Production-Ready.",
@@ -851,6 +1044,10 @@ export async function initScenarioDiagram(diagram, options = {}) {
     overallNav = false,
     flowShortcuts = null,
     inspectorBodyLabelDefault: bodyLabelDefault = "Scenario",
+    inDocumentEmbed = false,
+    prepareInDocumentResize = null,
+    embedRootSelector = null,
+    embedRootElement = null,
   } = options;
 
   inspectorBodyLabelDefault = bodyLabelDefault;
@@ -891,7 +1088,18 @@ export async function initScenarioDiagram(diagram, options = {}) {
 
   window.__flowstory = viz;
 
-  if (document.getElementById("fs-top-dock")) {
+  if (inDocumentEmbed && typeof prepareInDocumentResize === "function") {
+    const onAfterDraw =
+      phaseRest != null
+        ? () => {
+            const flowId = viz.state.activeFlow ?? diagram.defaultFlow;
+            applyPhaseRestVisuals(viz, diagram, flowId, phaseRest);
+          }
+        : undefined;
+    prepareInDocumentResize(viz, { onAfterDraw });
+  }
+
+  if (document.getElementById("fs-top-dock") && !inDocumentEmbed) {
     patchEngineLayoutForTopPanel(viz);
     syncChromeInsets();
   }
@@ -922,12 +1130,21 @@ export async function initScenarioDiagram(diagram, options = {}) {
 
   normalizeLightupBadges(diagram);
   await viz.load(diagram);
+  if (inDocumentEmbed) {
+    inDocHighlightTeardown = wireInDocHighlightOverlay(viz, { signal });
+  }
   relabelInspector();
-  wireLayersDock(viz);
+  wireLayersDock(viz, {
+    inDocumentEmbed,
+    embedRoot:
+      embedRootElement ??
+      (embedRootSelector ? document.querySelector(embedRootSelector) : null),
+  });
   wireLayerBoardTitle(viz);
   refreshScenarioHeader(viz);
   window.addEventListener("resize", () => refreshScenarioHeader(viz), {
     passive: true,
+    signal,
   });
 
   const responseWire = responseComparison
@@ -986,75 +1203,84 @@ export async function initScenarioDiagram(diagram, options = {}) {
   }
 
   if (modeFlows) {
-    window.addEventListener("hashchange", () => {
-      const flowId = parsePhaseHash(modeFlows);
-      if (flowId && flowId !== viz.state.activeFlow) {
-        switchScenarioFlow(viz, diagram, flowId);
-      }
-    });
+    window.addEventListener(
+      "hashchange",
+      () => {
+        const flowId = parsePhaseHash(modeFlows);
+        if (flowId && flowId !== viz.state.activeFlow) {
+          switchScenarioFlow(viz, diagram, flowId);
+        }
+      },
+      { signal }
+    );
   }
 
   document.getElementById("fs-next")?.addEventListener("click", goNext);
   document.getElementById("fs-prev")?.addEventListener("click", goPrev);
 
-  window.addEventListener("keydown", (e) => {
-    if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
-    if (isTypingTarget(e.target)) return;
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (isTypingTarget(e.target)) return;
 
-    if (modeFlows) {
-      if (e.key === "1" || e.key === "b" || e.key === "B") {
+      if (modeFlows) {
+        if (e.key === "1" || e.key === "b" || e.key === "B") {
+          e.preventDefault();
+          switchScenarioFlow(viz, diagram, modeFlows.before);
+          return;
+        }
+        if (e.key === "2" || e.key === "a" || e.key === "A") {
+          e.preventDefault();
+          switchScenarioFlow(viz, diagram, modeFlows.after);
+          return;
+        }
+      } else if (flowShortcuts?.[e.key] && diagram.flows[flowShortcuts[e.key]]) {
         e.preventDefault();
-        switchScenarioFlow(viz, diagram, modeFlows.before);
+        switchScenarioFlow(viz, diagram, flowShortcuts[e.key]);
         return;
       }
-      if (e.key === "2" || e.key === "a" || e.key === "A") {
-        e.preventDefault();
-        switchScenarioFlow(viz, diagram, modeFlows.after);
-        return;
-      }
-    } else if (flowShortcuts?.[e.key] && diagram.flows[flowShortcuts[e.key]]) {
-      e.preventDefault();
-      switchScenarioFlow(viz, diagram, flowShortcuts[e.key]);
-      return;
-    }
 
-    const nextKeys = new Set([
-      "ArrowRight",
-      "ArrowDown",
-      "PageDown",
-      " ",
-      "Spacebar",
-      "Enter",
-      ".",
-      "n",
-      "N",
-    ]);
-    const prevKeys = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace", "p", "P"]);
-    if (nextKeys.has(e.key) || e.code === "Space") {
-      e.preventDefault();
-      goNext();
-    } else if (prevKeys.has(e.key)) {
-      e.preventDefault();
-      goPrev();
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      viz.closeOverlay?.();
-      viz.reset();
-      syncPlayLabel(viz);
-      responseWire?.syncStepPresentation?.(0);
-      refreshScenarioHeader(viz);
-    } else if (e.key === "End") {
-      e.preventDefault();
-      viz.closeOverlay?.();
-      viz.jumpTo(stepCount(diagram, viz) - 1);
-      syncPlayLabel(viz);
-      refreshScenarioHeader(viz);
-    }
-  }, true);
+      const nextKeys = new Set([
+        "ArrowRight",
+        "ArrowDown",
+        "PageDown",
+        " ",
+        "Spacebar",
+        "Enter",
+        ".",
+        "n",
+        "N",
+      ]);
+      const prevKeys = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace", "p", "P"]);
+      if (nextKeys.has(e.key) || e.code === "Space") {
+        e.preventDefault();
+        goNext();
+      } else if (prevKeys.has(e.key)) {
+        e.preventDefault();
+        goPrev();
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        viz.closeOverlay?.();
+        viz.reset();
+        syncPlayLabel(viz);
+        responseWire?.syncStepPresentation?.(0);
+        refreshScenarioHeader(viz);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        viz.closeOverlay?.();
+        viz.jumpTo(stepCount(diagram, viz) - 1);
+        syncPlayLabel(viz);
+        refreshScenarioHeader(viz);
+      }
+    },
+    { capture: true, signal }
+  );
 
   const insp = document.getElementById("fs-inspector-content");
   if (insp) {
-    new MutationObserver(() => relabelInspector()).observe(insp, {
+    inspObserver = new MutationObserver(() => relabelInspector());
+    inspObserver.observe(insp, {
       childList: true,
       subtree: true,
     });
@@ -1081,6 +1307,28 @@ export async function initScenarioDiagram(diagram, options = {}) {
       },
     });
   }
+
+  if (initGeneration !== scenarioDiagramInitGeneration) {
+    abandonStaleScenarioViz(viz);
+    return viz;
+  }
+
+  scenarioDiagramSession = {
+    viz,
+    dispose() {
+      inDocHighlightTeardown?.();
+      inDocHighlightTeardown = null;
+      sessionAc.abort();
+      inspObserver?.disconnect();
+      responseWire?.teardown?.();
+      viz.closeOverlay?.();
+      viz._engine?.stop?.();
+      stripScenarioDiagramBodyClasses();
+      if (window.__flowstory === viz) {
+        window.__flowstory = null;
+      }
+    },
+  };
 
   return viz;
 }

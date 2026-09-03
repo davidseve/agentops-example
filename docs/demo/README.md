@@ -55,7 +55,15 @@ docs/demo/
 │   ├── baseline-diagram.js
 │   ├── baseline-embed.css
 │   └── baseline-layout-variants.css
-└── v3/live.html         # Stub — FlowStory narrative mode (future)
+└── v3/                  # v2 fork — step 0 = full overall map; tab A = scenario canvas
+    ├── live.html
+    ├── narrative-v3.css
+    ├── narrative-v3-ui.js
+    ├── overall-embed.js
+    ├── overall-embed.css
+    ├── scenario-canvas-embed.js
+    ├── scenario-canvas-embed.css
+    └── script-runner.js
 ```
 
 ## CSS conventions
@@ -141,7 +149,7 @@ The **layer board** stays a fixed panel below the hop list; only the **dropdown*
 | C | [test-c-egress.html](scenarios/test-c-egress.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `c` | Before/After in overall dropdown; test page has its own toggle |
 | D | [test-d-guardrails.html](scenarios/test-d-guardrails.html) | [overall-demo-architecture.html](overall-demo-architecture.html) — shortcut `d` | Before/After in overall dropdown; test page has its own toggle |
 
-- **`test-*`**: self-contained pages derived from `OVERALL_SCENARIO_*` in [`overall-flows.js`](scenarios/overall-flows.js) via `buildScenarioPageDiagram()` — same hop routing as the overall map, with layer board filtered to applicable layers. Test A is implemented; B–D still use inline definitions until migrated.
+- **`test-*`**: self-contained pages derived from `OVERALL_SCENARIO_*` in [`overall-flows.js`](scenarios/overall-flows.js) via `buildScenarioPageDiagram()` — same hop routing as the overall map, with layer board filtered to applicable layers. Tests A and B are implemented; C–D still use inline definitions until migrated.
 
 Open from the overall architecture nav bar, scenario header nav, or launcher.
 
@@ -162,7 +170,8 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 Proxy endpoints: `GET /api/demo/actions`, `POST /api/demo/run` with body `{"action":"<id>"}`. On success the observability panel refreshes automatically. v1 panel still shows commands as text only.
 
 **v2 step 0 layout lab** (compare variants live): dropdown on step 0 or `?layout=<id>`. IDs: `current`, `stack`, `unified`, `legend-footer`, `legend-inset`. Persists in `localStorage` (`v2-baseline-layout`).
-| v3 | [v3/live.html](v3/live.html) | Coming soon (FlowStory narrative) |
+
+| v3 | [v3/live.html](v3/live.html) | v2 fork — tab **Overall Demo** embeds the full [overall-demo-architecture.html](overall-demo-architecture.html) FlowStory experience (7 flows, layers dock, legend); tabs **A** and **B** replace the mini-diagram with canvas-only **A · Credentials** (`scenario-a`) and **B · Files** (`scenario-b`) maps plus baseline YAML panels; other steps C–MLflow keep v2 narrative + observability + script runner. v2 unchanged. |
 
 Narrative (Spanish): [demo-narrativa-v1.md](../demo-narrativa-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
 

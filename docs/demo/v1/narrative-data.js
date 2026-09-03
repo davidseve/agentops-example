@@ -79,6 +79,36 @@ const YAML_EGRESS_ADDED = `  demo_egress_google:
 
 const YAML_EGRESS_BEFORE = `# Only mlflow_direct — google.com and other public hosts denied`;
 
+const OPENCLAW_FILESYSTEM_SNIPPET = `# config/openshell/default.yaml (filesystem + process isolation)
+filesystem_policy:
+  include_workdir: false
+  read_only: [/usr, /lib, /proc, /dev/urandom, /app, /etc, /var/log, /sandbox]
+  read_write: [/sandbox/workspace, /tmp, /dev/null, /home]
+
+landlock:
+  compatibility: best_effort
+
+process:
+  run_as_user: sandbox
+  run_as_group: sandbox`;
+
+const OPENCLAW_EGRESS_BASELINE_SNIPPET = `# config/openshell/default.yaml (network_policies — default deny)
+network_policies:
+  # LLM inference: handled by OpenShell's inference router (inference.local).
+
+  mlflow_direct:
+    name: rhoai-mlflow-direct-traces
+    endpoints:
+      - host: "mlflow.redhat-ods-applications.svc"
+        port: 8443
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+        tls: skip
+    binaries:
+      - { path: /usr/bin/node }
+# Public curl denied — no google.com allowlist`;
+
 const OPENCLAW_INFERENCE_SNIPPET = `// config/openclaw.json.tpl (rendered at launch)
 "models": {
   "providers": {
@@ -103,14 +133,29 @@ export const YAML_PANELS = {
     note:
       "Rendered from config/openclaw.json.tpl at launch. The sandbox never receives LITELLM_API_KEY; OpenShell injects the MaaS key at the gateway when OpenClaw calls inference.local.",
   },
+  filesystem: {
+    title: "Baseline — OpenShell sandbox policy · filesystem + Landlock",
+    snippet: OPENCLAW_FILESYSTEM_SNIPPET,
+    defaultOpen: false,
+    note:
+      "Applied at sandbox create via config/openshell/default.yaml. Landlock blocks /etc/shadow from minute zero — no live Cambio.",
+  },
+  egressBaseline: {
+    title: "Baseline — OpenShell sandbox policy · network egress (default deny)",
+    snippet: OPENCLAW_EGRESS_BASELINE_SNIPPET,
+    defaultOpen: false,
+    note:
+      "Applied at sandbox create via config/openshell/default.yaml. Only mlflow_direct is allowlisted — no demo_egress_google; curl to public hosts is denied.",
+  },
   egress: {
-    title: "Cambio 1 — Sandbox network policy",
+    title: "Baseline — OpenShell sandbox policy · network egress allowed",
     fileBefore: "config/openshell/default.yaml",
     fileAfter: "config/openshell/google-egress.yaml",
     command: "./scripts/demo-allow-google-egress.sh",
     expectedOutput: "Google egress allowed — curl to google.com should succeed; github.com remains blocked",
     before: YAML_EGRESS_BEFORE,
     after: YAML_EGRESS_ADDED,
+    defaultOpen: false,
     note: "openshell policy set applies the policy live — no sandbox rebuild.",
   },
   guardrails: {
@@ -213,7 +258,7 @@ export const NARRATIVE = {
         nodeRoles: { landlock: "secure" },
         flows: [{ nodes: ["oc", "landlock"], kind: "probe" }],
       },
-      yamlPanel: null,
+      yamlPanel: YAML_PANELS.filesystem,
       observabilityFocus: "openclaw",
       observabilityHidden: ["openshell", "nemo"],
     },
@@ -236,10 +281,9 @@ export const NARRATIVE = {
       diagram: {
         active: ["oc", "gw"],
         inferencePath: "direct",
-        nodeRoles: { gw: "secure" },
-        flows: [{ nodes: ["oc", "gw"], kind: "platform", dur: 1.2 }],
+        flows: [{ nodes: ["oc", "gw"], kind: "denied", bounce: true, dur: 1.2 }],
       },
-      yamlPanel: null,
+      yamlPanel: YAML_PANELS.egressBaseline,
       subStep: { group: "C", phase: "before", index: 0, total: 2 },
       observabilityFocus: "sandbox",
     },
@@ -262,6 +306,8 @@ export const NARRATIVE = {
       diagram: {
         active: ["oc", "gw", "internet"],
         inferencePath: "direct",
+        suppressEgressWarn: true,
+        nodeRoles: { gw: "secure", internet: "secure" },
         flows: [
           { nodes: ["oc", "gw", "internet"], kind: "platform", dur: 1.5 },
           { nodes: ["internet", "gw", "oc"], kind: "platform", dur: 1.5, afterPrevious: true, pause: 0.4 },

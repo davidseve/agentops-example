@@ -34,7 +34,7 @@ export default defineConfig({
   projects: [
     {
       name: 'unit-tests',
-      testMatch: /(observability-log-rules|demo-scenario-consistency|ui-helpers\.unit)\.spec\.ts/,
+      testMatch: /(observability-log-rules|demo-scenario-consistency|overall-in-doc-legend-layout|ui-helpers\.unit)\.spec\.ts/,
     },
     {
       name: 'auth-setup',

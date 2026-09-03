@@ -586,22 +586,108 @@ export function renderYamlPanel(container, yamlPanel) {
     body = `<pre class="nr-yaml-pre">${escapeHtml(yamlPanel.snippet)}</pre>`;
   }
 
-  container.innerHTML = `<details class="nr-yaml-panel"${yamlPanel.defaultOpen === false ? "" : " open"}>
-    <summary>${escapeHtml(yamlPanel.title)}</summary>
-    <div class="nr-yaml-body">
+  const initiallyOpen = yamlPanel.defaultOpen !== false;
+  container.innerHTML = `<section class="nr-yaml-panel${initiallyOpen ? "" : " nr-yaml-collapsed"}" data-nr-yaml-panel>
+    <div class="nr-yaml-head">
+      <h2 class="nr-yaml-title">${escapeHtml(yamlPanel.title)}</h2>
+      <div class="nr-yaml-actions">
+        <button type="button" class="nr-yaml-collapse" title="${initiallyOpen ? "Collapse panel" : "Expand panel"}" aria-expanded="${initiallyOpen ? "true" : "false"}" aria-label="${initiallyOpen ? "Collapse panel" : "Expand panel"}">${initiallyOpen ? "▾" : "▸"}</button>
+      </div>
+    </div>
+    <div class="nr-yaml-body"${initiallyOpen ? "" : " hidden"}>
       ${yamlPanel.command ? `<div class="nr-label">Terminal</div><code class="nr-cmd">${escapeHtml(yamlPanel.command)}</code>` : ""}
       ${body}
       ${yamlPanel.expectedOutput ? `<div class="nr-label">Expected output</div><pre class="nr-yaml-pre">${escapeHtml(yamlPanel.expectedOutput)}</pre>` : ""}
       ${yamlPanel.note ? `<p class="nr-yaml-note">${escapeHtml(yamlPanel.note)}</p>` : ""}
     </div>
-  </details>`;
+  </section>`;
+
+  const panel = container.querySelector("[data-nr-yaml-panel]");
+  const collapseBtn = panel?.querySelector(".nr-yaml-collapse");
+  const bodyEl = panel?.querySelector(".nr-yaml-body");
+  if (!panel || !collapseBtn || !bodyEl) return;
+
+  collapseBtn.addEventListener("click", () => {
+    const expanding = panel.classList.contains("nr-yaml-collapsed");
+    if (expanding) {
+      panel.dispatchEvent(new CustomEvent("nr:yaml-before-expand", { bubbles: true }));
+    }
+
+    const collapsed = !expanding;
+    panel.classList.toggle("nr-yaml-collapsed", collapsed);
+    bodyEl.hidden = collapsed;
+    collapseBtn.textContent = collapsed ? "▸" : "▾";
+    collapseBtn.title = collapsed ? "Expand panel" : "Collapse panel";
+    collapseBtn.setAttribute("aria-label", collapseBtn.title);
+    collapseBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+
+    panel.dispatchEvent(
+      new CustomEvent("nr:yaml-collapse-change", {
+        bubbles: true,
+        detail: { collapsed },
+      }),
+    );
+  });
 }
 
-export function renderStepCard(container, step, { flowAnimEnabled = true, onFlowAnimChange } = {}) {
+function renderPromptBlock(step) {
+  if (!step.prompt) return "";
+  return `<div class="nr-label">Prompt (copy to OpenClaw)</div>
+       <pre class="nr-prompt" id="nr-active-prompt">${escapeHtml(step.prompt)}</pre>
+       <div class="nr-actions"><button type="button" id="nr-copy-prompt">Copy prompt</button></div>`;
+}
+
+function renderCommandBlock(step) {
+  if (!step.command) return "";
+  return `<div class="nr-label">Run in terminal</div><code class="nr-cmd">${escapeHtml(step.command)}</code>`;
+}
+
+function renderActionsSection(step, dualActionsRow) {
+  const promptBlock = renderPromptBlock(step);
+  const commandBlock = renderCommandBlock(step);
+
+  if (dualActionsRow && step.prompt && step.command) {
+    return `<div class="nr-dual-actions">
+      <div class="nr-dual-actions-col nr-dual-actions-prompt">${promptBlock}</div>
+      <div class="nr-dual-actions-col nr-dual-actions-terminal">${commandBlock}</div>
+    </div>`;
+  }
+
+  return `${promptBlock}${commandBlock}`;
+}
+
+export function buildStepSelectLabel(stepId, navGroups = NAV_GROUPS) {
+  const step = getStep(stepId);
+  if (!step) return stepId;
+  if (stepId === "0") {
+    const groupLabel = navGroups.find((g) => g.id === "0")?.label ?? "0";
+    return `${groupLabel} — ${step.title}`;
+  }
+  if (step.subStep) {
+    const { group, phase } = step.subStep;
+    const phaseLabel = phase === "before" ? "Before" : "After";
+    const shortTitle = step.title
+      .replace(/\s*\(before NeMo\)/i, "")
+      .replace(/\s*\(after NeMo\)/i, "")
+      .replace(/\s*\(before\)/i, "")
+      .replace(/\s*\(after\)/i, "")
+      .trim();
+    return `${group} · ${phaseLabel} — ${shortTitle}`;
+  }
+  const group = navGroups.find((g) => g.steps.includes(stepId));
+  const prefix = group && group.label !== stepId ? group.label : stepId;
+  return `${prefix} — ${step.title}`;
+}
+
+export function renderStepCard(
+  container,
+  step,
+  { flowAnimEnabled = true, onFlowAnimChange, dualActionsRow = false, navMode = "buttons" } = {}
+) {
   if (!container || !step) return;
 
   let subNav = "";
-  if (step.subStep) {
+  if (step.subStep && navMode !== "select") {
     const { group, phase } = step.subStep;
     subNav = `<div class="nr-sub-nav" data-sub-group="${group}">
       <button type="button" data-goto="${group}-pre" class="${phase === "before" ? "active" : ""}">Before</button>
@@ -613,11 +699,7 @@ export function renderStepCard(container, step, { flowAnimEnabled = true, onFlow
     .map((p) => `<p>${escapeHtml(p)}</p>`)
     .join("");
 
-  const promptHtml = step.prompt
-    ? `<div class="nr-label">Prompt (copy to OpenClaw)</div>
-       <pre class="nr-prompt" id="nr-active-prompt">${escapeHtml(step.prompt)}</pre>
-       <div class="nr-actions"><button type="button" id="nr-copy-prompt">Copy prompt</button></div>`
-    : "";
+  const actionsHtml = renderActionsSection(step, dualActionsRow);
 
   const expectFail = step.expectedFail
     ? `<p class="nr-expect fail">Before change: <strong>${escapeHtml(step.expectedFail)}</strong></p>`
@@ -626,19 +708,14 @@ export function renderStepCard(container, step, { flowAnimEnabled = true, onFlow
     ? `<p class="nr-expect">Expected: <strong>${escapeHtml(step.expected)}</strong></p>`
     : "";
 
-  const commandHtml = step.command
-    ? `<div class="nr-label">Run in terminal</div><code class="nr-cmd">${escapeHtml(step.command)}</code>`
-    : "";
-
   container.innerHTML = `
     ${subNav}
     <div class="nr-card">
       <h2>${escapeHtml(step.id === "0" ? "0" : step.id.replace("-", " · "))} — ${escapeHtml(step.title)}</h2>
       <p class="nr-meta">${escapeHtml(step.timing)}</p>
       <div class="nr-body">${bodyHtml}</div>
-      ${promptHtml}
+      ${actionsHtml}
       ${expectFail}
-      ${commandHtml}
       ${expectOk}
       <div class="nr-diagram-wrap${flowAnimEnabled ? " nr-flows-on" : ""}">
         <div class="nr-diagram-head">
@@ -651,11 +728,9 @@ export function renderStepCard(container, step, { flowAnimEnabled = true, onFlow
         <div id="nr-diagram-target"></div>
         ${renderFlowLegend(flowAnimEnabled)}
       </div>
-      <div id="nr-yaml-target"></div>
     </div>`;
 
   renderDiagram(container.querySelector("#nr-diagram-target"), step.diagram, step.layers, flowAnimEnabled);
-  renderYamlPanel(container.querySelector("#nr-yaml-target"), step.yamlPanel);
 
   const flowToggle = container.querySelector("#nr-flow-toggle");
   if (flowToggle && onFlowAnimChange) {
@@ -686,17 +761,71 @@ export function renderStepCard(container, step, { flowAnimEnabled = true, onFlow
   });
 }
 
-function navGroupForStep(stepId) {
-  return NAV_GROUPS.find((g) => g.steps.includes(stepId))?.id ?? stepId;
+function navGroupForStep(stepId, navGroups) {
+  return navGroups.find((g) => g.steps.includes(stepId))?.id ?? stepId;
 }
 
-function updateNavActive(navEl, stepId) {
-  const group = navGroupForStep(stepId);
+function updateNavActive(navEl, stepId, navGroups) {
+  const group = navGroupForStep(stepId, navGroups);
   navEl.querySelectorAll("button[data-group]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.group === group);
-    const g = NAV_GROUPS.find((x) => x.id === btn.dataset.group);
+    const g = navGroups.find((x) => x.id === btn.dataset.group);
     btn.classList.toggle("has-sub", g && g.steps.length > 1);
   });
+}
+
+function updateNavSelect(navEl, stepId) {
+  const select = navEl?.querySelector("[data-nr-step-select]");
+  if (!select) return;
+  if (select.value !== stepId) select.value = stepId;
+  const atStart = select.selectedIndex <= 0;
+  const atEnd = select.selectedIndex >= select.options.length - 1;
+  navEl.querySelector("[data-nr-prev]")?.toggleAttribute("disabled", atStart);
+  navEl.querySelector("[data-nr-next]")?.toggleAttribute("disabled", atEnd);
+}
+
+function renderNavSelect(navEl, stepIds, navGroups, applyStep) {
+  navEl.innerHTML = "";
+  navEl.classList.add("nr-step-nav-select-wrap");
+
+  const row = document.createElement("div");
+  row.className = "nr-step-nav-select";
+
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.dataset.nrPrev = "";
+  prevBtn.setAttribute("aria-label", "Previous step");
+  prevBtn.textContent = "\u25C0";
+
+  const select = document.createElement("select");
+  select.dataset.nrStepSelect = "";
+  select.setAttribute("aria-label", "Demo step");
+
+  stepIds.forEach((id) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = buildStepSelectLabel(id, navGroups);
+    select.appendChild(option);
+  });
+
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.dataset.nrNext = "";
+  nextBtn.setAttribute("aria-label", "Next step");
+  nextBtn.textContent = "\u25B6";
+
+  select.addEventListener("change", () => {
+    applyStep(select.value);
+  });
+  prevBtn.addEventListener("click", () => {
+    applyStep(stepBefore(select.value, stepIds));
+  });
+  nextBtn.addEventListener("click", () => {
+    applyStep(stepAfter(select.value, stepIds));
+  });
+
+  row.append(prevBtn, select, nextBtn);
+  navEl.appendChild(row);
 }
 
 function updateHash(stepId) {
@@ -706,18 +835,38 @@ function updateHash(stepId) {
   }
 }
 
-function parseHash() {
+function parseHash(stepIds) {
   const m = location.hash.match(/^#step-(.+)$/);
-  if (m && STEP_IDS.includes(m[1])) return m[1];
-  return "0";
+  if (m && stepIds.includes(m[1])) return m[1];
+  return stepIds[0] ?? "0";
 }
 
-export function initNarrativeUI({ root, onStepChange }) {
-  const navEl = root.querySelector("[data-nr-nav]");
+function stepAfter(id, stepIds) {
+  const i = stepIds.indexOf(id);
+  return i < stepIds.length - 1 ? stepIds[i + 1] : id;
+}
+
+function stepBefore(id, stepIds) {
+  const i = stepIds.indexOf(id);
+  return i > 0 ? stepIds[i - 1] : id;
+}
+
+export function initNarrativeUI({
+  root,
+  onBeforeStepChange,
+  onStepChange,
+  navGroups = NAV_GROUPS,
+  stepIds = STEP_IDS,
+  navEl: navElOption = null,
+  dualActionsRow = false,
+  navMode = "buttons",
+}) {
+  const navEl = navElOption ?? root.querySelector("[data-nr-nav]");
   const layerEl = root.querySelector("[data-nr-layers]");
   const matrixEl = root.querySelector("[data-nr-matrix]");
   const cardEl = root.querySelector("[data-nr-card]");
-  let currentId = parseHash();
+  const yamlEl = root.querySelector("[data-nr-yaml]");
+  let currentId = parseHash(stepIds);
   let flowAnimEnabled = localStorage.getItem(FLOW_ANIM_STORAGE_KEY) !== "false";
 
   function handleFlowAnimChange(enabled) {
@@ -736,14 +885,26 @@ export function initNarrativeUI({ root, onStepChange }) {
   }
 
   function applyStep(stepId) {
-    if (!STEP_IDS.includes(stepId)) stepId = "0";
+    if (!stepIds.includes(stepId)) stepId = stepIds[0] ?? "0";
     currentId = stepId;
     const step = getStep(stepId);
 
+    onBeforeStepChange?.(stepId, step);
+
     renderLayerBoard(layerEl, step.layers);
     renderMatrix(matrixEl, step.matrix, step.matrixFocus);
-    renderStepCard(cardEl, step, { flowAnimEnabled, onFlowAnimChange: handleFlowAnimChange });
-    updateNavActive(navEl, stepId);
+    renderStepCard(cardEl, step, {
+      flowAnimEnabled,
+      onFlowAnimChange: handleFlowAnimChange,
+      dualActionsRow,
+      navMode,
+    });
+    renderYamlPanel(yamlEl, step.yamlPanel);
+    if (navMode === "select") {
+      updateNavSelect(navEl, stepId);
+    } else {
+      updateNavActive(navEl, stepId, navGroups);
+    }
     updateHash(stepId);
     const mainEl = root.querySelector(".nr-main");
     if (mainEl) {
@@ -763,14 +924,20 @@ export function initNarrativeUI({ root, onStepChange }) {
     );
   }
 
-  NAV_GROUPS.forEach((g) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.dataset.group = g.id;
-    btn.textContent = g.label;
-    btn.addEventListener("click", () => applyStep(g.steps[0]));
-    navEl.appendChild(btn);
-  });
+  if (navEl) {
+    if (navMode === "select") {
+      renderNavSelect(navEl, stepIds, navGroups, applyStep);
+    } else {
+      navGroups.forEach((g) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.group = g.id;
+        btn.textContent = g.label;
+        btn.addEventListener("click", () => applyStep(g.steps[0]));
+        navEl.appendChild(btn);
+      });
+    }
+  }
 
   root.addEventListener("narrative-goto", (e) => {
     applyStep(e.detail.stepId);
@@ -780,15 +947,15 @@ export function initNarrativeUI({ root, onStepChange }) {
     if (e.target.matches("input, textarea, select") || e.target.isContentEditable) return;
     if (e.key === "ArrowRight" || e.key === "PageDown") {
       e.preventDefault();
-      applyStep(nextStepId(currentId));
+      applyStep(stepAfter(currentId, stepIds));
     } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
       e.preventDefault();
-      applyStep(prevStepId(currentId));
+      applyStep(stepBefore(currentId, stepIds));
     }
   });
 
   window.addEventListener("hashchange", () => {
-    applyStep(parseHash());
+    applyStep(parseHash(stepIds));
   });
 
   applyStep(currentId);

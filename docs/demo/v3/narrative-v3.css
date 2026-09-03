@@ -1,0 +1,669 @@
+/* v3 overrides — compact single-column layout (no sidebar) */
+
+body.nr-v3 {
+  --nr-v3-header-height: 52px;
+  --nr-v3-nav-height: 36px;
+  --nr-v3-header-nav-height: calc(var(--nr-v3-header-height) + var(--nr-v3-nav-height));
+}
+
+/* Keep AgentOps title + step nav above FlowStory fixed chrome */
+.nr-v3 .nr-v3-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  background: var(--nr-bg);
+  border-bottom: 1px solid var(--nr-border);
+}
+
+.nr-v3 .nr-v3-chrome .nr-header {
+  border-bottom: none;
+}
+
+.nr-v3 .nr-v3-chrome .nr-v3-step-nav {
+  border-bottom: none;
+}
+
+/* Override v1 two-column grid — single column like v2 */
+body.nr-v3 .nr-layout,
+body.nr-v3 .nr-v3-shell {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100vw;
+  min-width: 0;
+}
+
+body.nr-v3 .nr-main {
+  width: 100% !important;
+  min-width: 0;
+}
+
+.nr-v3 .nr-header {
+  padding: 10px 16px;
+  gap: 12px;
+}
+
+.nr-v3 .nr-header h1 {
+  font-size: 16px;
+}
+
+.nr-v3 .nr-tagline {
+  font-size: 12px;
+}
+
+.nr-v3 .nr-header a {
+  font-size: 12px;
+}
+
+.nr-v3 .nr-main {
+  padding: 12px 14px 24px;
+}
+
+/* Baseline YAML — same full width as cluster observability within .nr-main */
+body.nr-v3 [data-nr-yaml] {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body.nr-v3 [data-nr-yaml] .nr-yaml-panel {
+  margin-top: 20px;
+  margin-bottom: 0;
+}
+
+.nr-v3 .nr-meta {
+  display: none;
+}
+
+.nr-v3 .nr-v3-step-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--nr-border);
+  background: var(--nr-bg);
+  box-sizing: border-box;
+}
+
+.nr-v3 .nr-v3-step-nav.nr-step-nav-select-wrap {
+  padding: 6px 14px;
+}
+
+.nr-v3 .nr-step-nav-select {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.nr-v3 .nr-step-nav-select select {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  padding: 7px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--nr-panel);
+  border: 1px solid var(--nr-border);
+  border-radius: 8px;
+  color: var(--nr-text);
+}
+
+.nr-v3 .nr-step-nav-select select:focus {
+  outline: none;
+  border-color: var(--nr-accent);
+}
+
+.nr-v3 .nr-step-nav-select [data-nr-prev],
+.nr-v3 .nr-step-nav-select [data-nr-next] {
+  flex: 0 0 32px;
+  min-width: 32px;
+  padding: 7px 6px;
+  background: var(--nr-panel);
+  border: 1px solid var(--nr-border);
+  border-radius: 8px;
+  color: var(--nr-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.nr-v3 .nr-step-nav-select [data-nr-prev]:hover:not(:disabled),
+.nr-v3 .nr-step-nav-select [data-nr-next]:hover:not(:disabled) {
+  border-color: var(--nr-accent);
+  color: var(--nr-accent);
+}
+
+.nr-v3 .nr-step-nav-select [data-nr-prev]:disabled,
+.nr-v3 .nr-step-nav-select [data-nr-next]:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.nr-v3 .nr-v3-step-nav button:not([data-nr-prev]):not([data-nr-next]) {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 3.25rem;
+  max-width: none;
+  padding: 7px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.nr-v3 .nr-card {
+  padding: 14px;
+}
+
+.nr-v3 .nr-card h2 {
+  font-size: 18px;
+}
+
+/* v3 scenario steps — prompt + terminal side by side when both exist */
+body.nr-v3.nr-v3-step-scenario .nr-dual-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+  align-items: start;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-dual-actions-col {
+  min-width: 0;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-dual-actions .nr-label {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-dual-actions-prompt .nr-prompt {
+  font-size: 11px;
+  padding: 8px;
+  max-height: 5.5rem;
+  overflow-y: auto;
+  margin-bottom: 6px;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-dual-actions-prompt .nr-actions {
+  margin-bottom: 0;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-dual-actions .nr-script-run {
+  margin: 0;
+  padding: 8px 10px;
+}
+
+@media (max-width: 900px) {
+  body.nr-v3.nr-v3-step-scenario .nr-dual-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nr-v3 .nr-diagram {
+  max-width: none;
+}
+
+.nr-v3-step-0 .nr-main {
+  padding-top: 8px;
+}
+
+.nr-v3-step-0 .nr-card {
+  padding: 8px 6px;
+  border: none;
+  background: transparent;
+}
+
+.nr-v3-step-0 .nr-card h2,
+.nr-v3-step-0 .nr-card > .nr-meta,
+.nr-v3-step-0 .nr-body {
+  display: none;
+}
+
+.nr-v3-step-0 .nr-diagram-wrap .nr-diagram-head,
+.nr-v3-step-0 .nr-diagram-wrap #nr-diagram-target,
+.nr-v3-step-0 .nr-diagram-wrap .nr-flow-legend,
+.nr-v3-step-0 .nr-diagram-wrap {
+  display: none;
+}
+
+.nr-v3-step-0 [data-nr-observability],
+.nr-v3-step-0 .nr-script-proxy-banner {
+  display: none;
+}
+
+/* Step 0 — overall map fills viewport below chrome */
+html.nr-v3-step-0,
+body.nr-v3.nr-v3-step-0 {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+body.nr-v3.nr-v3-step-0 {
+  display: flex;
+  flex-direction: column;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden !important;
+}
+
+body.nr-v3.nr-v3-step-0 #nr-root {
+  display: none;
+}
+
+body.nr-v3.nr-v3-step-0 .nr-v3-chrome {
+  flex: 0 0 auto;
+}
+
+body.nr-v3.nr-v3-step-0 .nr-v3-stage {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-0 .nr-v3-stage.nr-v3-overall-mounted {
+  padding-bottom: 0;
+}
+
+body.nr-v3.nr-v3-step-0 .fs-overall-in-doc-inner {
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 4px;
+}
+
+body.nr-v3.nr-v3-step-0 .fs-overall-in-doc-inner > .fs-top-dock,
+body.nr-v3.nr-v3-step-0 .fs-overall-in-doc-inner > .fs-layers-dock {
+  flex: 0 0 auto;
+}
+
+body.nr-v3.nr-v3-step-0 .fs-overall-canvas-wrap {
+  flex: 1 1 0;
+  min-height: min(52vh, 520px);
+  align-items: flex-start;
+  justify-content: center;
+}
+
+body.nr-v3.nr-v3-step-0 .fs-overall-canvas-wrap #fs-canvas {
+  align-self: flex-start;
+  flex: 0 0 auto;
+}
+
+/* Scenario canvas steps (A, B, …) — no page scroll by default; only layers scroll; observability expands with main scroll */
+body.nr-v3.nr-v3-step-scenario {
+  --nr-v3-obs-collapsed-height: 4rem;
+  --nr-v3-step-scenario-layers-dock-height: 8.75rem;
+  --nr-v3-step-scenario-card-min-height: calc(
+    100dvh - var(--nr-v3-header-nav-height) - var(--nr-v3-obs-collapsed-height) - 3rem
+  );
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-v3-chrome {
+  flex: 0 0 auto;
+}
+
+body.nr-v3.nr-v3-step-scenario #nr-root {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-main {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 24px;
+  overflow: hidden;
+}
+
+/* Expanded observability, visible layers, or expanded baseline YAML — main scrolls; diagram keeps height */
+body.nr-v3.nr-v3-step-scenario:has([data-nr-observability]:not(.nr-obs-collapsed)) .nr-main,
+body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed)) .nr-main,
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-main {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.nr-v3.nr-v3-step-scenario:has([data-nr-observability]:not(.nr-obs-collapsed)) .nr-main > [data-nr-card],
+body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed)) .nr-main > [data-nr-card],
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-main > [data-nr-card] {
+  flex: 0 0 auto;
+  min-height: var(--nr-v3-step-scenario-card-min-height);
+}
+
+/* Layers visible — card grows; canvas keeps pre-expand height; page scrolls */
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-main > [data-nr-card] {
+  min-height: calc(
+    var(--nr-v3-step-scenario-card-min-height) + var(--nr-v3-step-scenario-layers-dock-height) + 4px
+  );
+}
+
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) [data-nr-card] > .nr-card {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-diagram-wrap {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-in-doc-inner,
+body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
+  .nr-v3-scenario-mounted
+  .fs-overall-in-doc-inner {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
+  .nr-v3-scenario-mounted
+  .fs-overall-canvas-wrap {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  height: var(--nr-v3-step-scenario-canvas-locked-height, min(52vh, 420px));
+  min-height: var(--nr-v3-step-scenario-canvas-locked-height, min(52vh, 420px));
+  max-height: var(--nr-v3-step-scenario-canvas-locked-height, min(52vh, 420px));
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-scenario:has([data-nr-observability]:not(.nr-obs-collapsed))
+  .nr-v3-scenario-mounted
+  .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
+  .nr-v3-scenario-mounted
+  .fs-overall-canvas-wrap {
+  flex-shrink: 0;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-main > [data-nr-card] {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-card] > .nr-card {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-card] > .nr-card > :not(.nr-diagram-wrap) {
+  flex: 0 0 auto;
+}
+
+/* Baseline YAML — between step card and cluster observability */
+body.nr-v3.nr-v3-step-scenario [data-nr-yaml] {
+  flex: 0 0 auto;
+  background: transparent;
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-observability] {
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Collapsed — in document flow at bottom (v2 spacing) */
+body.nr-v3.nr-v3-step-scenario [data-nr-observability].nr-obs-collapsed {
+  flex: 0 0 auto;
+  position: relative;
+}
+
+/* Expanded — in document flow; viewer scrolls internally; page scroll reveals panel */
+body.nr-v3.nr-v3-step-scenario [data-nr-observability]:not(.nr-obs-collapsed) {
+  position: relative;
+  flex-shrink: 0;
+  height: var(--nr-v3-obs-dock-height, 36vh);
+  min-height: 200px;
+  max-height: 42vh;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-observability].nr-obs-collapsed .nr-obs-head {
+  border-bottom: none;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-observability] .nr-obs {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  min-height: 0;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-observability]:not(.nr-obs-collapsed) .nr-obs {
+  height: 100%;
+  margin-top: 20px;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-observability]:not(.nr-obs-collapsed) .nr-obs-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 8px;
+}
+
+body.nr-v3.nr-v3-step-scenario [data-nr-observability]:not(.nr-obs-collapsed) .nr-obs-viewer-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Scenario canvas steps — FlowStory fills card remainder; layers fixed height + internal scroll */
+body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap .nr-diagram-head,
+body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap #nr-diagram-target,
+body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap .nr-flow-legend {
+  display: none;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted.nr-diagram-wrap {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-top-dock {
+  flex: 0 0 auto;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-canvas-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+}
+
+/* Baseline / layers dock — fixed height + internal scroll */
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-layers-dock {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  height: var(--nr-v3-step-scenario-layers-dock-height) !important;
+  max-height: var(--nr-v3-step-scenario-layers-dock-height);
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 4px;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-layers-stack {
+  height: auto;
+  min-height: min-content;
+  overflow: visible;
+}
+
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-layers-stack .fs-steps,
+body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-layers-stack .fs-inspector {
+  flex: none;
+  max-height: none;
+  overflow: visible;
+}
+
+/* v3 script runner (cluster actions via local proxy) */
+
+.nr-script-proxy-banner {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #8a4b00;
+  background: #fff8e6;
+  border: 1px solid #f0d9a8;
+  border-radius: 6px;
+}
+
+.nr-script-run {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  background: #f8f9fb;
+  border: 1px solid #e2e6ee;
+  border-radius: 8px;
+}
+
+.nr-script-run.success {
+  border-color: #b8dfc0;
+  background: #f4fbf5;
+}
+
+.nr-script-run.error {
+  border-color: #f0b8b8;
+  background: #fff6f6;
+}
+
+.nr-script-run-cmd {
+  margin-bottom: 8px;
+}
+
+.nr-script-run-cmd .nr-cmd {
+  display: block;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.nr-script-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nr-script-run-btn,
+.nr-script-copy-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #c8ced8;
+  background: #fff;
+  cursor: pointer;
+}
+
+.nr-script-run-btn {
+  background: #ee0000;
+  border-color: #cc0000;
+  color: #fff;
+  font-weight: 600;
+}
+
+.nr-script-run-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.nr-script-run-status {
+  font-size: 12px;
+  color: #5c6573;
+}
+
+.nr-script-run-status.checking,
+.nr-script-run-status.running {
+  color: #0066cc;
+}
+
+.nr-script-run-status.success {
+  color: #2d6a32;
+}
+
+.nr-script-run-status.error,
+.nr-script-run-status.offline {
+  color: #b42318;
+}
+
+.nr-script-run-output {
+  margin-top: 10px;
+}
+
+.nr-script-run-output summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #5c6573;
+}
+
+.nr-script-run-pre {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.45;
+  background: #1e1e1e;
+  color: #e8e8e8;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

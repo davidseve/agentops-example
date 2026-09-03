@@ -1,0 +1,71 @@
+/* v3 scenario tabs — in-card FlowStory below step content (overall-in-doc resize) */
+
+body.nr-v3.nr-v3-step-0 #nr-root .nr-diagram-wrap {
+  display: none;
+}
+
+.nr-v3-scenario-mounted.nr-diagram-wrap {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  min-width: 0;
+}
+
+.nr-v3-scenario-mounted .fs-overall-in-doc-inner {
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 4px;
+}
+
+.nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-top-dock,
+.nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-layers-dock {
+  flex: 0 0 auto;
+}
+
+.nr-v3-scenario-mounted .fs-overall-canvas-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.nr-v3-scenario-mounted .fs-overall-canvas-wrap #fs-canvas {
+  display: block;
+  max-width: 100%;
+  align-self: flex-start;
+  flex: 0 0 auto;
+}
+
+.nr-v3-scenario-mounted .fs-overall-canvas-wrap .fs-legend--diagram-inset {
+  bottom: auto !important;
+}
+
+/* Neutralize fixed FlowStory chrome inside in-card scenario embed */
+body.nr-v3.fs-has-top-panel .nr-v3-scenario-mounted .fs-top-dock,
+body.nr-v3.fs-layers-pos-right .nr-v3-scenario-mounted .fs-layers-dock,
+body.nr-v3.fs-layers-pos-top .nr-v3-scenario-mounted .fs-layers-dock,
+body.nr-v3.fs-layers-pos-bottom .nr-v3-scenario-mounted .fs-layers-dock {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  z-index: auto !important;
+}
+
+body.nr-v3 .nr-v3-scenario-mounted #fs-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+}
+
+body.nr-v3 .nr-v3-scenario-mounted #fs-highlight-box:not([hidden]) {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+}

@@ -69,7 +69,6 @@ import {
   LAYER_NAMES,
   OVERALL_CANVAS,
   pickNodes,
-  ARROW,
   mergeResponseBodies,
   initScenarioDiagram,
 } from "./shared-scenario.js";
@@ -79,78 +78,19 @@ import {
   RESPONSES_C_AFTER,
   OVERLAYS_C_AFTER,
 } from "./scenario-responses.js";
+import {
+  SCENARIO_C_BEFORE_STEPS,
+  SCENARIO_C_AFTER_STEPS,
+  SCENARIO_C_BEFORE_MUTATIONS,
+  SCENARIO_C_AFTER_MUTATIONS,
+  LAYER_BOARDS,
+} from "./overall-flows.js";
 
-const baseMutationsBefore = [
-  {
-    step: 1,
-    label: `1  ${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
-    actions: [{ id: "l-user", style: "highlight" }, { id: "l-gw", style: "highlight" }],
-  },
-  {
-    step: 2,
-    label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}`,
-    actions: [{ id: "p-probe", style: "highlight" }],
-  },
-  { step: 3, label: `2  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · egress` },
-  {
-    step: 4,
-    label: `3  ${LAYER_NAMES.gw} → ${LAYER_NAMES.internet}`,
-    actions: [{ id: "l-egress", style: "highlight" }],
-  },
-  { step: 5, label: "3  Response returns" },
-  { step: 6, label: `2  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}` },
-  { step: 7, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · output` },
-  {
-    step: 8,
-    label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · risk`,
-    actions: [{ id: "p-expect", style: "highlight" }],
-  },
-];
-
-const baseMutationsAfter = [
-  {
-    step: 1,
-    label: `1  ${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
-    actions: [{ id: "l-user", style: "highlight" }, { id: "l-gw", style: "highlight" }],
-  },
-  {
-    step: 2,
-    label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}`,
-    actions: [{ id: "p-probe", style: "highlight" }],
-  },
-  { step: 3, label: `2  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}` },
-  {
-    step: 4,
-    label: "3  Denied at gateway",
-    actions: [{ id: "p-cmd", style: "highlight" }, { id: "l-egress", style: "highlight" }],
-  },
-  { step: 5, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · blocked` },
-  {
-    step: 6,
-    label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · denied`,
-    actions: [{ id: "p-expect", style: "highlight" }],
-  },
-];
-
-const mergedMutationsBefore = mergeResponseBodies(baseMutationsBefore, RESPONSES_C_BEFORE);
-const mergedMutationsAfter = mergeResponseBodies(baseMutationsAfter, RESPONSES_C_AFTER);
-
-const inspectorHeadersShared = [
-  { value: "Credentials     locked", style: "keep", id: "l-creds" },
-  {
-    value: `User path       ${LAYER_NAMES.controlUI} → GW`,
-    style: "keep",
-    id: "l-user",
-  },
-  {
-    value: `Gateway         ${LAYER_NAMES.controlUI} bridge`,
-    style: "keep",
-    id: "l-gw",
-  },
-  { value: "Filesystem      locked", style: "keep", id: "l-files" },
-  { value: "Guardrails      off", style: "keep", id: "l-rails" },
-  { value: "MLflow          on (background)", style: "keep", id: "l-mlflow" },
-];
+const mergedMutationsBefore = mergeResponseBodies(
+  SCENARIO_C_BEFORE_MUTATIONS,
+  RESPONSES_C_BEFORE
+);
+const mergedMutationsAfter = mergeResponseBodies(SCENARIO_C_AFTER_MUTATIONS, RESPONSES_C_AFTER);
 
 const diagram = {
   meta: {
@@ -186,159 +126,29 @@ const diagram = {
   flows: {
     before: {
       label: "Before · egress closed",
-      steps: [
-        {
-          text: `${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
-          mode: "arrow",
-          from: "user",
-          to: "gw",
-          color: COLORS.endUser,
-          num: 1,
-          ...ARROW.userToGw,
-        },
-        {
-          text: `${LAYER_NAMES.gw} forwards curl prompt to ${LAYER_NAMES.openClaw}`,
-          mode: "arrow",
-          from: "gw",
-          to: "oc",
-          color: COLORS.endUser,
-          num: 1,
-          ...ARROW.gwToOc,
-        },
-        {
-          text: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · egress attempt`,
-          mode: "arrow",
-          from: "oc",
-          to: "gw",
-          color: COLORS.platform,
-          num: 2,
-          ...ARROW.ocToGw,
-        },
-        {
-          text: `${LAYER_NAMES.gw} denies unauthorized egress`,
-          mode: "arrow",
-          from: "gw",
-          to: "internet",
-          color: COLORS.denied,
-          num: 3,
-          ...ARROW.gwToInternet,
-        },
-        {
-          text: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · blocked`,
-          mode: "arrow",
-          from: "oc",
-          to: "gw",
-          color: COLORS.secure,
-          num: 1,
-          ...ARROW.ocToGwReply,
-        },
-        {
-          text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · curl denied`,
-          mode: "arrow",
-          from: "gw",
-          to: "user",
-          color: COLORS.secure,
-          num: 1,
-          ...ARROW.gwToUser,
-        },
-      ],
+      steps: SCENARIO_C_BEFORE_STEPS,
     },
     after: {
       label: "After · google allowlisted",
-      steps: [
-        {
-          text: `${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
-          mode: "arrow",
-          from: "user",
-          to: "gw",
-          color: COLORS.endUser,
-          num: 1,
-          ...ARROW.userToGw,
-        },
-        {
-          text: "Same curl prompt — retry after Cambio 1",
-          mode: "arrow",
-          from: "gw",
-          to: "oc",
-          color: COLORS.endUser,
-          num: 1,
-          ...ARROW.gwToOc,
-        },
-        {
-          text: `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · egress`,
-          mode: "arrow",
-          from: "oc",
-          to: "gw",
-          color: COLORS.warn,
-          num: 2,
-          ...ARROW.ocToGw,
-        },
-        {
-          text: `${LAYER_NAMES.gw} forwards to ${LAYER_NAMES.internet} (google.com)`,
-          mode: "arrow",
-          from: "gw",
-          to: "internet",
-          color: COLORS.warn,
-          num: 3,
-          ...ARROW.gwToInternet,
-        },
-        {
-          text: `${LAYER_NAMES.internet} responds (HTTP 200)`,
-          mode: "arrow",
-          from: "internet",
-          to: "gw",
-          color: COLORS.warn,
-          num: 3,
-          ...ARROW.internetToGw,
-        },
-        {
-          text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · HTTP 200 visible`,
-          mode: "arrow",
-          from: "gw",
-          to: "user",
-          color: COLORS.warn,
-          num: 1,
-          ...ARROW.gwToUser,
-        },
-      ],
+      steps: SCENARIO_C_AFTER_STEPS,
     },
   },
   flowOrder: ["before", "after"],
   defaultFlow: "before",
   inspector: {
     initialStates: {
-      before: {
-        headers: [
-          ...inspectorHeadersShared.slice(0, 4),
-          { value: "Egress          closed (default deny)", style: "highlight", id: "l-egress" },
-          ...inspectorHeadersShared.slice(4),
-        ],
-        body: [
-          { value: "curl -sI https://google.com", style: "add", id: "p-probe" },
-          { value: "Expected: blocked (timeout / denied)", style: "add", id: "p-expect" },
-        ],
-      },
-      after: {
-        headers: [
-          ...inspectorHeadersShared.slice(0, 4),
-          { value: "Egress          open (google.com)", style: "highlight", id: "l-egress" },
-          ...inspectorHeadersShared.slice(4),
-        ],
-        body: [
-          { value: "Cambio 1: ./scripts/demo-allow-google-egress.sh", style: "add", id: "p-cmd" },
-          { value: "Same curl → HTTP 200 to google.com", style: "add", id: "p-expect" },
-        ],
-      },
+      before: LAYER_BOARDS["scenario-c-before"],
+      after: LAYER_BOARDS["scenario-c-after"],
     },
     mutations: {
-      before: baseMutationsBefore,
-      after: baseMutationsAfter,
+      before: SCENARIO_C_BEFORE_MUTATIONS,
+      after: SCENARIO_C_AFTER_MUTATIONS,
     },
   },
   legend: [
     { label: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`, color: COLORS.endUser },
     { label: `${LAYER_NAMES.openClaw} · egress`, color: COLORS.oc },
-    { label: "Open egress (risk)", color: COLORS.warn },
+    { label: "Selective egress allowed", color: COLORS.secure },
     { label: "Internet egress", color: COLORS.risk },
     { label: "Denied / blocked", color: COLORS.denied },
   ],
@@ -346,14 +156,14 @@ const diagram = {
 
 const phaseRest = {
   before: {
-    glow: ["internet"],
-    activeNodes: ["internet"],
-    nodeColors: { internet: COLORS.warn },
+    glow: ["gw"],
+    activeNodes: ["gw", "oc"],
+    nodeColors: { gw: COLORS.denied, internet: COLORS.dim },
   },
   after: {
-    glow: ["gw"],
-    activeNodes: ["gw"],
-    nodeColors: { gw: COLORS.denied, internet: COLORS.dim },
+    glow: ["internet"],
+    activeNodes: ["oc", "gw", "internet"],
+    nodeColors: { internet: COLORS.secure, gw: COLORS.secure },
   },
 };
 
@@ -368,13 +178,13 @@ try {
     responseComparison: {
       flows: {
         before: {
-          baseMutations: baseMutationsBefore,
+          baseMutations: SCENARIO_C_BEFORE_MUTATIONS,
           mergedMutations: mergedMutationsBefore,
           overlays: OVERLAYS_C_BEFORE,
           responseMap: RESPONSES_C_BEFORE,
         },
         after: {
-          baseMutations: baseMutationsAfter,
+          baseMutations: SCENARIO_C_AFTER_MUTATIONS,
           mergedMutations: mergedMutationsAfter,
           overlays: OVERLAYS_C_AFTER,
           responseMap: RESPONSES_C_AFTER,

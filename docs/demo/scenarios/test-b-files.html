@@ -61,64 +61,17 @@
 <canvas id="fs-canvas"></canvas>
 
 <script type="module">
-import {
-  COLORS,
-  LAYER_NAMES,
-  OVERALL_CANVAS,
-  pickNodes,
-  ARROW,
-  ARROW_SCENARIO_OC_GW,
-  mergeResponseBodies,
-  initScenarioDiagram,
-} from "./shared-scenario.js";
-import { RESPONSES_B, OVERLAYS_B } from "./scenario-responses.js";
+import { LAYER_NAMES, initScenarioDiagram } from "./shared-scenario.js";
+import { buildScenarioPageDiagram } from "./overall-diagram-config.js";
 
-const baseMutationsMain = [
-  {
-    step: 1,
-    label: `1  ${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
-    actions: [{ id: "l-user", style: "highlight" }, { id: "l-gw", style: "highlight" }],
-  },
-  { step: 2, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}` },
-  {
-    step: 3,
-    label: `2  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.landlock}`,
-    actions: [{ id: "p-probe", style: "highlight" }],
-  },
-  {
-    step: 4,
-    label: "2  Landlock denies /etc/shadow",
-    actions: [{ id: "l-files", style: "highlight" }],
-  },
-  { step: 5, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · blocked` },
-  { step: 6, label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · safe` },
-];
-
-const mergedMutationsMain = mergeResponseBodies(baseMutationsMain, RESPONSES_B);
-
-const diagram = {
-  meta: {
-    title: "Test B — Sensitive files",
-    branding: {
-      logo: "../shared/assets/redhat-logo.svg",
-      title: "Red Hat",
-    },
-  },
-  canvas: OVERALL_CANVAS,
-  nodes: pickNodes(["user", "openshell", "agentsb", "oc", "landlock", "gw"], {
-    gw: { sublabel: "Control UI bridge" },
-  }),
-  tooltips: {
+const diagram = buildScenarioPageDiagram("scenario-b", {
+  title: "Test B — Sensitive files",
+  tooltipOverrides: {
     user: {
-      title: LAYER_NAMES.endUser,
       description: `Auditor prompt via ${LAYER_NAMES.controlUI} — cat /etc/shadow reaches OpenClaw through the gateway.`,
     },
-    gw: {
-      title: LAYER_NAMES.gw,
-      description: "User entry to OpenClaw. No direct hop into the sandbox.",
-    },
     oc: {
-      title: "OpenClaw",
+      title: "OpenClaw — BYOA harness",
       description: "Shell tool runs: cat /etc/shadow",
     },
     landlock: {
@@ -126,116 +79,14 @@ const diagram = {
       description: "workspaceOnly — /etc/shadow and secrets blocked from minute zero.",
     },
   },
-  flows: {
-    main: {
-      label: "File probe",
-      steps: [
-        {
-          text: `${LAYER_NAMES.endUser} → ${LAYER_NAMES.gw}`,
-          mode: "arrow",
-          from: "user",
-          to: "gw",
-          color: COLORS.endUser,
-          num: 1,
-          ...ARROW.userToGw,
-        },
-        {
-          text: `${LAYER_NAMES.gw} forwards cat /etc/shadow prompt to ${LAYER_NAMES.openClaw}`,
-          mode: "arrow",
-          from: "gw",
-          to: "oc",
-          color: COLORS.endUser,
-          num: 1,
-          ...ARROW_SCENARIO_OC_GW.gwToOc,
-        },
-        {
-          text: `${LAYER_NAMES.openClaw} tries to read outside workspace`,
-          mode: "arrow",
-          from: "oc",
-          to: "landlock",
-          color: COLORS.landlock,
-          num: 2,
-          ...ARROW.ocToLandlock,
-        },
-        {
-          text: `${LAYER_NAMES.landlock} blocks /etc/shadow — no secret content`,
-          mode: "arrow",
-          from: "landlock",
-          to: "oc",
-          color: COLORS.denied,
-          num: 2,
-          ...ARROW.landlockToOc,
-        },
-        {
-          text: `${LAYER_NAMES.openClaw} answers through ${LAYER_NAMES.gw} — empty / blocked`,
-          mode: "arrow",
-          from: "oc",
-          to: "gw",
-          color: COLORS.secure,
-          num: 1,
-          ...ARROW_SCENARIO_OC_GW.ocToGwReply,
-        },
-        {
-          text: `${LAYER_NAMES.gw} returns to ${LAYER_NAMES.endUser} — no sensitive data`,
-          mode: "arrow",
-          from: "gw",
-          to: "user",
-          color: COLORS.secure,
-          num: 1,
-          ...ARROW.gwToUser,
-        },
-      ],
-    },
-  },
-  flowOrder: ["main"],
-  defaultFlow: "main",
-  inspector: {
-    initialState: {
-      headers: [
-        { value: "Credentials     locked", style: "keep", id: "l-creds" },
-        {
-          value: `User path       ${LAYER_NAMES.controlUI} → GW`,
-          style: "keep",
-          id: "l-user",
-        },
-        {
-          value: `Gateway         ${LAYER_NAMES.controlUI} bridge`,
-          style: "keep",
-          id: "l-gw",
-        },
-        { value: "Filesystem      locked  (Landlock)", style: "highlight", id: "l-files" },
-        { value: "Network egress  open (demo)", style: "keep", id: "l-egress" },
-        { value: "Guardrails      off", style: "keep", id: "l-rails" },
-        { value: "MLflow          on (background)", style: "keep", id: "l-mlflow" },
-      ],
-      body: [
-        { value: "Probe: cat /etc/shadow", style: "add", id: "p-probe" },
-      ],
-    },
-    mutations: {
-      main: baseMutationsMain,
-    },
-  },
-  legend: [
-    { label: `${LAYER_NAMES.endUser} · ${LAYER_NAMES.controlUI}`, color: COLORS.endUser },
-    { label: `${LAYER_NAMES.openClaw}`, color: COLORS.oc },
-    { label: "Landlock file policy", color: COLORS.landlock },
-    { label: "Blocked read", color: COLORS.denied },
-    { label: "Safe response", color: COLORS.secure },
-  ],
-};
+});
 
 try {
   await initScenarioDiagram(diagram, {
     headerTitle: "Test B — Sensitive files",
     activeNavId: "B",
-    responseComparison: {
-      flowId: "main",
-      baseMutations: baseMutationsMain,
-      mergedMutations: mergedMutationsMain,
-      overlays: OVERLAYS_B,
-      responseMap: RESPONSES_B,
-    },
+    phaseRest: diagram._phaseRest,
+    responseComparison: diagram._responseComparison,
   });
 } catch (e) {
   console.error(e);
