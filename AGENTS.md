@@ -99,7 +99,7 @@ This maps demo features to specific Red Hat products/components:
 
 Active live script (~9–10 min): [`docs/demo-narrative-v1.md`](docs/demo-narrative-v1.md) (Spanish) + [`docs/demo-script.md`](docs/demo-script.md) (English).
 
-1. **Context** (1–2 min): Architecture map via [`docs/demo/overall-demo-architecture.html`](docs/demo/overall-demo-architecture.html) — skill: `demo-presenter-panel`
+1. **Context** (1–2 min): Architecture map via v3 step **Overall Demo** ([`docs/demo/v3/live.html`](docs/demo/v3/live.html)) — skill: `demo-presenter-panel`
 2. **Tests A & B** (2–3 min): API key not in sandbox; `/etc/shadow` blocked — skill: `demo-present`
 3. **Test C + Change 1** (2 min): Unauthorized `curl` blocked, then allow google.com egress — skill: `demo-allow-google-egress`
 4. **Test D + Change 2** (2–3 min): Network recon on direct MaaS, then NeMo blocks — skill: `demo-enable-guardrails`
@@ -138,7 +138,7 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `demo-backstage-prep` | Pre-stage checklist before going live |
 | `demo-verify` | Validate demo initial state (`VERIFY_PROFILE=demo`) |
 | `demo-present` | Master live runbook (phases 0–5) |
-| `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v3/live.html` panel (v1/v2 deprecated) — log highlight rules: [demo-scenario-logs.md](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules) |
+| `demo-presenter-panel` | Serve `v3/live.html` live companion — log highlight rules: [demo-scenario-logs.md](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules) |
 | `demo-allow-google-egress` | Live Change 1 — allowlist google.com egress for Test C |
 | `demo-enable-guardrails` | Live Change 2 — switch inference to NeMo |
 | `demo-reset` | Reset between rehearsals (direct MaaS + MLflow-only egress policy) |

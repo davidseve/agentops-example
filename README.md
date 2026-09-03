@@ -31,7 +31,7 @@ This project demonstrates the **BYOA (Bring Your Own Agent)** approach from the 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The agent harness is interchangeable (BYOA); the platform stack works regardless of framework. Interactive architecture map: [overall-demo-architecture.html](docs/demo/overall-demo-architecture.html). Deep dive: [Agent Sandbox and OpenShell — How It Works](docs/AGENT-SANDBOX-AND-OPENSHELL.md).
+The agent harness is interchangeable (BYOA); the platform stack works regardless of framework. Interactive architecture map (live): [v3/live.html](docs/demo/v3/live.html) step **Overall Demo**. Deep dive: [Agent Sandbox and OpenShell — How It Works](docs/AGENT-SANDBOX-AND-OPENSHELL.md).
 
 ## Understanding the Platform
 

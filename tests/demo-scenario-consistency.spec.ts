@@ -2,7 +2,7 @@
  * Unit tests for demo scenario data consistency (no cluster required).
  *
  * Guards alignment between narrative-data.js, overall-flows.js, overall-response-maps.js,
- * and tests/demo-prompts.ts — see docs/demo-scenario-considerations.md.
+ * and tests/demo-prompts.ts — see docs/demo/README.md § Testing.
  */
 import { test, expect } from '@playwright/test';
 import {
