@@ -62,7 +62,10 @@ async function exportDiagram() {
   try {
     await waitForServer(PAGE_URL.split("#")[0]);
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({
+      headless: true,
+      args: ["--disable-gpu", "--disable-font-subpixel-positioning"],
+    });
     const page = await browser.newPage({
       viewport: VIEWPORT,
       deviceScaleFactor: 1,
@@ -73,6 +76,21 @@ async function exportDiagram() {
         localStorage.clear();
         localStorage.setItem(modeKey, "off");
         localStorage.setItem(visibleKey, "false");
+
+        // Deterministic fonts for cross-platform PNG bytes (CI vs local export).
+        const style = document.createElement("style");
+        style.textContent = `
+          :root {
+            --nr-mono: "DejaVu Sans Mono", "Liberation Mono", monospace !important;
+            --nr-display: "DejaVu Sans", "Liberation Sans", sans-serif !important;
+            --nr-body: "DejaVu Sans", "Liberation Sans", sans-serif !important;
+          }
+          * {
+            -webkit-font-smoothing: none !important;
+            font-smooth: never !important;
+          }
+        `;
+        document.documentElement.appendChild(style);
       },
       {
         modeKey: LAYERS_DOCK_MODE_KEY,
@@ -111,6 +129,7 @@ async function exportDiagram() {
 
     // Allow jumpTo to paint every hop, logos, and legend.
     await page.waitForTimeout(1200);
+    await page.evaluate(() => document.fonts?.ready);
 
     await diagram.screenshot({
       path: OUTPUT_PATH,

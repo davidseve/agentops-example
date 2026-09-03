@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TESTS_DIR="${ROOT_DIR}/tests"
-PLAYWRIGHT_IMAGE="${PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.62.1-noble}"
+EXPORT_CONTAINER_IMAGE="${EXPORT_CONTAINER_IMAGE:-ubuntu:24.04}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -17,12 +17,22 @@ require_cmd() {
 
 export_via_linux_container() {
   require_cmd podman
-  echo "==> Exporting via Podman (${PLAYWRIGHT_IMAGE}, linux/amd64 — matches CI)"
+  echo "==> Exporting via Podman (${EXPORT_CONTAINER_IMAGE}, linux/amd64 — matches CI)"
   podman run --platform linux/amd64 --rm \
     -v "${ROOT_DIR}:/work:Z" \
     -w /work \
-    "${PLAYWRIGHT_IMAGE}" \
-    bash -c "rm -rf tests/node_modules/playwright-core/.local-browsers && apt-get update -qq && apt-get install -y -qq python3 >/dev/null && ./scripts/export-readme-architecture.sh --native"
+    "${EXPORT_CONTAINER_IMAGE}" \
+    bash -lc "set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq curl ca-certificates python3 >/dev/null
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt-get install -y -qq nodejs >/dev/null
+rm -rf tests/node_modules/playwright-core/.local-browsers
+cd tests && npm ci
+PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install-deps chromium
+PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium
+cd .. && ./scripts/export-readme-architecture.sh --native"
 }
 
 export_native() {
