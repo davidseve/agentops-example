@@ -16,7 +16,7 @@ Live presentation aligned with [`docs/demo-narrative-v1.md`](../../docs/demo-nar
 
 | Phase | Min | Skill / action | Script |
 |---|---|---|---|
-| 0. Context | 1–2 | `demo-presenter-panel` | `overall-demo-architecture.html` |
+| 0. Context | 1–2 | `demo-presenter-panel` | `v3/live.html` step **Overall Demo** |
 | 1. Tests A–B | 2–3 | Prompts from `v3/live.html` | None |
 | 2. Test C + Change 1 | 2 | `demo-allow-google-egress` | `./scripts/demo-allow-google-egress.sh` |
 | 3. Test D + Change 2 | 2–3 | `demo-enable-guardrails` | `./scripts/demo-enable-guardrails.sh` |
@@ -27,7 +27,7 @@ Live presentation aligned with [`docs/demo-narrative-v1.md`](../../docs/demo-nar
 
 **Say:** BYOA — customer brings the agent. Red Hat provides sandbox, inference router, MLflow, Guardrails when enabled. MaaS and MLflow are already on; we will **open egress selectively** and **enable** NeMo live.
 
-**Show:** [`docs/demo/overall-demo-architecture.html`](../../docs/demo/overall-demo-architecture.html) — NeMo grey until Change 2.
+**Show:** [`docs/demo/v3/live.html`](../../docs/demo/v3/live.html) step **Overall Demo** — NeMo grey until Change 2.
 
 **Do not** jump straight to chat.
 

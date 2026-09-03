@@ -12,6 +12,7 @@
     "test:demo": "bash ../scripts/run-playwright-tests.sh demo-narrative.spec.ts",
     "test:log-rules": "npx playwright test observability-log-rules.spec.ts",
     "test:demo-unit": "npx playwright test observability-log-rules.spec.ts demo-scenario-consistency.spec.ts overall-in-doc-legend-layout.spec.ts ui-helpers.unit.spec.ts",
+    "export-architecture": "PLAYWRIGHT_BROWSERS_PATH=0 node export-architecture-diagram.mjs",
     "test:scenario-a": "bash ../scripts/run-playwright-tests.sh scenario-a-regression.spec.ts",
     "test:mlflow": "bash ../scripts/run-playwright-tests.sh mlflow-ui.spec.ts"
   },

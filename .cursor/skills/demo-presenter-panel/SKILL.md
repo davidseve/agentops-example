@@ -1,9 +1,9 @@
 ---
 name: demo-presenter-panel
 description: >-
-  Serve and open the FlowStory demo panels (overall-demo-architecture.html + v3 live companion)
-  for demo-narrative-v1. Use when starting the architecture walk-through,
-  opening demo panels, pantalla partida, or docs/demo presentation UI.
+  Serve and open the v3 live companion (docs/demo/v3/live.html) for demo-narrative-v1.
+  Use when starting the architecture walk-through, opening demo panels,
+  pantalla partida, or docs/demo presentation UI.
 ---
 
 # Demo Presenter Panel
@@ -49,19 +49,15 @@ Requires logged-in `oc` and `openshell` on the presenter's workstation. The prox
 
 | Page | URL | When |
 |---|---|---|
-| Launcher | `http://127.0.0.1:8765/demo/index.html` | Pick flow v1–v3 (v3 recommended) |
-| Overall demo architecture | `http://127.0.0.1:8765/demo/overall-demo-architecture.html` | Phase 0 + full flows A–D (security + inference + MLflow) |
-| Scenario A (credentials) | `http://127.0.0.1:8765/demo/scenarios/test-a-credentials.html` | Test A — security only (~8 hops) |
-| Scenario B (files) | `http://127.0.0.1:8765/demo/scenarios/test-b-files.html` | Test B — Landlock / `/etc/shadow` |
-| Scenario C (egress) | `http://127.0.0.1:8765/demo/scenarios/test-c-egress.html` | Test C — Before/After Change 1 (`1`/`2` or `b`/`a`) |
-| Scenario D (guardrails) | `http://127.0.0.1:8765/demo/scenarios/test-d-guardrails.html` | Test D — Before/After Change 2 |
-| Live companion (v3) | `http://127.0.0.1:8765/demo/v3/live.html` | **Recommended** — step 0 embeds overall map; A–D in-card FlowStory + observability + script runner |
-| Live companion (v1) | `http://127.0.0.1:8765/demo/v1/live.html` | Deprecated — split panel |
-| Live companion (v2) | `http://127.0.0.1:8765/demo/v2/live.html` | Deprecated — compact panel (superseded by v3) |
+| Live companion (v3) | `http://127.0.0.1:8765/demo/v3/live.html` | **On stage** — step 0 embeds overall map; A–D in-card FlowStory + observability + script runner |
+| Live companion (v4) | `http://127.0.0.1:8765/demo/v4/live.html` | Experimental compact canvas — not for live demos |
+| Launcher | `http://127.0.0.1:8765/demo/index.html` | Offline rehearsal; links to v3, v4, and deprecated flows |
+
+Deprecated (dev/bookmarks only): `overall-demo-architecture.html`, `scenarios/test-*.html`, `v1/live.html`, `v2/live.html`. See [`docs/demo/README.md`](../../docs/demo/README.md) § Deprecated.
 
 ## Cluster observability (v3)
 
-When using `demo-presenter-serve.sh`, `v3/live.html` includes a **Cluster observability** panel below the step card (shared implementation with deprecated v1):
+When using `demo-presenter-serve.sh`, `v3/live.html` includes a **Cluster observability** panel below the step card (shared modules under `v1/`):
 
 | Tab | Source |
 |---|---|
@@ -71,7 +67,7 @@ When using `demo-presenter-serve.sh`, `v3/live.html` includes a **Cluster observ
 | NeMo Guardrails | TrustyAI-managed pod (`nemo-guardrails-*`) |
 | MLflow | Recent traces from experiment `openclaw-tracing` |
 
-The panel polls `http://127.0.0.1:8766` and suggests a tab when you advance demo steps (A/B → OpenClaw, C → OpenShell, D → NeMo, MLflow step → MLflow). Per tab: **↓** pauses live updates (remembered per component).
+The panel polls `http://127.0.0.1:8766` and suggests a tab when you advance demo steps (A/B → OpenClaw, C → OpenShell, D → NeMo). Open the **MLflow** tab from the panel at any scenario step to review traces (no dedicated ML nav item in v3/v4). Per tab: **↓** pauses live updates (remembered per component).
 
 ## Split screen layout
 
@@ -80,19 +76,13 @@ The panel polls `http://127.0.0.1:8766` and suggests a tab when you advance demo
 | Primary | OpenClaw Control UI (`https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/`) |
 | Secondary | `v3/live.html` — copy prompts; embedded FlowStory maps update on step nav |
 
-Optional third monitor: `overall-demo-architecture.html` for Phase 0 only (v3 step 0 embeds this in-panel). Use `test-*` for security-only rehearsal.
-
-Deprecated split-screen companions: `v1/live.html`, `v2/live.html`.
-
-## Overall map controls
+## Embedded map controls (v3)
 
 | Control | Action |
 |---|---|
-| Dropdown (top of panel) | Select among 7 flows (baseline + A–D before/after) |
-| Nav A–D | Jump to scenario flow in-panel |
-| `0` / `a` / `b` / `c` / `d` | Keyboard shortcuts to flows |
-| `←` / `→` / clicker | Advance hops within active flow |
-| Layer board (fixed panel) | Updates per flow — not a dropdown |
+| Step nav | Overall Demo (step 0) + tests A–D (C/D before/after sub-steps) |
+| `←` / `→` / clicker | Advance hops within the embedded FlowStory canvas |
+| Layer board | Updates per step — egress closed/open, guardrails off/on |
 
 ## Layer board (v3 embedded maps)
 
@@ -104,8 +94,6 @@ Deprecated split-screen companions: `v1/live.html`, `v2/live.html`.
 | `demo-allow-google-egress` | Egress **open** (google.com allowlisted) |
 | Test D (before) | Guardrails **off** (grey) |
 | `demo-enable-guardrails` | Guardrails **on** (green) |
-
-Deprecated `v1/live.html` had a fixed sidebar layer board with the same state transitions.
 
 ## Related skills
 

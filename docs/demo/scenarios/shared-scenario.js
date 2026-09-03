@@ -27,9 +27,34 @@ const LAYERS_DOCK_MODES = ["right", "off", "top", "bottom"];
 const IN_DOC_LAYERS_MODES = ["bottom", "off", "top"];
 export const LAYERS_RIGHT_PANEL_WIDTH = 380;
 const V3_STEP_SCENARIO_CANVAS_LOCK_VAR = "--nr-v3-step-scenario-canvas-locked-height";
+const V4_STEP_SCENARIO_CANVAS_LOCK_VAR = "--nr-v4-step-scenario-canvas-locked-height";
 
 function isV3CanvasEmbedStep() {
   return document.body.classList.contains("nr-v3-step-canvas");
+}
+
+function isV4CanvasEmbedStep() {
+  return document.body.classList.contains("nr-v4-step-canvas");
+}
+
+function isCompanionCanvasEmbedStep() {
+  return isV3CanvasEmbedStep() || isV4CanvasEmbedStep();
+}
+
+function getCompanionCanvasLockVar() {
+  if (isV4CanvasEmbedStep()) return V4_STEP_SCENARIO_CANVAS_LOCK_VAR;
+  if (isV3CanvasEmbedStep()) return V3_STEP_SCENARIO_CANVAS_LOCK_VAR;
+  return null;
+}
+
+function getCompanionCanvasWrapSelector() {
+  if (isV4CanvasEmbedStep()) {
+    return ".nr-v4-scenario-mounted .fs-overall-canvas-wrap, .nr-v4-overall-mounted .fs-overall-canvas-wrap";
+  }
+  if (isV3CanvasEmbedStep()) {
+    return ".nr-v3-scenario-mounted .fs-overall-canvas-wrap, .nr-v3-overall-mounted .fs-overall-canvas-wrap";
+  }
+  return null;
 }
 
 /** @deprecated Use isV3CanvasEmbedStep */
@@ -37,20 +62,39 @@ function isV3ScenarioCanvasStep() {
   return isV3CanvasEmbedStep();
 }
 
-export function captureV3ScenarioCanvasHeight() {
-  if (!isV3CanvasEmbedStep()) return;
-  const wrap = document.querySelector(
-    ".nr-v3-scenario-mounted .fs-overall-canvas-wrap, .nr-v3-overall-mounted .fs-overall-canvas-wrap"
-  );
+function captureCompanionScenarioCanvasHeight() {
+  const lockVar = getCompanionCanvasLockVar();
+  const selector = getCompanionCanvasWrapSelector();
+  if (!lockVar || !selector) return;
+  const wrap = document.querySelector(selector);
   if (!wrap) return;
   const height = Math.round(wrap.getBoundingClientRect().height);
   if (height > 0) {
-    document.documentElement.style.setProperty(V3_STEP_SCENARIO_CANVAS_LOCK_VAR, `${height}px`);
+    document.documentElement.style.setProperty(lockVar, `${height}px`);
   }
 }
 
-export function releaseV3ScenarioCanvasHeight() {
+function releaseCompanionScenarioCanvasHeight() {
   document.documentElement.style.removeProperty(V3_STEP_SCENARIO_CANVAS_LOCK_VAR);
+  document.documentElement.style.removeProperty(V4_STEP_SCENARIO_CANVAS_LOCK_VAR);
+}
+
+export function captureV3ScenarioCanvasHeight() {
+  if (!isV3CanvasEmbedStep()) return;
+  captureCompanionScenarioCanvasHeight();
+}
+
+export function releaseV3ScenarioCanvasHeight() {
+  releaseCompanionScenarioCanvasHeight();
+}
+
+export function captureV4ScenarioCanvasHeight() {
+  if (!isV4CanvasEmbedStep()) return;
+  captureCompanionScenarioCanvasHeight();
+}
+
+export function releaseV4ScenarioCanvasHeight() {
+  releaseCompanionScenarioCanvasHeight();
 }
 
 /** @deprecated Use captureV3ScenarioCanvasHeight */
@@ -259,8 +303,8 @@ export function wireLayersDock(viz, options = {}) {
   }
 
   function apply() {
-    if (inDocumentEmbed && mode === "off" && isV3CanvasEmbedStep()) {
-      releaseV3ScenarioCanvasHeight();
+    if (inDocumentEmbed && mode === "off" && isCompanionCanvasEmbedStep()) {
+      releaseCompanionScenarioCanvasHeight();
     }
     document.body.classList.toggle("fs-layers-ui--off", mode === "off");
     document.body.classList.toggle("fs-layers-pos-right", !inDocumentEmbed && mode === "right");
@@ -295,9 +339,9 @@ export function wireLayersDock(viz, options = {}) {
       inDocumentEmbed &&
       prevMode === "off" &&
       mode !== "off" &&
-      isV3CanvasEmbedStep()
+      isCompanionCanvasEmbedStep()
     ) {
-      captureV3ScenarioCanvasHeight();
+      captureCompanionScenarioCanvasHeight();
     }
     apply();
   });
@@ -1018,7 +1062,7 @@ export function stripScenarioDiagramBodyClasses() {
   for (const cls of SCENARIO_BODY_LAYOUT_CLASSES) {
     document.body.classList.remove(cls);
   }
-  releaseV3ScenarioCanvasHeight();
+  releaseCompanionScenarioCanvasHeight();
 }
 
 /** Tear down window listeners and viz state from a prior initScenarioDiagram call. */

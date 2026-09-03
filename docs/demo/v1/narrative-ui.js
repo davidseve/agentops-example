@@ -689,10 +689,63 @@ export function buildStepSelectLabel(stepId, navGroups = NAV_GROUPS) {
   return `${prefix} — ${step.title}`;
 }
 
+function buildStepTitle(step) {
+  return step.id === "0" ? step.title : buildStepSelectLabel(step.id);
+}
+
+function renderDiagramWrapHtml(flowAnimEnabled) {
+  return `<div class="nr-diagram-wrap${flowAnimEnabled ? " nr-flows-on" : ""}">
+        <div class="nr-diagram-head">
+          <h3>Architecture (this step)</h3>
+          <label class="nr-flow-toggle">
+            <input type="checkbox" id="nr-flow-toggle"${flowAnimEnabled ? " checked" : ""}>
+            <span>Flow animation</span>
+          </label>
+        </div>
+        <div id="nr-diagram-target"></div>
+        ${renderFlowLegend(flowAnimEnabled)}
+      </div>`;
+}
+
+function renderInstructionsBlock(step, { bodyHtml, actionsHtml, expectFail, expectOk, title }) {
+  const copyQuick = step.prompt
+    ? `<button type="button" class="nr-copy-prompt-quick" id="nr-copy-prompt">Copy prompt</button>`
+    : "";
+
+  return `<details class="nr-instructions-panel">
+      <summary class="nr-instructions-summary">
+        <span class="nr-instructions-title">${escapeHtml(title)}</span>
+        ${copyQuick}
+      </summary>
+      <div class="nr-instructions-body">
+        <p class="nr-meta nr-meta--tight">${escapeHtml(step.timing)}</p>
+        <div class="nr-body">${bodyHtml}</div>
+        ${actionsHtml}
+        ${expectFail}
+        ${expectOk}
+      </div>
+    </details>`;
+}
+
+function renderClassicInstructionsBlock(step, { bodyHtml, actionsHtml, expectFail, expectOk, title }) {
+  return `<h2>${escapeHtml(title)}</h2>
+      <p class="nr-meta">${escapeHtml(step.timing)}</p>
+      <div class="nr-body">${bodyHtml}</div>
+      ${actionsHtml}
+      ${expectFail}
+      ${expectOk}`;
+}
+
 export function renderStepCard(
   container,
   step,
-  { flowAnimEnabled = true, onFlowAnimChange, dualActionsRow = false, navMode = "buttons" } = {}
+  {
+    flowAnimEnabled = true,
+    onFlowAnimChange,
+    dualActionsRow = false,
+    navMode = "buttons",
+    compactCanvasLayout = false,
+  } = {}
 ) {
   if (!container || !step) return;
 
@@ -718,26 +771,18 @@ export function renderStepCard(
     ? `<p class="nr-expect">Expected: <strong>${escapeHtml(step.expected)}</strong></p>`
     : "";
 
+  const title = buildStepTitle(step);
+  const diagramHtml = renderDiagramWrapHtml(flowAnimEnabled);
+  const instructionsOpts = { bodyHtml, actionsHtml, expectFail, expectOk, title };
+
+  const cardInner = compactCanvasLayout
+    ? `${diagramHtml}${renderInstructionsBlock(step, instructionsOpts)}`
+    : `${renderClassicInstructionsBlock(step, instructionsOpts)}${diagramHtml}`;
+
   container.innerHTML = `
     ${subNav}
-    <div class="nr-card">
-      <h2>${escapeHtml(step.id === "0" ? step.title : buildStepSelectLabel(step.id))}</h2>
-      <p class="nr-meta">${escapeHtml(step.timing)}</p>
-      <div class="nr-body">${bodyHtml}</div>
-      ${actionsHtml}
-      ${expectFail}
-      ${expectOk}
-      <div class="nr-diagram-wrap${flowAnimEnabled ? " nr-flows-on" : ""}">
-        <div class="nr-diagram-head">
-          <h3>Architecture (this step)</h3>
-          <label class="nr-flow-toggle">
-            <input type="checkbox" id="nr-flow-toggle"${flowAnimEnabled ? " checked" : ""}>
-            <span>Flow animation</span>
-          </label>
-        </div>
-        <div id="nr-diagram-target"></div>
-        ${renderFlowLegend(flowAnimEnabled)}
-      </div>
+    <div class="nr-card${compactCanvasLayout ? " nr-card--compact-canvas" : ""}">
+      ${cardInner}
     </div>`;
 
   renderDiagram(container.querySelector("#nr-diagram-target"), step.diagram, step.layers, flowAnimEnabled);
@@ -751,7 +796,9 @@ export function renderStepCard(
 
   const copyBtn = container.querySelector("#nr-copy-prompt");
   if (copyBtn && step.prompt) {
-    copyBtn.addEventListener("click", () => {
+    copyBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       navigator.clipboard.writeText(step.prompt).then(() => {
         copyBtn.textContent = "Copied";
         setTimeout(() => {
@@ -871,6 +918,7 @@ export function initNarrativeUI({
   dualActionsRow = false,
   navMode = "buttons",
   resolveYamlPanel = (step) => step.yamlPanel,
+  isCompactCanvasStep = () => false,
 }) {
   const navEl = navElOption ?? root.querySelector("[data-nr-nav]");
   const layerEl = root.querySelector("[data-nr-layers]");
@@ -909,6 +957,7 @@ export function initNarrativeUI({
       onFlowAnimChange: handleFlowAnimChange,
       dualActionsRow,
       navMode,
+      compactCanvasLayout: isCompactCanvasStep(stepId),
     });
     renderYamlPanel(yamlEl, resolveYamlPanel(step));
     if (navMode === "select") {

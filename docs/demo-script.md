@@ -3,7 +3,7 @@
 > English timed companion to the active narrative: [`demo-narrative-v1.md`](demo-narrative-v1.md).
 > Extended EvalHub/Garak variant: [`demo-narrative-v2.md`](demo-narrative-v2.md) (not presented live).
 >
-> UI: [`docs/demo/v3/live.html`](demo/v3/live.html) (live companion; v1/v2 deprecated) — phase 0 embedded in step 0 or [`overall-demo-architecture.html`](demo/overall-demo-architecture.html). Launcher: [`docs/demo/index.html`](demo/index.html).
+> UI: [`docs/demo/v3/live.html`](demo/v3/live.html) (live companion — step 0 embeds the architecture map). Launcher: [`docs/demo/index.html`](demo/index.html).
 
 ## Cursor skills (demo v1)
 
@@ -40,9 +40,8 @@ Open panels (preflight + UI + observability proxy):
 ./scripts/demo-presenter-serve.sh --check-only   # optional dry-run
 ./scripts/demo-presenter-serve.sh
 # http://127.0.0.1:8765/demo/index.html       — launcher
-# http://127.0.0.1:8765/demo/overall-demo-architecture.html  — architecture walk-through
-# http://127.0.0.1:8765/demo/v3/live.html     — live companion (+ cluster observability panel)
-# http://127.0.0.1:8765/demo/v1/live.html     — deprecated
+# http://127.0.0.1:8765/demo/v3/live.html     — live companion (step 0 = architecture map)
+# http://127.0.0.1:8765/demo/v4/live.html     — experimental compact canvas
 ```
 
 Log troubleshooting per scenario: [`docs/demo/demo-scenario-logs.md`](demo/demo-scenario-logs.md).
@@ -55,7 +54,7 @@ If ports are in use: `lsof -ti :8765 | xargs kill` (or `:8766`).
 
 **Say:** BYOA — the customer brings the agent (OpenClaw here). Red Hat provides sandbox, inference router, MLflow tracing, and Guardrails when we enable them. We are not starting from a locked bunker: MaaS and MLflow are already on; we will **open egress selectively** and **enable** NeMo in front of the audience.
 
-**Show:** `overall-demo-architecture.html` — Usuario → OpenClaw → `inference.local` → Gateway → NeMo (grey) → MaaS → MLflow.
+**Show:** `v3/live.html` step **Overall Demo** — Usuario → OpenClaw → `inference.local` → Gateway → NeMo (grey) → MaaS → MLflow.
 
 **Do not** jump straight to chat.
 

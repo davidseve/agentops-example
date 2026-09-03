@@ -1,21 +1,21 @@
 /**
- * v3 live companion UI — step 0 + scenario tabs: FlowStory in-card embed.
+ * v4 live companion UI — step 0 + scenario tabs: FlowStory in-card embed.
  */
 
 import { LIVE_COMPANION_EXCLUDED_NAV_IDS, NAV_GROUPS, STEP_IDS } from "../v1/narrative-data.js";
-import { initNarrativeUI } from "../v1/narrative-ui.js?v=56";
+import { initNarrativeUI } from "../v1/narrative-ui.js?v=57";
 import { destroyOverallEmbed, mountOverallEmbed } from "./overall-embed.js?v=48";
 import { destroyScenarioCanvas, mountScenarioCanvas } from "./scenario-canvas-embed.js?v=50";
 import {
-  captureV3ScenarioCanvasHeight,
-  releaseV3ScenarioCanvasHeight,
+  captureV4ScenarioCanvasHeight,
+  releaseV4ScenarioCanvasHeight,
 } from "../scenarios/shared-scenario.js?v=54";
 
-export const V3_NAV_GROUPS = NAV_GROUPS.filter((g) => !LIVE_COMPANION_EXCLUDED_NAV_IDS.has(g.id)).map(
+export const V4_NAV_GROUPS = NAV_GROUPS.filter((g) => !LIVE_COMPANION_EXCLUDED_NAV_IDS.has(g.id)).map(
   (g) => (g.id === "0" ? { ...g, label: "Overall Demo" } : g)
 );
 
-export const V3_STEP_IDS = STEP_IDS.filter((id) => !LIVE_COMPANION_EXCLUDED_NAV_IDS.has(id));
+export const V4_STEP_IDS = STEP_IDS.filter((id) => !LIVE_COMPANION_EXCLUDED_NAV_IDS.has(id));
 
 const SCENARIO_CANVAS_STEPS = new Set([
   "A",
@@ -41,26 +41,26 @@ function isTypingTarget(el) {
 
 function clearStepClasses(root) {
   root.classList.remove(
-    "nr-v3-step-0",
-    "nr-v3-step-A",
-    "nr-v3-step-B",
-    "nr-v3-step-C-before",
-    "nr-v3-step-C-after",
-    "nr-v3-step-D-before",
-    "nr-v3-step-D-after",
-    "nr-v3-step-canvas",
-    "nr-v3-step-scenario"
+    "nr-v4-step-0",
+    "nr-v4-step-A",
+    "nr-v4-step-B",
+    "nr-v4-step-C-before",
+    "nr-v4-step-C-after",
+    "nr-v4-step-D-before",
+    "nr-v4-step-D-after",
+    "nr-v4-step-canvas",
+    "nr-v4-step-scenario"
   );
   document.body.classList.remove(
-    "nr-v3-step-0",
-    "nr-v3-step-A",
-    "nr-v3-step-B",
-    "nr-v3-step-C-before",
-    "nr-v3-step-C-after",
-    "nr-v3-step-D-before",
-    "nr-v3-step-D-after",
-    "nr-v3-step-canvas",
-    "nr-v3-step-scenario"
+    "nr-v4-step-0",
+    "nr-v4-step-A",
+    "nr-v4-step-B",
+    "nr-v4-step-C-before",
+    "nr-v4-step-C-after",
+    "nr-v4-step-D-before",
+    "nr-v4-step-D-after",
+    "nr-v4-step-canvas",
+    "nr-v4-step-scenario"
   );
 }
 
@@ -70,25 +70,25 @@ function setStepClass(root, stepClass, extraClasses = []) {
   document.body.classList.add(stepClass, ...extraClasses);
 }
 
-function applyV3StepClass(root, stepId) {
+function applyV4StepClass(root, stepId) {
   currentStepId = stepId;
   if (stepId === "0") {
-    setStepClass(root, "nr-v3-step-0", ["nr-v3-step-canvas"]);
+    setStepClass(root, "nr-v4-step-0", ["nr-v4-step-canvas"]);
     return;
   }
   if (SCENARIO_CANVAS_STEPS.has(stepId)) {
-    setStepClass(root, `nr-v3-step-${stepId}`, ["nr-v3-step-canvas", "nr-v3-step-scenario"]);
+    setStepClass(root, `nr-v4-step-${stepId}`, ["nr-v4-step-canvas", "nr-v4-step-scenario"]);
     return;
   }
   clearStepClasses(root);
 }
 
 function isCanvasEmbedStepActive() {
-  return document.body.classList.contains("nr-v3-step-canvas");
+  return document.body.classList.contains("nr-v4-step-canvas");
 }
 
 function isScenarioCanvasStepActive() {
-  return document.body.classList.contains("nr-v3-step-scenario");
+  return document.body.classList.contains("nr-v4-step-scenario");
 }
 
 function unmountEmbeds(root) {
@@ -195,10 +195,97 @@ function isYamlPanelExpanded() {
   return Boolean(document.querySelector("[data-nr-yaml-panel]:not(.nr-yaml-collapsed)"));
 }
 
+function isInstructionsPanelExpanded() {
+  return Boolean(document.querySelector("[data-nr-instructions] .nr-instructions-panel[open]"));
+}
+
+function syncV4InstructionsCollapseButton(panel) {
+  const btn = panel?.querySelector(".nr-instructions-collapse");
+  if (!btn) return;
+  const expanded = Boolean(panel.open);
+  btn.textContent = expanded ? "▾" : "▸";
+  btn.title = expanded ? "Collapse panel" : "Expand panel";
+  btn.setAttribute("aria-label", btn.title);
+  btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+}
+
+function decorateV4InstructionsPanel(panel) {
+  if (!panel || panel.dataset.v4Decorated === "1") return;
+
+  const summary = panel.querySelector(".nr-instructions-summary");
+  if (!summary) return;
+
+  panel.dataset.v4Decorated = "1";
+
+  const actions = document.createElement("div");
+  actions.className = "nr-instructions-actions";
+
+  const collapseBtn = document.createElement("button");
+  collapseBtn.type = "button";
+  collapseBtn.className = "nr-instructions-collapse";
+  collapseBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    panel.open = !panel.open;
+  });
+
+  actions.append(collapseBtn);
+  summary.append(actions);
+  syncV4InstructionsCollapseButton(panel);
+
+  panel.addEventListener("toggle", () => {
+    syncV4InstructionsCollapseButton(panel);
+  });
+}
+
+function relocateInstructionsPanel(root, stepId) {
+  const slot = root?.querySelector("[data-nr-instructions]");
+  if (!slot) return;
+
+  slot.replaceChildren();
+
+  if (!CANVAS_EMBED_STEPS.has(stepId)) {
+    return;
+  }
+
+  const panel = root.querySelector("[data-nr-card] .nr-instructions-panel");
+  if (panel) {
+    decorateV4InstructionsPanel(panel);
+    slot.append(panel);
+  }
+}
+
+function wireV4PanelHeaderCollapse(root) {
+  root.addEventListener("click", (event) => {
+    if (!isScenarioCanvasStepActive()) return;
+    if (event.target.closest("button")) return;
+
+    const yamlHead = event.target.closest(".nr-yaml-head");
+    if (yamlHead) {
+      yamlHead.closest("[data-nr-yaml-panel]")?.querySelector(".nr-yaml-collapse")?.click();
+      return;
+    }
+
+    const obsHead = event.target.closest(".nr-obs-head");
+    if (obsHead) {
+      obsHead.closest("[data-nr-observability]")?.querySelector(".nr-obs-collapse")?.click();
+    }
+  });
+}
+
+function hasExpandedScrollPanels(root) {
+  return (
+    areLayersVisible() ||
+    isYamlPanelExpanded() ||
+    isInstructionsPanelExpanded() ||
+    isObservabilityExpanded(root)
+  );
+}
+
 function releaseScenarioCanvasLockIfIdle() {
   if (!isCanvasEmbedStepActive()) return;
-  if (areLayersVisible() || isYamlPanelExpanded()) return;
-  releaseV3ScenarioCanvasHeight();
+  if (areLayersVisible() || isYamlPanelExpanded() || isInstructionsPanelExpanded()) return;
+  releaseV4ScenarioCanvasHeight();
 }
 
 function scrollMainToTop(main) {
@@ -207,7 +294,7 @@ function scrollMainToTop(main) {
 
 function scrollLayersDockIntoView(main) {
   const dock = document.querySelector(
-    ".nr-v3-scenario-mounted .fs-layers-dock, .nr-v3-overall-mounted .fs-layers-dock"
+    ".nr-v4-scenario-mounted .fs-layers-dock, .nr-v4-overall-mounted .fs-layers-dock"
   );
   if (!dock || dock.hidden) {
     scrollMainToBottom(main);
@@ -255,9 +342,32 @@ function scrollYamlPanelIntoView(main) {
   });
 }
 
+function scrollInstructionsPanelIntoView(main) {
+  const panel = document.querySelector("[data-nr-instructions] .nr-instructions-panel[open]");
+  if (!panel) {
+    scrollMainToBottom(main);
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    const mainRect = main.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const overflow = panelRect.bottom - mainRect.bottom;
+    if (overflow > 0) {
+      main.scrollBy({ top: overflow + 8, behavior: "smooth" });
+      return;
+    }
+    if (panelRect.top < mainRect.top) {
+      main.scrollBy({ top: panelRect.top - mainRect.top - 8, behavior: "smooth" });
+    }
+  });
+}
+
 function wireScenarioCanvasExpandScroll(root) {
   const main = root?.querySelector(".nr-main");
   if (!main) return;
+
+  wireV4PanelHeaderCollapse(root);
 
   root.addEventListener("nr:obs-collapse-change", (event) => {
     if (!isScenarioCanvasStepActive()) return;
@@ -265,7 +375,11 @@ function wireScenarioCanvasExpandScroll(root) {
     const collapsed = Boolean(event.detail?.collapsed);
     if (collapsed) {
       releaseScenarioCanvasLockIfIdle();
-      scrollMainToTop(main);
+      if (hasExpandedScrollPanels(root)) {
+        scrollMainToBottom(main);
+      } else {
+        scrollMainToTop(main);
+      }
       return;
     }
 
@@ -274,7 +388,7 @@ function wireScenarioCanvasExpandScroll(root) {
 
   root.addEventListener("nr:yaml-before-expand", () => {
     if (!isScenarioCanvasStepActive()) return;
-    captureV3ScenarioCanvasHeight();
+    captureV4ScenarioCanvasHeight();
   });
 
   root.addEventListener("nr:yaml-collapse-change", (event) => {
@@ -283,7 +397,7 @@ function wireScenarioCanvasExpandScroll(root) {
     const collapsed = Boolean(event.detail?.collapsed);
     if (collapsed) {
       releaseScenarioCanvasLockIfIdle();
-      if (isObservabilityExpanded(root) || areLayersVisible()) {
+      if (hasExpandedScrollPanels(root)) {
         scrollMainToBottom(main);
       } else {
         scrollMainToTop(main);
@@ -296,13 +410,51 @@ function wireScenarioCanvasExpandScroll(root) {
     });
   });
 
+  document.addEventListener(
+    "click",
+    (event) => {
+      const summary = event.target.closest?.(".nr-instructions-summary");
+      if (!summary) return;
+      const panel = summary.closest(".nr-instructions-panel");
+      if (!panel || !isCanvasEmbedStepActive()) return;
+      if (!panel.open) {
+        captureV4ScenarioCanvasHeight();
+      }
+    },
+    true
+  );
+
+  document.addEventListener(
+    "toggle",
+    (event) => {
+      const panel = event.target;
+      if (!panel?.matches?.(".nr-instructions-panel")) return;
+      if (!isCanvasEmbedStepActive()) return;
+
+      if (panel.open) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => scrollInstructionsPanelIntoView(main));
+        });
+        return;
+      }
+
+      releaseScenarioCanvasLockIfIdle();
+      if (hasExpandedScrollPanels(root)) {
+        scrollMainToBottom(main);
+      } else {
+        scrollMainToTop(main);
+      }
+    },
+    true
+  );
+
   document.addEventListener("nr:layers-mode-change", (event) => {
     if (!isCanvasEmbedStepActive()) return;
 
     const visible = Boolean(event.detail?.visible);
     if (!visible) {
       releaseScenarioCanvasLockIfIdle();
-      if (isScenarioCanvasStepActive() && (isObservabilityExpanded(root) || isYamlPanelExpanded())) {
+      if (isScenarioCanvasStepActive() && hasExpandedScrollPanels(root)) {
         scrollMainToBottom(main);
       } else {
         scrollMainToTop(main);
@@ -316,17 +468,21 @@ function wireScenarioCanvasExpandScroll(root) {
   });
 }
 
-export function initNarrativeV3UI({ root, navEl }) {
+export function initNarrativeV4UI({ root, navEl }) {
   wireScenarioCanvasExpandScroll(root);
   return initNarrativeUI({
     root,
     navEl,
-    navGroups: V3_NAV_GROUPS,
-    stepIds: V3_STEP_IDS,
+    navGroups: V4_NAV_GROUPS,
+    stepIds: V4_STEP_IDS,
     dualActionsRow: true,
     navMode: "select",
-    resolveYamlPanel: (step) => step.yamlPanelV3 ?? step.yamlPanel,
-    onBeforeStepChange: (stepId) => applyV3StepClass(root, stepId),
-    onStepChange: (stepId) => handleStepChange(stepId, root),
+    resolveYamlPanel: (step) => step.yamlPanelV4 ?? step.yamlPanelV3 ?? step.yamlPanel,
+    isCompactCanvasStep: (stepId) => CANVAS_EMBED_STEPS.has(stepId),
+    onBeforeStepChange: (stepId) => applyV4StepClass(root, stepId),
+    onStepChange: (stepId) => {
+      relocateInstructionsPanel(root, stepId);
+      handleStepChange(stepId, root);
+    },
   });
 }

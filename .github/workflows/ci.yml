@@ -14,7 +14,7 @@ concurrency:
 jobs:
   static-and-unit:
     name: Static checks + unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +35,12 @@ jobs:
 
       - name: Validate demo UI (CSS + unit tests)
         run: ./scripts/validate-demo-ui.sh
+
+      - name: Export README architecture diagram
+        run: ./scripts/export-readme-architecture.sh
+
+      - name: Verify architecture diagram is up to date
+        run: git diff --exit-code assets/overall-architecture.png
 
       - name: Setup Helm
         uses: azure/setup-helm@v4

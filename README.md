@@ -8,6 +8,12 @@ This project demonstrates the **BYOA (Bring Your Own Agent)** approach from the 
 
 **Key message**: *Your Agent. Our Platform. Production-Ready.*
 
+## Architecture
+
+![AgentOps platform architecture](assets/overall-architecture.png)
+
+*Interactive map:* [v3/live.html](docs/demo/v3/live.html) step **Overall Demo** (`./scripts/demo-presenter-serve.sh`). Standalone reference: [`overall-demo-architecture.html`](docs/demo/overall-demo-architecture.html). Regenerate after diagram changes: `make export-architecture`.
+
 ## Platform Stack
 
 ```
@@ -31,7 +37,7 @@ This project demonstrates the **BYOA (Bring Your Own Agent)** approach from the 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The agent harness is interchangeable (BYOA); the platform stack works regardless of framework. Interactive architecture map: [overall-demo-architecture.html](docs/demo/overall-demo-architecture.html). Deep dive: [Agent Sandbox and OpenShell — How It Works](docs/AGENT-SANDBOX-AND-OPENSHELL.md).
+The agent harness is interchangeable (BYOA); the platform stack works regardless of framework. Interactive architecture map (live): [v3/live.html](docs/demo/v3/live.html) step **Overall Demo**. Deep dive: [Agent Sandbox and OpenShell — How It Works](docs/AGENT-SANDBOX-AND-OPENSHELL.md).
 
 ## Understanding the Platform
 
@@ -74,6 +80,7 @@ make deploy-all && make validate
 ├── Makefile               # Wrapper → deploy/Makefile (make demo, deploy-all, …)
 ├── AGENTS.md              # AI agent context (for Cursor/Claude)
 ├── README.md              # This file
+├── assets/                # README diagrams (overall-architecture.png — see make export-architecture)
 ├── config/                # OpenClaw template + OpenShell sandbox policies
 ├── docs/                  # Guides, ADRs, demo narrative, ROADMAP
 ├── deploy/                # Helm charts + deploy/Makefile
@@ -90,7 +97,7 @@ make deploy-all && make validate
 - [Demo script (live, ~9–10 min)](docs/demo-script.md) — Cursor skills in [AGENTS.md](AGENTS.md) § Demo v1
 - [Demo scenario logs runbook](docs/demo/demo-scenario-logs.md) — per-test log evidence and [Sandbox panel highlight rules](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules)
 - [Demo narrative v1 (Spanish)](docs/demo-narrative-v1.md)
-- [Demo presenter UI](docs/demo/README.md) — `v3/live.html` live companion + observability panel
+- [Demo presenter UI](docs/demo/README.md) — `v3/live.html` live companion + observability panel; optional `v4/live.html` (compact canvas)
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap and task tracking
 - [docs/cluster-bootstrap.md](docs/cluster-bootstrap.md) - RHOAI platform deploy, validate, and teardown on OpenShift
 - [docs/openshell-installation.md](docs/openshell-installation.md) - OpenShell install (local macOS/Linux + OpenShift Helm chart)

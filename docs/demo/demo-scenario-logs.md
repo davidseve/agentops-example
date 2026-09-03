@@ -2,7 +2,7 @@
 
 > Which logs to inspect and what to search for per component during Tests A–D (`demo-narrative-v1`).
 >
-> **Related:** [demo-script.md](../demo-script.md) (presenter script) · [demo-scenario-considerations.md](../demo-scenario-considerations.md) (what each test proves) · [demo/README.md](README.md) (UI launcher and observability panel)
+> **Related:** [demo-script.md](../demo-script.md) (presenter script) · [demo-narrative-v1.md](../demo-narrative-v1.md) (what each test proves) · [demo/README.md](README.md) (UI launcher and observability panel)
 
 This guide focuses on **runtime log evidence** — not FlowStory hop narration or layer-board state.
 
@@ -601,5 +601,4 @@ CLI check: `make -C deploy validate-traces` (skill: `mlflow-tracing-validate`).
 - Policies: [`config/openshell/default.yaml`](../../config/openshell/default.yaml) · [`config/openshell/google-egress.yaml`](../../config/openshell/google-egress.yaml)
 - Change scripts: [`scripts/demo-allow-google-egress.sh`](../../scripts/demo-allow-google-egress.sh) · [`scripts/demo-enable-guardrails.sh`](../../scripts/demo-enable-guardrails.sh)
 - Proxy: [`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py)
-- Scenario analysis: [`docs/demo-scenario-considerations.md`](../demo-scenario-considerations.md)
 - OCSF format: [OpenShell Sandbox Logging](https://docs.nvidia.com/openshell/observability/logging)
