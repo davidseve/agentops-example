@@ -43,6 +43,9 @@ export const NAV_GROUPS = [
   { id: "close", label: "Close", steps: ["close"] },
 ];
 
+/** Steps omitted from v3 live companion step nav (see narrative-v3-ui.js). */
+export const V3_EXCLUDED_NAV_IDS = new Set(["close", "ML"]);
+
 const LAYERS_INITIAL = {
   credentials: "locked",
   files: "locked",
@@ -202,6 +205,15 @@ export const YAML_PANELS = {
     defaultOpen: false,
     note: "openshell policy set applies the policy live — no sandbox rebuild.",
   },
+  egressAfterV3: {
+    title: "Baseline — OpenShell sandbox policy · network egress allowed",
+    fileBefore: "config/openshell/default.yaml",
+    fileAfter: "config/openshell/google-egress.yaml",
+    before: YAML_EGRESS_BEFORE,
+    after: YAML_EGRESS_ADDED,
+    defaultOpen: false,
+    note: "openshell policy set applies the policy live — no sandbox rebuild.",
+  },
   inferenceBaseline: {
     title: "Baseline — OpenShell inference route · direct MaaS (no NeMo)",
     snippet: INFERENCE_ROUTE_BASELINE_SNIPPET,
@@ -237,6 +249,8 @@ export const YAML_PANELS = {
       },
     ],
     defaultOpen: false,
+    note:
+      "`openshell inference set` rewires the backend live — no sandbox rebuild. OpenClaw config unchanged. NeMo self-check input/output rails are already deployed backstage (TrustyAI; deploy/helm/guardrails/) — the recon prompt is blocked because input policy forbids network scanning and port-scan scripts. Rails are not edited on stage; see docs/nemo-guardrails-installation.md.",
   },
 };
 
@@ -381,6 +395,7 @@ export const NARRATIVE = {
         ],
       },
       yamlPanel: YAML_PANELS.egress,
+      yamlPanelV3: YAML_PANELS.egressAfterV3,
       subStep: { group: "C", phase: "after", index: 1, total: 2 },
       observabilityFocus: "sandbox",
     },

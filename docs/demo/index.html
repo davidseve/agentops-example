@@ -14,33 +14,47 @@
 <div class="nr-v3-chrome">
   <header class="nr-header nr-v3-header">
     <h1>AgentOps — Demo UI launcher</h1>
-    <span class="nr-tagline">UI flows v1–v3 · narrative content in demo-narrative-v1.md</span>
-    <a href="./overall-demo-architecture.html">Architecture</a>
+    <span class="nr-tagline">Live companion v3 — use v3 for on-stage steps</span>
     <a href="./v3/live.html">Live companion (v3)</a>
   </header>
 </div>
 
 <div class="launcher">
   <h2>Start the server</h2>
-  <pre>cd docs/demo && python3 -m http.server 8765</pre>
+  <p class="nr-meta nr-meta--tight">
+  Pick one mode — do not run both (they bind the same port <code>8765</code>).
+  </p>
+  <p class="nr-meta nr-meta--tight">
+    <strong>Live demo</strong> — static UI on <code>:8765</code> plus observability proxy on <code>:8766</code> (preflight, live logs/traces, script runner). Includes <code>python3 -m http.server</code> internally:
+  </p>
+  <pre>./scripts/demo-presenter-serve.sh
+# http://127.0.0.1:8765/demo/v3/live.html</pre>
+  <p class="nr-meta nr-meta--tight">
+    <strong>Offline rehearsal</strong> — static UI only (no proxy, no cluster logs/traces, no script runner):
+  </p>
+  <pre>cd docs && python3 -m http.server 8765
+# http://127.0.0.1:8765/demo/index.html</pre>
 
-  <h2>Overall demo architecture (phase 0)</h2>
+  <h2>Overall demo architecture (phase 0) <span class="badge badge-deprecated">deprecated</span></h2>
+  <p class="nr-meta nr-meta--tight">
+    Standalone FlowStory pages superseded by <a href="./v3/live.html">v3/live.html</a> step <strong>Overall Demo</strong> (architecture map embedded in-card).
+  </p>
   <table class="launcher-table launcher-table--phase0">
     <tbody>
       <tr class="stub">
-        <td><a href="./layers-logos.html">layers-logos.html</a> <span class="badge badge-deprecated">deprecated</span></td>
-        <td>Superseded by <a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> — original FlowStory map with logos</td>
+        <td><a href="./layers-logos.html">layers-logos.html</a></td>
+        <td>Original FlowStory map with logos (legacy)</td>
       </tr>
       <tr class="stub">
-        <td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> <span class="badge badge-tbd">to be decided</span></td>
-        <td>FlowStory walk-through — 7 flows in dropdown; shortcuts <code>0</code>, <code>a</code>–<code>d</code></td>
+        <td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a></td>
+        <td>Full stack map with flow dropdown and keyboard shortcuts</td>
       </tr>
     </tbody>
   </table>
 
-  <h2>Scenario diagrams (tests A–D) <span class="badge badge-tbd">to be decided</span></h2>
+  <h2>Scenario diagrams (tests A–D) <span class="badge badge-deprecated">deprecated</span></h2>
   <p class="nr-meta nr-meta--tight">
-    Security-focused FlowStory pages (~6–8 hops). Use the overall map above for the complete stack path.
+    Standalone security-focused FlowStory pages (~6–8 hops). Superseded by <a href="./v3/live.html">v3/live.html</a> — tests A–D via step nav with in-card scenario canvas embeds.
   </p>
   <table>
     <thead>
@@ -60,12 +74,12 @@
       <tr class="stub">
         <td>C</td>
         <td><a href="./scenarios/test-c-egress.html">test-c-egress</a></td>
-        <td>curl google.com — Before / After toggle (<code>1</code>/<code>2</code> or <code>b</code>/<code>a</code>)</td>
+        <td>curl google.com — default egress deny, then Change 1 allowlist</td>
       </tr>
       <tr class="stub">
         <td>D</td>
         <td><a href="./scenarios/test-d-guardrails.html">test-d-guardrails</a></td>
-        <td>Network recon script — Before / After toggle</td>
+        <td>Network recon script — direct MaaS, then Change 2 NeMo</td>
       </tr>
     </tbody>
   </table>
@@ -76,23 +90,23 @@
       <tr><th>Flow</th><th>Panel</th><th>Description</th><th>Open</th></tr>
     </thead>
     <tbody>
+      <tr class="recommended">
+        <td>v3 <span class="badge">recommended</span></td>
+        <td><code>v3/live.html</code></td>
+        <td>Single secondary panel: <strong>Overall Demo</strong> step (architecture map), A–D with before/after sub-steps, copy-paste prompts, YAML diff on Change 1/2, cluster observability (logs + MLflow traces), script runner on C-after / D-after. Requires <code>demo-presenter-serve.sh</code> (proxy on :8766).</td>
+        <td><a href="./v3/live.html">Open</a></td>
+      </tr>
       <tr class="stub">
         <td>v1 <span class="badge badge-deprecated">deprecated</span></td>
         <td><code>v1/live.html</code></td>
-        <td>Split panel: narrative steps, matrix, mini-diagram, YAML diff</td>
+        <td>Split panel — superseded by v3</td>
         <td><a href="./v1/live.html">Open</a></td>
       </tr>
       <tr class="stub">
         <td>v2 <span class="badge badge-deprecated">deprecated</span></td>
         <td><code>v2/live.html</code></td>
-        <td>Compact panel — no sidebar, full-width narrative + observability</td>
+        <td>Compact panel with layout lab — superseded by v3</td>
         <td><a href="./v2/live.html">Open</a></td>
-      </tr>
-      <tr class="recommended">
-        <td>v3 <span class="badge">recommended</span></td>
-        <td><code>v3/live.html</code></td>
-        <td>Compact panel — step 0 embeds baseline overall map in-card (no flow dropdown); A–D via step nav</td>
-        <td><a href="./v3/live.html">Open</a></td>
       </tr>
     </tbody>
   </table>
@@ -101,36 +115,24 @@
   <table>
     <tbody>
       <tr><td>Primary</td><td>OpenClaw Control UI</td></tr>
-      <tr class="stub"><td>Secondary (split panel)</td><td><a href="./v1/live.html">v1/live.html</a> <span class="badge badge-deprecated">deprecated</span></td></tr>
-      <tr class="stub"><td>Secondary (compact)</td><td><a href="./v2/live.html">v2/live.html</a> <span class="badge badge-deprecated">deprecated</span></td></tr>
-      <tr class="recommended"><td>Secondary (recommended)</td><td><a href="./v3/live.html">v3/live.html</a> <span class="badge">recommended</span></td></tr>
-      <tr class="stub"><td>Phase 0 only</td><td><a href="./overall-demo-architecture.html">overall-demo-architecture.html</a> <span class="badge badge-tbd">to be decided</span></td></tr>
-      <tr class="stub"><td>Phase 0 (legacy)</td><td><a href="./layers-logos.html">layers-logos.html</a> <span class="badge badge-deprecated">deprecated</span></td></tr>
+      <tr class="recommended"><td>Secondary</td><td><a href="./v3/live.html">v3/live.html</a> <span class="badge">recommended</span></td></tr>
     </tbody>
   </table>
 
-  <h2>Keyboard shortcuts (v1)</h2>
+  <h2>Keyboard shortcuts (v3 live companion)</h2>
   <table>
     <tbody>
-      <tr><td><code>→</code> / <code>Page Down</code></td><td>Next narrative step</td></tr>
+      <tr><td><code>→</code> / <code>Page Down</code></td><td>Next step (C/D: before → after)</td></tr>
       <tr><td><code>←</code> / <code>Page Up</code></td><td>Previous step</td></tr>
-      <tr><td>Before / After</td><td>Sub-steps within C and D</td></tr>
+      <tr><td><code>←</code> / <code>→</code> (embedded map)</td><td>Advance hops within the FlowStory canvas</td></tr>
       <tr><td>URL hash</td><td><code>#step-C-before</code>, <code>#step-D-after</code>, etc.</td></tr>
     </tbody>
   </table>
 
-  <h2>Winner checklist</h2>
-  <ul class="checklist">
-    <li>Can the audience follow the map without extra verbal explanation?</li>
-    <li>Is copying prompts smooth alongside the Control UI?</li>
-    <li>Do layer states update automatically as you advance?</li>
-    <li>Does the YAML panel help during Change 1/2 without distracting?</li>
-    <li>Do arrow keys / clicker feel natural on stage?</li>
-  </ul>
-
   <p class="nr-meta nr-meta--footer">
-    Narrative: <a href="../demo-narrative-v1.md">demo-narrative-v1.md</a> ·
-    Script: <a href="../demo-script.md">demo-script.md</a>
+    On stage: use <a href="./v3/live.html">v3/live.html</a> (not raw markdown).
+    Backstage docs (open in editor): <code>docs/demo-script.md</code>,
+    <code>docs/demo-narrative-v1.md</code>, <code>docs/demo/README.md</code>.
   </p>
 </div>
 

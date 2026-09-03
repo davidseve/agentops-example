@@ -6,6 +6,13 @@
   padding: 24px;
 }
 
+/* narrative-v3.css hides .nr-meta in v3 pages; launcher intros must stay visible */
+body.nr-v3 .launcher .nr-meta {
+  display: block;
+  color: var(--nr-dim);
+  font-size: 13px;
+}
+
 .launcher h2 {
   font-family: var(--nr-display);
   font-size: 16px;

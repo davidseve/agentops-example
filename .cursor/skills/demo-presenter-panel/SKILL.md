@@ -33,7 +33,7 @@ lsof -ti :8765 | xargs kill   # or :8766
 Static UI only (no live logs/traces panel; skips cluster preflight):
 
 ```bash
-cd docs/demo && python3 -m http.server 8765
+cd docs && python3 -m http.server 8765
 ```
 
 Observability proxy only:
@@ -49,15 +49,15 @@ Requires logged-in `oc` and `openshell` on the presenter's workstation. The prox
 
 | Page | URL | When |
 |---|---|---|
-| Launcher | `http://127.0.0.1:8765/index.html` | Pick flow v1–v3 (v3 recommended) |
-| Overall demo architecture | `http://127.0.0.1:8765/overall-demo-architecture.html` | Phase 0 + full flows A–D (security + inference + MLflow) |
-| Scenario A (credentials) | `http://127.0.0.1:8765/scenarios/test-a-credentials.html` | Test A — security only (~8 hops) |
-| Scenario B (files) | `http://127.0.0.1:8765/scenarios/test-b-files.html` | Test B — Landlock / `/etc/shadow` |
-| Scenario C (egress) | `http://127.0.0.1:8765/scenarios/test-c-egress.html` | Test C — Before/After Change 1 (`1`/`2` or `b`/`a`) |
-| Scenario D (guardrails) | `http://127.0.0.1:8765/scenarios/test-d-guardrails.html` | Test D — Before/After Change 2 |
-| Live companion (v3) | `http://127.0.0.1:8765/v3/live.html` | **Recommended** — step 0 embeds overall map; A–D in-card FlowStory + observability + script runner |
-| Live companion (v1) | `http://127.0.0.1:8765/v1/live.html` | Deprecated — split panel |
-| Live companion (v2) | `http://127.0.0.1:8765/v2/live.html` | Deprecated — compact panel (superseded by v3) |
+| Launcher | `http://127.0.0.1:8765/demo/index.html` | Pick flow v1–v3 (v3 recommended) |
+| Overall demo architecture | `http://127.0.0.1:8765/demo/overall-demo-architecture.html` | Phase 0 + full flows A–D (security + inference + MLflow) |
+| Scenario A (credentials) | `http://127.0.0.1:8765/demo/scenarios/test-a-credentials.html` | Test A — security only (~8 hops) |
+| Scenario B (files) | `http://127.0.0.1:8765/demo/scenarios/test-b-files.html` | Test B — Landlock / `/etc/shadow` |
+| Scenario C (egress) | `http://127.0.0.1:8765/demo/scenarios/test-c-egress.html` | Test C — Before/After Change 1 (`1`/`2` or `b`/`a`) |
+| Scenario D (guardrails) | `http://127.0.0.1:8765/demo/scenarios/test-d-guardrails.html` | Test D — Before/After Change 2 |
+| Live companion (v3) | `http://127.0.0.1:8765/demo/v3/live.html` | **Recommended** — step 0 embeds overall map; A–D in-card FlowStory + observability + script runner |
+| Live companion (v1) | `http://127.0.0.1:8765/demo/v1/live.html` | Deprecated — split panel |
+| Live companion (v2) | `http://127.0.0.1:8765/demo/v2/live.html` | Deprecated — compact panel (superseded by v3) |
 
 ## Cluster observability (v3)
 
