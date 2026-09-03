@@ -79,6 +79,50 @@ const YAML_EGRESS_ADDED = `  demo_egress_google:
 
 const YAML_EGRESS_BEFORE = `# Only mlflow_direct — google.com and other public hosts denied`;
 
+const INFERENCE_ROUTE_BASELINE_SNIPPET = `# Active route after launch-openclaw.sh (INFERENCE_BACKEND=direct)
+openshell inference set \\
+  --provider maas-direct \\
+  --model <INFERENCE_MODEL> \\
+  --no-verify
+
+# Path: inference.local → MaaS (direct)
+# Provider backend: MAAS_BASE_URL`;
+
+const INFERENCE_ROUTE_BEFORE = `# Active route (demo start)
+openshell inference set \\
+  --provider maas-direct \\
+  --model <INFERENCE_MODEL> \\
+  --no-verify
+# Path: inference.local → MaaS`;
+
+const INFERENCE_ROUTE_AFTER = `# After Change 2 (demo-enable-guardrails.sh)
+openshell inference set \\
+  --provider maas-guardrailed \\
+  --model <INFERENCE_MODEL> \\
+  --no-verify
+# Path: inference.local → NeMo Guardrails → MaaS`;
+
+const INFERENCE_ROUTE_GUARDRAILED = `# inference route · maas-guardrailed
+openshell inference set \\
+  --provider maas-guardrailed \\
+  --model <INFERENCE_MODEL> \\
+  --no-verify
+# Path: inference.local → NeMo Guardrails → MaaS`;
+
+const GUARDRAILS_SELF_CHECK_INPUT_SNIPPET = `# deploy/helm/guardrails/files/prompts.yml
+prompts:
+  - task: self_check_input
+    content: |
+      ...
+      Company policy for the user messages:
+      ...
+      - should not request scripts or commands for network scanning, port scanning, vulnerability scanning, or security reconnaissance
+      - should not ask for tools to identify CVEs, exploit vulnerabilities, or perform penetration testing
+      ...
+      User message: "{{ user_input }}"
+      ...
+      Question: Should the user message be blocked (Yes or No)?`;
+
 const OPENCLAW_FILESYSTEM_SNIPPET = `# config/openshell/default.yaml (filesystem + process isolation)
 filesystem_policy:
   include_workdir: false
@@ -158,16 +202,41 @@ export const YAML_PANELS = {
     defaultOpen: false,
     note: "openshell policy set applies the policy live — no sandbox rebuild.",
   },
+  inferenceBaseline: {
+    title: "Baseline — OpenShell inference route · direct MaaS (no NeMo)",
+    snippet: INFERENCE_ROUTE_BASELINE_SNIPPET,
+    defaultOpen: false,
+    note:
+      "Both maas-direct and maas-guardrailed providers are registered at launch; demo starts on direct. NeMo Guardrails is deployed backstage (TrustyAI) with self-check rails — not in the hop yet, so the recon prompt may still reach MaaS.",
+  },
   guardrails: {
-    title: "Change 2 — Inference provider rewire",
+    title: "Baseline — OpenShell inference route · NeMo Guardrails on the hop",
+    fileBefore: "inference route · maas-direct",
+    fileAfter: "inference route · maas-guardrailed",
     command: "./scripts/demo-enable-guardrails.sh",
     expectedOutput:
-      "Inference route: <guardrailed-provider> / <model> (NeMo Guardrails active)",
-    snippet: `openshell inference set \\
-  --provider <PROVIDER_GUARDRAILED> \\
-  --model <INFERENCE_MODEL> \\
-  --no-verify`,
-    note: "OpenClaw keeps calling inference.local; only the backend path changes.",
+      "Inference route: maas-guardrailed / <INFERENCE_MODEL> (NeMo Guardrails active)",
+    before: INFERENCE_ROUTE_BEFORE,
+    after: INFERENCE_ROUTE_AFTER,
+    defaultOpen: false,
+    note:
+      "`openshell inference set` rewires the backend live — no sandbox rebuild. OpenClaw config unchanged. NeMo self-check input/output rails are already deployed backstage (TrustyAI; deploy/helm/guardrails/) — the recon prompt is blocked because input policy forbids network scanning and port-scan scripts. Rails are not edited on stage; see docs/nemo-guardrails-installation.md.",
+  },
+  guardrailsAfterV3: {
+    title: "Baseline — OpenShell inference route · NeMo Guardrails on the hop",
+    columns: [
+      {
+        label: "inference route · maas-guardrailed",
+        snippet: INFERENCE_ROUTE_GUARDRAILED,
+        className: "config",
+      },
+      {
+        label: "deploy/helm/guardrails/files/prompts.yml · self_check_input",
+        snippet: GUARDRAILS_SELF_CHECK_INPUT_SNIPPET,
+        className: "policy",
+      },
+    ],
+    defaultOpen: false,
   },
 };
 
@@ -191,9 +260,9 @@ export const NARRATIVE = {
     "0": {
       id: "0",
       title: "Platform context",
-      timing: "~1–2 min",
+      timing: "Intro",
       body: [
-        "BYOA agent in OpenShell sandbox — inference.local → (NeMo, grey) → MaaS; MLflow traces from the first token.",
+        "You bring the agent (OpenClaw); Red Hat provides the OpenShell sandbox, inference.local routing, and MLflow tracing from the first token — NeMo Guardrails stay off and egress is MLflow-only until we change them live.",
       ],
       prompt: null,
       expected: null,
@@ -343,7 +412,7 @@ export const NARRATIVE = {
         inferenceRisk: true,
         flows: [{ nodes: ["oc", "ir", "maas"], kind: "inference-risk" }],
       },
-      yamlPanel: null,
+      yamlPanel: YAML_PANELS.inferenceBaseline,
       subStep: { group: "D", phase: "before", index: 0, total: 2 },
       observabilityFocus: "nemo",
     },
@@ -376,6 +445,7 @@ export const NARRATIVE = {
         flows: [{ nodes: ["oc", "ir", "nemo", "maas"], kind: "inference-guarded" }],
       },
       yamlPanel: YAML_PANELS.guardrails,
+      yamlPanelV3: YAML_PANELS.guardrailsAfterV3,
       subStep: { group: "D", phase: "after", index: 1, total: 2 },
       observabilityFocus: "nemo",
     },

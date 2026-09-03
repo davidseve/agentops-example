@@ -5,9 +5,9 @@ Interactive FlowStory panel for the AgentOps talk. Not slides.
 ## Launcher
 
 ```bash
-# Preflight + static UI + local observability proxy (recommended for v1 live companion)
+# Preflight + static UI + local observability proxy (recommended for live companion)
 ./scripts/demo-presenter-serve.sh
-# http://127.0.0.1:8765/v1/live.html
+# http://127.0.0.1:8765/v3/live.html
 
 # Preflight only (oc/openshell/sandbox/gateway + port check)
 ./scripts/demo-presenter-serve.sh --check-only
@@ -40,14 +40,14 @@ docs/demo/
 │   ├── test-c-egress.html
 │   └── test-d-guardrails.html
 ├── shared/              # vendor/, assets/, demo.css, logo-renderer.js
-├── v1/                  # Split panel (recommended for rehearsal)
+├── v1/                  # Split panel (deprecated)
 │   ├── live.html
 │   ├── narrative.css
 │   ├── narrative-data.js
 │   ├── narrative-ui.js
 │   ├── observability-panel.js
 │   └── observability-log-rules.js
-├── v2/                  # Compact panel (no sidebar; script runner)
+├── v2/                  # Compact panel (deprecated)
 │   ├── live.html
 │   ├── narrative-v2.css
 │   ├── narrative-v2-ui.js
@@ -55,12 +55,11 @@ docs/demo/
 │   ├── baseline-diagram.js
 │   ├── baseline-embed.css
 │   └── baseline-layout-variants.css
-└── v3/                  # v2 fork — step 0 = full overall map; tab A = scenario canvas
+└── v3/                  # Recommended — step 0 = full overall map; tabs A–D = scenario canvas
     ├── live.html
     ├── narrative-v3.css
     ├── narrative-v3-ui.js
     ├── overall-embed.js
-    ├── overall-embed.css
     ├── scenario-canvas-embed.js
     ├── scenario-canvas-embed.css
     └── script-runner.js
@@ -95,9 +94,9 @@ Demo presentation logic is covered by **no-cluster** unit tests (also run in CI)
 
 Cursor: rule `.cursor/rules/demo-ui-tests.mdc`, skill `demo-ui-tests`. Pure layout constants (importable in Node tests): `scenarios/scenario-layout.js`.
 
-### v1 cluster observability
+### Cluster observability (v3 live companion)
 
-`v1/live.html` can show live cluster logs and MLflow traces when the local proxy is running:
+`v3/live.html` (and legacy `v1/live.html`) can show live cluster logs and MLflow traces when the local proxy is running:
 
 ```bash
 ./scripts/demo-presenter-serve.sh   # UI :8765 + proxy :8766
@@ -120,7 +119,7 @@ Tail line limits are tuned in `LOG_LINES_BY_COMPONENT` in [`v1/observability-pan
 - **Filter** — focus mode: show signal (green) and warn (amber) only (default ON); disable to see full log in gray
 - **↓** — pause/resume live updates (each tab remembers its own state)
 
-Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py). Requires `oc` and `openshell` on the presenter laptop; binds to `127.0.0.1` only. v2 script runner uses `POST /api/demo/run` (allowlisted actions only).
+Proxy implementation: [`scripts/demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py). Requires `oc` and `openshell` on the presenter laptop; binds to `127.0.0.1` only. v3 script runner uses `POST /api/demo/run` (allowlisted actions only).
 
 ## Phase 0 — Overall demo architecture
 
@@ -157,21 +156,20 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 
 | Flow | URL | When |
 |------|-----|------|
-| v1 | [v1/live.html](v1/live.html) | Recommended — narrative steps, matrix, diagram, YAML, cluster observability |
-| v2 | [v2/live.html](v2/live.html) | Compact variant — no sidebar; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); **Run against cluster** buttons on Change 1/2 (C-after, D-after); full-width narrative + observability on steps A–MLflow |
+| v3 | [v3/live.html](v3/live.html) | **Recommended** — tab **Overall Demo** embeds the baseline stack map in-card (layers dock, legend; flow chosen via step nav); tabs **A–D** (C/D sub-steps before/after) mount in-card FlowStory canvas maps (`scenario-a` … `scenario-d-after`) plus baseline/change YAML panels; **MLflow** and **close** keep narrative + observability + script runner |
+| v1 | [v1/live.html](v1/live.html) | Deprecated — split panel: narrative steps, matrix, diagram, YAML, cluster observability |
+| v2 | [v2/live.html](v2/live.html) | Deprecated — compact variant; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); superseded by v3 |
 
-**v2 script runner** — run allowlisted demo scripts from the panel (no terminal switch). Requires `./scripts/demo-presenter-serve.sh` so the observability proxy is up on `127.0.0.1:8766`. Binds localhost only; actions are allowlisted in [`demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py).
+**v3 script runner** — run allowlisted demo scripts from the panel (no terminal switch). Requires `./scripts/demo-presenter-serve.sh` so the observability proxy is up on `127.0.0.1:8766`. Binds localhost only; actions are allowlisted in [`demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py).
 
 | Step | Action | Script |
 |------|--------|--------|
 | C-after | Change 1 — allow google.com | `./scripts/demo-allow-google-egress.sh` |
 | D-after | Change 2 — enable NeMo | `./scripts/demo-enable-guardrails.sh` |
 
-Proxy endpoints: `GET /api/demo/actions`, `POST /api/demo/run` with body `{"action":"<id>"}`. On success the observability panel refreshes automatically. v1 panel still shows commands as text only.
+Proxy endpoints: `GET /api/demo/actions`, `POST /api/demo/run` with body `{"action":"<id>"}`. On success the observability panel refreshes automatically. Deprecated v1 panel still shows commands as text only.
 
-**v2 step 0 layout lab** (compare variants live): dropdown on step 0 or `?layout=<id>`. IDs: `current`, `stack`, `unified`, `legend-footer`, `legend-inset`. Persists in `localStorage` (`v2-baseline-layout`).
-
-| v3 | [v3/live.html](v3/live.html) | v2 fork — tab **Overall Demo** embeds the full [overall-demo-architecture.html](overall-demo-architecture.html) FlowStory experience (7 flows, layers dock, legend); tabs **A** and **B** replace the mini-diagram with canvas-only **A · Credentials** (`scenario-a`) and **B · Files** (`scenario-b`) maps plus baseline YAML panels; other steps C–MLflow keep v2 narrative + observability + script runner. v2 unchanged. |
+**v2 layout lab** (deprecated; v3 uses full overall embed on step 0): dropdown on step 0 or `?layout=<id>`. IDs: `current`, `stack`, `unified`, `legend-footer`, `legend-inset`. Persists in `localStorage` (`v2-baseline-layout`).
 
 Narrative (Spanish): [demo-narrativa-v1.md](../demo-narrativa-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
 

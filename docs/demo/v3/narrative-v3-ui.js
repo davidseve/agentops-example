@@ -1,15 +1,15 @@
 /**
- * v3 live companion UI — step 0: full overall map; scenario tabs: FlowStory in-card.
+ * v3 live companion UI — step 0 + scenario tabs: FlowStory in-card embed.
  */
 
 import { NAV_GROUPS, STEP_IDS } from "../v1/narrative-data.js";
-import { initNarrativeUI } from "../v1/narrative-ui.js?v=54";
-import { destroyOverallEmbed, mountOverallEmbed } from "./overall-embed.js?v=47";
-import { destroyScenarioCanvas, mountScenarioCanvas } from "./scenario-canvas-embed.js?v=49";
+import { initNarrativeUI } from "../v1/narrative-ui.js?v=56";
+import { destroyOverallEmbed, mountOverallEmbed } from "./overall-embed.js?v=48";
+import { destroyScenarioCanvas, mountScenarioCanvas } from "./scenario-canvas-embed.js?v=50";
 import {
   captureV3ScenarioCanvasHeight,
   releaseV3ScenarioCanvasHeight,
-} from "../scenarios/shared-scenario.js?v=53";
+} from "../scenarios/shared-scenario.js?v=54";
 
 export const V3_NAV_GROUPS = NAV_GROUPS.filter((g) => g.id !== "close").map((g) =>
   g.id === "0" ? { ...g, label: "Overall Demo" } : g
@@ -17,12 +17,19 @@ export const V3_NAV_GROUPS = NAV_GROUPS.filter((g) => g.id !== "close").map((g) 
 
 export const V3_STEP_IDS = STEP_IDS.filter((id) => id !== "close");
 
-const SCENARIO_CANVAS_STEPS = new Set(["A", "B", "C-before", "C-after"]);
-const FLOW_EMBED_STEPS = new Set(["0", ...SCENARIO_CANVAS_STEPS]);
+const SCENARIO_CANVAS_STEPS = new Set([
+  "A",
+  "B",
+  "C-before",
+  "C-after",
+  "D-before",
+  "D-after",
+]);
+const CANVAS_EMBED_STEPS = new Set(["0", ...SCENARIO_CANVAS_STEPS]);
+const FLOW_EMBED_STEPS = CANVAS_EMBED_STEPS;
 
 let keyHandler = null;
 let currentStepId = null;
-let stageEl = null;
 let scenarioMountRaf1 = 0;
 let scenarioMountRaf2 = 0;
 
@@ -32,17 +39,6 @@ function isTypingTarget(el) {
   return tag === "SELECT" || tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
 }
 
-function getStageEl() {
-  return stageEl ?? document.querySelector("[data-nr-stage]");
-}
-
-function clearStageContent() {
-  const stage = getStageEl();
-  if (!stage) return;
-  stage.classList.remove("nr-v3-overall-mounted", "nr-v3-scenario-mounted");
-  stage.innerHTML = "";
-}
-
 function clearStepClasses(root) {
   root.classList.remove(
     "nr-v3-step-0",
@@ -50,6 +46,9 @@ function clearStepClasses(root) {
     "nr-v3-step-B",
     "nr-v3-step-C-before",
     "nr-v3-step-C-after",
+    "nr-v3-step-D-before",
+    "nr-v3-step-D-after",
+    "nr-v3-step-canvas",
     "nr-v3-step-scenario"
   );
   document.body.classList.remove(
@@ -58,29 +57,34 @@ function clearStepClasses(root) {
     "nr-v3-step-B",
     "nr-v3-step-C-before",
     "nr-v3-step-C-after",
+    "nr-v3-step-D-before",
+    "nr-v3-step-D-after",
+    "nr-v3-step-canvas",
     "nr-v3-step-scenario"
   );
-  document.documentElement.classList.remove("nr-v3-step-0");
 }
 
 function setStepClass(root, stepClass, extraClasses = []) {
   clearStepClasses(root);
   root.classList.add(stepClass, ...extraClasses);
   document.body.classList.add(stepClass, ...extraClasses);
-  document.documentElement.classList.toggle("nr-v3-step-0", stepClass === "nr-v3-step-0");
 }
 
 function applyV3StepClass(root, stepId) {
   currentStepId = stepId;
   if (stepId === "0") {
-    setStepClass(root, "nr-v3-step-0");
+    setStepClass(root, "nr-v3-step-0", ["nr-v3-step-canvas"]);
     return;
   }
   if (SCENARIO_CANVAS_STEPS.has(stepId)) {
-    setStepClass(root, `nr-v3-step-${stepId}`, ["nr-v3-step-scenario"]);
+    setStepClass(root, `nr-v3-step-${stepId}`, ["nr-v3-step-canvas", "nr-v3-step-scenario"]);
     return;
   }
   clearStepClasses(root);
+}
+
+function isCanvasEmbedStepActive() {
+  return document.body.classList.contains("nr-v3-step-canvas");
 }
 
 function isScenarioCanvasStepActive() {
@@ -92,7 +96,6 @@ function unmountEmbeds(root) {
   clearStepClasses(root);
   destroyOverallEmbed();
   destroyScenarioCanvas();
-  clearStageContent();
 }
 
 function attachKeyHandler() {
@@ -140,7 +143,7 @@ function cancelScenarioMount() {
   }
 }
 
-function scheduleScenarioMount(root, stepId) {
+function scheduleCanvasMount(root, stepId) {
   cancelScenarioMount();
   scenarioMountRaf1 = requestAnimationFrame(() => {
     scenarioMountRaf1 = 0;
@@ -148,20 +151,12 @@ function scheduleScenarioMount(root, stepId) {
       scenarioMountRaf2 = 0;
       if (currentStepId !== stepId) return;
       const wrap = root.querySelector(".nr-diagram-wrap");
-      if (wrap?.isConnected) void mountScenarioCanvas(wrap, stepId);
-    });
-  });
-}
-
-function scheduleOverallMount() {
-  cancelScenarioMount();
-  scenarioMountRaf1 = requestAnimationFrame(() => {
-    scenarioMountRaf1 = 0;
-    scenarioMountRaf2 = requestAnimationFrame(() => {
-      scenarioMountRaf2 = 0;
-      if (currentStepId !== "0") return;
-      const stage = getStageEl();
-      if (stage) void mountOverallEmbed(stage);
+      if (!wrap?.isConnected) return;
+      if (stepId === "0") {
+        void mountOverallEmbed(wrap);
+      } else {
+        void mountScenarioCanvas(wrap, stepId);
+      }
     });
   });
 }
@@ -169,16 +164,16 @@ function scheduleOverallMount() {
 function handleStepChange(stepId, root) {
   if (stepId === "0") {
     destroyScenarioCanvas();
-    scheduleOverallMount();
+    root.querySelector(".nr-main")?.scrollTo?.({ top: 0 });
+    scheduleCanvasMount(root, "0");
     attachKeyHandler();
     return;
   }
 
   if (SCENARIO_CANVAS_STEPS.has(stepId)) {
     destroyOverallEmbed();
-    clearStageContent();
     root.querySelector(".nr-main")?.scrollTo?.({ top: 0 });
-    scheduleScenarioMount(root, stepId);
+    scheduleCanvasMount(root, stepId);
     attachKeyHandler();
     return;
   }
@@ -201,7 +196,7 @@ function isYamlPanelExpanded() {
 }
 
 function releaseScenarioCanvasLockIfIdle() {
-  if (!isScenarioCanvasStepActive()) return;
+  if (!isCanvasEmbedStepActive()) return;
   if (areLayersVisible() || isYamlPanelExpanded()) return;
   releaseV3ScenarioCanvasHeight();
 }
@@ -211,7 +206,9 @@ function scrollMainToTop(main) {
 }
 
 function scrollLayersDockIntoView(main) {
-  const dock = document.querySelector(".nr-v3-scenario-mounted .fs-layers-dock");
+  const dock = document.querySelector(
+    ".nr-v3-scenario-mounted .fs-layers-dock, .nr-v3-overall-mounted .fs-layers-dock"
+  );
   if (!dock || dock.hidden) {
     scrollMainToBottom(main);
     return;
@@ -300,12 +297,12 @@ function wireScenarioCanvasExpandScroll(root) {
   });
 
   document.addEventListener("nr:layers-mode-change", (event) => {
-    if (!isScenarioCanvasStepActive()) return;
+    if (!isCanvasEmbedStepActive()) return;
 
     const visible = Boolean(event.detail?.visible);
     if (!visible) {
       releaseScenarioCanvasLockIfIdle();
-      if (isObservabilityExpanded(root) || isYamlPanelExpanded()) {
+      if (isScenarioCanvasStepActive() && (isObservabilityExpanded(root) || isYamlPanelExpanded())) {
         scrollMainToBottom(main);
       } else {
         scrollMainToTop(main);
@@ -319,8 +316,7 @@ function wireScenarioCanvasExpandScroll(root) {
   });
 }
 
-export function initNarrativeV3UI({ root, navEl, stageEl: stageOption = null }) {
-  stageEl = stageOption ?? document.querySelector("[data-nr-stage]");
+export function initNarrativeV3UI({ root, navEl }) {
   wireScenarioCanvasExpandScroll(root);
   return initNarrativeUI({
     root,
@@ -329,6 +325,7 @@ export function initNarrativeV3UI({ root, navEl, stageEl: stageOption = null }) 
     stepIds: V3_STEP_IDS,
     dualActionsRow: true,
     navMode: "select",
+    resolveYamlPanel: (step) => step.yamlPanelV3 ?? step.yamlPanel,
     onBeforeStepChange: (stepId) => applyV3StepClass(root, stepId),
     onStepChange: (stepId) => handleStepChange(stepId, root),
   });

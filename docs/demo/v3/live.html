@@ -7,11 +7,10 @@
 <title>AgentOps — Live companion (v3)</title>
 <link rel="stylesheet" href="../shared/vendor/style.css">
 <link rel="stylesheet" href="../v1/narrative.css?v=53">
-<link rel="stylesheet" href="./narrative-v3.css?v=56">
+<link rel="stylesheet" href="./narrative-v3.css?v=58">
 <link rel="stylesheet" href="../shared/demo.css">
 <link rel="stylesheet" href="../overall-in-doc.css?v=53">
-<link rel="stylesheet" href="./overall-embed.css">
-<link rel="stylesheet" href="./scenario-canvas-embed.css?v=33">
+<link rel="stylesheet" href="./scenario-canvas-embed.css?v=34">
 </head>
 <body class="nr-page nr-v3">
 
@@ -20,14 +19,11 @@
     <h1>AgentOps — Live companion (v3)</h1>
     <span class="nr-tagline">Compact · Your Agent. Our Platform. Production-Ready.</span>
     <a href="../overall-demo-architecture.html">Architecture</a>
-    <a href="../v2/live.html">v2</a>
     <a href="../index.html">Launcher</a>
   </header>
 
   <nav class="nr-step-nav nr-v3-step-nav" data-nr-nav aria-label="Demo steps"></nav>
 </div>
-
-<div class="nr-v3-stage" data-nr-stage aria-label="Architecture diagram"></div>
 
 <div class="nr-layout nr-v3-shell" id="nr-root">
   <main class="nr-main">
@@ -38,15 +34,14 @@
 </div>
 
 <script type="module">
-import { initNarrativeV3UI } from "./narrative-v3-ui.js?v=57";
+import { initNarrativeV3UI } from "./narrative-v3-ui.js?v=60";
 import { initObservabilityPanel } from "../v1/observability-panel.js?v=27";
-import { initScriptRunner } from "./script-runner.js?v=27";
+import { initScriptRunner } from "./script-runner.js?v=28";
 
 const root = document.getElementById("nr-root");
 const navEl = document.querySelector("[data-nr-nav]");
-const stageEl = document.querySelector("[data-nr-stage]");
 const observability = initObservabilityPanel({ root, hiddenSteps: ["0"], defaultCollapsed: true });
-initNarrativeV3UI({ root, navEl, stageEl });
+initNarrativeV3UI({ root, navEl });
 initScriptRunner({ root, navEl, observability, skipSteps: ["0"] });
 </script>
 </body>

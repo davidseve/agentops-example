@@ -71,6 +71,16 @@ body.nr-v3 [data-nr-yaml] .nr-yaml-panel {
   margin-bottom: 0;
 }
 
+/* Baseline columns layout — neutral headers (not before/after warn/ok) */
+body.nr-v3 .nr-yaml-columns .nr-yaml-col h4 {
+  color: var(--nr-dim);
+}
+
+body.nr-v3 .nr-yaml-columns .nr-yaml-col--config h4,
+body.nr-v3 .nr-yaml-columns .nr-yaml-col--policy h4 {
+  color: var(--nr-text);
+}
+
 .nr-v3 .nr-meta {
   display: none;
 }
@@ -209,98 +219,22 @@ body.nr-v3.nr-v3-step-scenario .nr-dual-actions .nr-script-run {
   max-width: none;
 }
 
-.nr-v3-step-0 .nr-main {
-  padding-top: 8px;
-}
-
-.nr-v3-step-0 .nr-card {
-  padding: 8px 6px;
-  border: none;
-  background: transparent;
-}
-
-.nr-v3-step-0 .nr-card h2,
-.nr-v3-step-0 .nr-card > .nr-meta,
-.nr-v3-step-0 .nr-body {
+/* Step 0 — hide legacy mini-diagram chrome and observability (not used in phase 0) */
+body.nr-v3.nr-v3-step-0 .nr-diagram-wrap .nr-diagram-head,
+body.nr-v3.nr-v3-step-0 .nr-diagram-wrap #nr-diagram-target,
+body.nr-v3.nr-v3-step-0 .nr-diagram-wrap .nr-flow-legend {
   display: none;
 }
 
-.nr-v3-step-0 .nr-diagram-wrap .nr-diagram-head,
-.nr-v3-step-0 .nr-diagram-wrap #nr-diagram-target,
-.nr-v3-step-0 .nr-diagram-wrap .nr-flow-legend,
-.nr-v3-step-0 .nr-diagram-wrap {
+body.nr-v3.nr-v3-step-0 [data-nr-observability] {
   display: none;
 }
 
-.nr-v3-step-0 [data-nr-observability],
-.nr-v3-step-0 .nr-script-proxy-banner {
-  display: none;
-}
-
-/* Step 0 — overall map fills viewport below chrome */
-html.nr-v3-step-0,
-body.nr-v3.nr-v3-step-0 {
-  height: 100%;
-  min-height: 100dvh;
-}
-
-body.nr-v3.nr-v3-step-0 {
-  display: flex;
-  flex-direction: column;
-  max-height: 100dvh;
-  min-height: 0;
-  overflow: hidden !important;
-}
-
-body.nr-v3.nr-v3-step-0 #nr-root {
-  display: none;
-}
-
-body.nr-v3.nr-v3-step-0 .nr-v3-chrome {
-  flex: 0 0 auto;
-}
-
-body.nr-v3.nr-v3-step-0 .nr-v3-stage {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-body.nr-v3.nr-v3-step-0 .nr-v3-stage.nr-v3-overall-mounted {
-  padding-bottom: 0;
-}
-
-body.nr-v3.nr-v3-step-0 .fs-overall-in-doc-inner {
-  flex: 1 1 0;
-  min-height: 0;
-  gap: 4px;
-}
-
-body.nr-v3.nr-v3-step-0 .fs-overall-in-doc-inner > .fs-top-dock,
-body.nr-v3.nr-v3-step-0 .fs-overall-in-doc-inner > .fs-layers-dock {
-  flex: 0 0 auto;
-}
-
-body.nr-v3.nr-v3-step-0 .fs-overall-canvas-wrap {
-  flex: 1 1 0;
-  min-height: min(52vh, 520px);
-  align-items: flex-start;
-  justify-content: center;
-}
-
-body.nr-v3.nr-v3-step-0 .fs-overall-canvas-wrap #fs-canvas {
-  align-self: flex-start;
-  flex: 0 0 auto;
-}
-
-/* Scenario canvas steps (A, B, …) — no page scroll by default; only layers scroll; observability expands with main scroll */
-body.nr-v3.nr-v3-step-scenario {
-  --nr-v3-obs-collapsed-height: 4rem;
+/* Canvas embed steps (0, A–D) — no page scroll by default; layers scroll; observability on scenario tabs only */
+body.nr-v3.nr-v3-step-canvas {
   --nr-v3-step-scenario-layers-dock-height: 8.75rem;
-  --nr-v3-step-scenario-card-min-height: calc(
-    100dvh - var(--nr-v3-header-nav-height) - var(--nr-v3-obs-collapsed-height) - 3rem
+  --nr-v3-step-canvas-card-min-height: calc(
+    100dvh - var(--nr-v3-header-nav-height) - 3rem
   );
   display: flex;
   flex-direction: column;
@@ -309,11 +243,18 @@ body.nr-v3.nr-v3-step-scenario {
   overflow: hidden;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-v3-chrome {
+body.nr-v3.nr-v3-step-scenario {
+  --nr-v3-obs-collapsed-height: 4rem;
+  --nr-v3-step-canvas-card-min-height: calc(
+    100dvh - var(--nr-v3-header-nav-height) - var(--nr-v3-obs-collapsed-height) - 3rem
+  );
+}
+
+body.nr-v3.nr-v3-step-canvas .nr-v3-chrome {
   flex: 0 0 auto;
 }
 
-body.nr-v3.nr-v3-step-scenario #nr-root {
+body.nr-v3.nr-v3-step-canvas #nr-root {
   flex: 1 1 0;
   min-height: 0;
   display: flex !important;
@@ -321,7 +262,7 @@ body.nr-v3.nr-v3-step-scenario #nr-root {
   overflow: hidden;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-main {
+body.nr-v3.nr-v3-step-canvas .nr-main {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -333,7 +274,7 @@ body.nr-v3.nr-v3-step-scenario .nr-main {
 /* Expanded observability, visible layers, or expanded baseline YAML — main scrolls; diagram keeps height */
 body.nr-v3.nr-v3-step-scenario:has([data-nr-observability]:not(.nr-obs-collapsed)) .nr-main,
 body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed)) .nr-main,
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-main {
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-main {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -341,31 +282,32 @@ body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-main {
 
 body.nr-v3.nr-v3-step-scenario:has([data-nr-observability]:not(.nr-obs-collapsed)) .nr-main > [data-nr-card],
 body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed)) .nr-main > [data-nr-card],
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-main > [data-nr-card] {
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-main > [data-nr-card] {
   flex: 0 0 auto;
-  min-height: var(--nr-v3-step-scenario-card-min-height);
+  min-height: var(--nr-v3-step-canvas-card-min-height);
 }
 
 /* Layers visible — card grows; canvas keeps pre-expand height; page scrolls */
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-main > [data-nr-card] {
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-main > [data-nr-card] {
   min-height: calc(
-    var(--nr-v3-step-scenario-card-min-height) + var(--nr-v3-step-scenario-layers-dock-height) + 4px
+    var(--nr-v3-step-canvas-card-min-height) + var(--nr-v3-step-scenario-layers-dock-height) + 4px
   );
 }
 
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) [data-nr-card] > .nr-card {
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) [data-nr-card] > .nr-card {
   flex: 0 0 auto;
   min-height: auto;
   overflow: visible;
 }
 
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-diagram-wrap {
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-diagram-wrap {
   flex: 0 0 auto;
   min-height: auto;
   overflow: visible;
 }
 
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-in-doc-inner,
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-in-doc-inner,
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-v3-overall-mounted .fs-overall-in-doc-inner,
 body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
   .nr-v3-scenario-mounted
   .fs-overall-in-doc-inner {
@@ -375,7 +317,8 @@ body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
   overflow: visible;
 }
 
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-v3-overall-mounted .fs-overall-canvas-wrap,
 body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
   .nr-v3-scenario-mounted
   .fs-overall-canvas-wrap {
@@ -390,14 +333,15 @@ body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
 body.nr-v3.nr-v3-step-scenario:has([data-nr-observability]:not(.nr-obs-collapsed))
   .nr-v3-scenario-mounted
   .fs-overall-canvas-wrap,
-body.nr-v3.nr-v3-step-scenario:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-v3-scenario-mounted .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-canvas:not(.fs-layers-ui--off) .nr-v3-overall-mounted .fs-overall-canvas-wrap,
 body.nr-v3.nr-v3-step-scenario:has([data-nr-yaml-panel]:not(.nr-yaml-collapsed))
   .nr-v3-scenario-mounted
   .fs-overall-canvas-wrap {
   flex-shrink: 0;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-main > [data-nr-card] {
+body.nr-v3.nr-v3-step-canvas .nr-main > [data-nr-card] {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -405,7 +349,7 @@ body.nr-v3.nr-v3-step-scenario .nr-main > [data-nr-card] {
   overflow: hidden;
 }
 
-body.nr-v3.nr-v3-step-scenario [data-nr-card] > .nr-card {
+body.nr-v3.nr-v3-step-canvas [data-nr-card] > .nr-card {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -414,7 +358,7 @@ body.nr-v3.nr-v3-step-scenario [data-nr-card] > .nr-card {
   padding: 14px;
 }
 
-body.nr-v3.nr-v3-step-scenario [data-nr-card] > .nr-card > :not(.nr-diagram-wrap) {
+body.nr-v3.nr-v3-step-canvas [data-nr-card] > .nr-card > :not(.nr-diagram-wrap) {
   flex: 0 0 auto;
 }
 
@@ -488,14 +432,14 @@ body.nr-v3.nr-v3-step-scenario [data-nr-observability]:not(.nr-obs-collapsed) .n
   overflow-x: hidden;
 }
 
-/* Scenario canvas steps — FlowStory fills card remainder; layers fixed height + internal scroll */
-body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap .nr-diagram-head,
-body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap #nr-diagram-target,
-body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap .nr-flow-legend {
+/* Canvas embed steps — FlowStory fills card remainder; layers fixed height + internal scroll */
+body.nr-v3.nr-v3-step-canvas .nr-diagram-wrap .nr-diagram-head,
+body.nr-v3.nr-v3-step-canvas .nr-diagram-wrap #nr-diagram-target,
+body.nr-v3.nr-v3-step-canvas .nr-diagram-wrap .nr-flow-legend {
   display: none;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap {
+body.nr-v3.nr-v3-step-canvas .nr-diagram-wrap {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -503,13 +447,15 @@ body.nr-v3.nr-v3-step-scenario .nr-diagram-wrap {
   overflow: hidden;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted.nr-diagram-wrap {
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted.nr-diagram-wrap,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted.nr-diagram-wrap {
   padding: 0;
   border: none;
   background: transparent;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner {
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted .fs-overall-in-doc-inner,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted .fs-overall-in-doc-inner {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -518,11 +464,13 @@ body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner 
   overflow: hidden;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-top-dock {
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-top-dock,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted .fs-overall-in-doc-inner > .fs-top-dock {
   flex: 0 0 auto;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-canvas-wrap {
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted .fs-overall-canvas-wrap,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted .fs-overall-canvas-wrap {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
@@ -531,7 +479,8 @@ body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-canvas-wrap {
 }
 
 /* Baseline / layers dock — fixed height + internal scroll */
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-layers-dock {
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted .fs-overall-in-doc-inner > .fs-layers-dock,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted .fs-overall-in-doc-inner > .fs-layers-dock {
   flex: 0 0 auto;
   flex-shrink: 0;
   height: var(--nr-v3-step-scenario-layers-dock-height) !important;
@@ -543,30 +492,23 @@ body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-overall-in-doc-inner 
   margin-top: 4px;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-layers-stack {
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted .fs-layers-stack,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted .fs-layers-stack {
   height: auto;
   min-height: min-content;
   overflow: visible;
 }
 
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-layers-stack .fs-steps,
-body.nr-v3.nr-v3-step-scenario .nr-v3-scenario-mounted .fs-layers-stack .fs-inspector {
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted .fs-layers-stack .fs-steps,
+body.nr-v3.nr-v3-step-canvas .nr-v3-scenario-mounted .fs-layers-stack .fs-inspector,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted .fs-layers-stack .fs-steps,
+body.nr-v3.nr-v3-step-canvas .nr-v3-overall-mounted .fs-layers-stack .fs-inspector {
   flex: none;
   max-height: none;
   overflow: visible;
 }
 
 /* v3 script runner (cluster actions via local proxy) */
-
-.nr-script-proxy-banner {
-  margin: 0 0 10px;
-  padding: 8px 10px;
-  font-size: 12px;
-  color: #8a4b00;
-  background: #fff8e6;
-  border: 1px solid #f0d9a8;
-  border-radius: 6px;
-}
 
 .nr-script-run {
   margin: 10px 0 12px;

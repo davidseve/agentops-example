@@ -1,5 +1,5 @@
 /**
- * v3 step 0 — full overall-demo-architecture FlowStory embed below scenario nav.
+ * v3 step 0 — full overall-demo-architecture FlowStory embed in-card.
  */
 
 import { uninstallLogoRenderer } from "../shared/logo-renderer.js";
@@ -15,10 +15,9 @@ import {
 import {
   disposeScenarioDiagramSession,
   initScenarioDiagram,
-  OVERALL_FLOW_SHORTCUTS,
   stripScenarioDiagramBodyClasses,
-} from "../scenarios/shared-scenario.js?v=53";
-import { buildOverallInDocEmbedHtml, wireInDocOverlayClose } from "./in-doc-embed-html.js?v=53";
+} from "../scenarios/shared-scenario.js?v=54";
+import { buildOverallInDocEmbedHtml, wireInDocOverlayClose } from "./in-doc-embed-html.js?v=54";
 
 let activeContainer = null;
 let activeViz = null;
@@ -35,7 +34,7 @@ function withEmbedPaths(diagram) {
 }
 
 /**
- * @param {HTMLElement} container — [data-nr-stage] below scenario nav
+ * @param {HTMLElement} container — .nr-diagram-wrap inside the step card
  */
 export async function mountOverallEmbed(container) {
   if (!container) return;
@@ -53,10 +52,9 @@ export async function mountOverallEmbed(container) {
   try {
     const viz = await initScenarioDiagram(activeDiagram, {
       headerTitle: "AgentOps - Platform Architecture",
-      showFlowSelect: true,
+      showFlowSelect: false,
       defaultMode: "baseline",
       phaseRest: PHASE_REST,
-      flowShortcuts: OVERALL_FLOW_SHORTCUTS,
       inspectorBodyLabelDefault: "Scenario",
       responseComparison: buildOverallResponseComparison(),
       inDocumentEmbed: true,
