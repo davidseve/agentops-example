@@ -156,13 +156,13 @@ export const OVERALL_RESPONSES = {
   "scenario-c-before": mergeMaps(
     pickKeys(RESPONSES_C_BEFORE, [1, 2]),
     remapKeys(RESPONSES_INFERENCE_DIRECT, 2),
-    remapKeys(pickKeys(RESPONSES_C_BEFORE, [4, 7, 8]), 5),
-    remapKeys(RESPONSES_TRACE_GW, 13)
+    remapKeys(pickKeys(RESPONSES_C_BEFORE, [4, 5, 6]), 5),
+    remapKeys(RESPONSES_TRACE_GW, 11)
   ),
   "scenario-c-after": mergeMaps(
     pickKeys(RESPONSES_C_AFTER, [1]),
     remapKeys(RESPONSES_INFERENCE_DIRECT, 2),
-    remapKeys(pickKeys(RESPONSES_C_AFTER, [4, 6]), 5),
+    remapKeys(pickKeys(RESPONSES_C_AFTER, [4, 5, 6]), 5),
     remapKeys(RESPONSES_TRACE_GW, 11)
   ),
   "scenario-d-before": mergeMaps(
@@ -196,13 +196,13 @@ export const OVERALL_OVERLAYS = {
   "scenario-c-before": mergeMaps(
     pickKeys(OVERLAYS_C_BEFORE, [1, 2]),
     remapKeys(OVERLAYS_INFERENCE_DIRECT, 2),
-    remapKeys(pickKeys(OVERLAYS_C_BEFORE, [4, 7, 8]), 5),
-    remapKeys(OVERLAYS_TRACE_GW, 13)
+    remapKeys(pickKeys(OVERLAYS_C_BEFORE, [4, 5, 6]), 5),
+    remapKeys(OVERLAYS_TRACE_GW, 11)
   ),
   "scenario-c-after": mergeMaps(
     pickKeys(OVERLAYS_C_AFTER, [1]),
     remapKeys(OVERLAYS_INFERENCE_DIRECT, 2),
-    remapKeys(pickKeys(OVERLAYS_C_AFTER, [4, 6]), 5),
+    remapKeys(pickKeys(OVERLAYS_C_AFTER, [4, 5, 6]), 5),
     remapKeys(OVERLAYS_TRACE_GW, 11)
   ),
   "scenario-d-before": mergeMaps(

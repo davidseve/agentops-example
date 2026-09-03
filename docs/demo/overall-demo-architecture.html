@@ -7,6 +7,7 @@
 <title>AgentOps - Platform Architecture</title>
 <link rel="stylesheet" href="./shared/vendor/style.css">
 <link rel="stylesheet" href="./shared/demo.css">
+<link rel="stylesheet" href="./overall-in-doc.css">
 </head>
 <body>
 
@@ -60,10 +61,11 @@
   </div>
 </div>
 
-<div class="fs-legend fs-legend--diagram-inset" id="fs-legend"></div>
+<div class="fs-overall-canvas-wrap">
+  <div class="fs-legend fs-legend--diagram-inset" id="fs-legend"></div>
+  <canvas id="fs-canvas"></canvas>
+</div>
 <div class="fs-credit">Complete platform · <a href="./index.html">launcher</a></div>
-
-<canvas id="fs-canvas"></canvas>
 
 <script type="module">
 import { initScenarioDiagram, OVERALL_FLOW_SHORTCUTS } from './scenarios/shared-scenario.js';

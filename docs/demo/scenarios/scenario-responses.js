@@ -137,8 +137,8 @@ export const RESPONSES_C_BEFORE = {
   1: [`${LAYER_NAMES.controlUI} prompt — curl google.com`],
   2: ["GW forwards curl prompt to OpenClaw"],
   4: ["GW denies unauthorized egress", "default.yaml — MLflow only"],
-  7: ["OpenClaw reports blocked / timeout"],
-  8: ["Control UI shows no HTTP 200 — egress closed"],
+  5: ["OpenClaw reports blocked / timeout"],
+  6: ["Control UI shows no HTTP 200 — egress closed"],
 };
 
 export const OVERLAYS_C_BEFORE = {
@@ -172,7 +172,7 @@ export const OVERLAYS_C_BEFORE = {
     ],
     color: COLORS.denied,
   },
-  7: {
+  5: {
     node: "oc",
     title: `${LAYER_NAMES.openClaw} — curl blocked`,
     description: "No HTTP 200 — connection denied or timeout.",
@@ -182,7 +182,7 @@ export const OVERLAYS_C_BEFORE = {
     ],
     color: COLORS.denied,
   },
-  8: {
+  6: {
     node: "user",
     title: `${LAYER_NAMES.endUser} · egress closed`,
     description: "Chat shows curl failed — Cambio 1 will allowlist google.com.",
@@ -198,8 +198,8 @@ export const OVERLAYS_C_BEFORE = {
 export const RESPONSES_C_AFTER = {
   1: ["Same curl prompt after Cambio 1"],
   4: ["GW forwards curl to google.com", "demo_egress_google policy allows this host"],
-  7: ["OpenClaw reports HTTP 200 headers"],
-  8: ["Control UI shows curl output — selective egress open"],
+  5: ["Internet responds HTTP 200 — headers return through gateway"],
+  6: ["Control UI shows curl output — selective egress open"],
 };
 
 export const OVERLAYS_C_AFTER = {
@@ -221,17 +221,17 @@ export const OVERLAYS_C_AFTER = {
       ["Request", "curl -sI https://google.com"],
       ["Policy", "google-egress.yaml — google.com allowed"],
     ],
-    color: COLORS.warn,
+    color: COLORS.secure,
   },
-  7: {
-    node: "oc",
-    title: `${LAYER_NAMES.openClaw} — curl OK`,
-    description: "HTTP 200 response returns through the gateway.",
+  5: {
+    node: "internet",
+    title: `${LAYER_NAMES.internet} — HTTP 200`,
+    description: "google.com responds — selective allowlist after Cambio 1.",
     details: [
       ["Result", "HTTP/2 200 — headers visible"],
-      ["Egress", "selective allowlist"],
+      ["Policy", "demo_egress_google"],
     ],
-    color: COLORS.warn,
+    color: COLORS.secure,
   },
   6: {
     node: "user",
@@ -382,7 +382,7 @@ export function buildLayersResponseMaps() {
     14: RESPONSES_B[4],
     15: RESPONSES_C_BEFORE[2],
     16: RESPONSES_C_BEFORE[4],
-    18: RESPONSES_C_BEFORE[7],
+    18: RESPONSES_C_BEFORE[5],
     20: RESPONSES_A[8],
     ...RESPONSES_LAYERS_MLFLOW,
   };
@@ -399,7 +399,7 @@ export function buildLayersResponseMaps() {
     14: OVERLAYS_B[4],
     15: OVERLAYS_C_BEFORE[2],
     16: OVERLAYS_C_BEFORE[4],
-    18: OVERLAYS_C_BEFORE[7],
+    18: OVERLAYS_C_BEFORE[5],
     20: OVERLAYS_A[8],
     ...OVERLAYS_LAYERS_MLFLOW,
   };

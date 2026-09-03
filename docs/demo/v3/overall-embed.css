@@ -1,0 +1,32 @@
+/* v3 step 0 — overall map stage below scenario nav */
+
+body.nr-v3.nr-page:not(.nr-v3-step-0) {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body.nr-v3:not(.nr-v3-step-0) .nr-v3-stage {
+  display: none !important;
+}
+
+.nr-v3-stage {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nr-v3-stage.nr-v3-overall-mounted {
+  padding: 0 14px 8px;
+}
+
+body.nr-v3 .nr-v3-stage #fs-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+}
+
+body.nr-v3 .nr-v3-stage #fs-highlight-box:not([hidden]) {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+}

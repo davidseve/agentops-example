@@ -5,7 +5,7 @@
  * and tests/demo-prompts.ts — see docs/demo-scenario-considerations.md.
  */
 import { test, expect } from '@playwright/test';
-import { NARRATIVE, NAV_GROUPS, STEP_IDS } from '../docs/demo/v1/narrative-data.js';
+import { NARRATIVE, NAV_GROUPS, STEP_IDS, YAML_PANELS } from '../docs/demo/v1/narrative-data.js';
 import {
   SCENARIO_A_MUTATIONS,
   SCENARIO_A_STEPS,
@@ -22,10 +22,12 @@ import {
   buildOverallFlows,
   buildOverallMutations,
   buildOverallResponseComparison,
+  PHASE_REST,
 } from '../docs/demo/scenarios/overall-flows.js';
 import {
   ARROW_SCENARIO_OC_GW,
   ARROW_SCENARIO_OC_GW_C_AFTER,
+  COLORS,
 } from '../docs/demo/scenarios/scenario-layout.js';
 import {
   OVERALL_OVERLAYS,
@@ -96,6 +98,71 @@ test.describe('demo scenario consistency', () => {
     }
   });
 
+  test('PHASE_REST scenario-a highlights OpenClaw and inference.local at idle', () => {
+    expect(PHASE_REST['scenario-a'].activeNodes).toContain('oc');
+    expect(PHASE_REST['scenario-a'].activeNodes).toContain('ir');
+    expect(PHASE_REST['scenario-a'].nodeColors?.ir).toBeUndefined();
+  });
+
+  test('PHASE_REST scenario-b highlights OpenClaw and Landlock at idle', () => {
+    expect(PHASE_REST['scenario-b'].activeNodes).toContain('oc');
+    expect(PHASE_REST['scenario-b'].activeNodes).toContain('landlock');
+    expect(PHASE_REST['scenario-b'].nodeColors?.landlock).toBeUndefined();
+  });
+
+  test('PHASE_REST scenario-c-before highlights gateway enforcement at idle', () => {
+    expect(PHASE_REST['scenario-c-before'].glow).toContain('gw');
+    expect(PHASE_REST['scenario-c-before'].activeNodes).toContain('oc');
+    expect(PHASE_REST['scenario-c-before'].activeNodes).toContain('gw');
+    expect(PHASE_REST['scenario-c-before'].nodeColors?.gw).toBe(COLORS.denied);
+    expect(PHASE_REST['scenario-c-before'].nodeColors?.internet).toBe(COLORS.dim);
+  });
+
+  test('PHASE_REST scenario-c-after highlights internet egress at idle', () => {
+    expect(PHASE_REST['scenario-c-after'].glow).toContain('internet');
+    expect(PHASE_REST['scenario-c-after'].activeNodes).toContain('oc');
+    expect(PHASE_REST['scenario-c-after'].activeNodes).toContain('gw');
+    expect(PHASE_REST['scenario-c-after'].activeNodes).toContain('internet');
+    expect(PHASE_REST['scenario-c-after'].nodeColors?.internet).toBe(COLORS.secure);
+    expect(PHASE_REST['scenario-c-after'].nodeColors?.gw).toBe(COLORS.secure);
+  });
+
+  test('step B baseline yaml panel documents OpenShell filesystem policy', () => {
+    const stepB = NARRATIVE.steps.B;
+    expect(stepB.yamlPanel).toBe(YAML_PANELS.filesystem);
+    const snippet = stepB.yamlPanel?.snippet ?? '';
+    expect(snippet).toContain('filesystem_policy');
+    expect(snippet).toContain('landlock');
+    expect(snippet).toContain('process');
+    expect(snippet).toContain('run_as_user: sandbox');
+  });
+
+  test('step C-pre baseline yaml panel documents OpenShell network egress policy', () => {
+    const stepCPre = NARRATIVE.steps['C-pre'];
+    expect(stepCPre.yamlPanel).toBe(YAML_PANELS.egressBaseline);
+    expect(stepCPre.yamlPanel?.title).toContain('network egress (default deny)');
+    const snippet = stepCPre.yamlPanel?.snippet ?? '';
+    expect(snippet).toContain('network_policies');
+    expect(snippet).toContain('mlflow_direct');
+    expect(snippet).toContain('rhoai-mlflow-direct-traces');
+    expect(snippet).not.toMatch(/^\s*demo_egress_google:/m);
+  });
+
+  test('step C-post yaml panel documents egress allowed demo_egress_google policy', () => {
+    const stepCPost = NARRATIVE.steps['C-post'];
+    expect(stepCPost.yamlPanel).toBe(YAML_PANELS.egress);
+    expect(stepCPost.yamlPanel?.title).toContain('network egress allowed');
+    expect(stepCPost.yamlPanel?.fileBefore).toBe('config/openshell/default.yaml');
+    expect(stepCPost.yamlPanel?.fileAfter).toBe('config/openshell/google-egress.yaml');
+    expect(stepCPost.yamlPanel?.command).toBe('./scripts/demo-allow-google-egress.sh');
+    expect(stepCPost.yamlPanel?.defaultOpen).toBe(false);
+    const after = stepCPost.yamlPanel?.after ?? '';
+    expect(after).toContain('demo_egress_google');
+    expect(after).toContain('demo-permissive-google');
+    expect(after).toContain('google.com');
+    expect(after).toContain('/usr/bin/curl');
+  });
+
   test('scenario C after oc ↔ gw lanes are centered on OpenClaw', () => {
     const ocBottomOffsets = [
       ARROW_SCENARIO_OC_GW_C_AFTER.gwToOc.toXOff,
@@ -139,6 +206,15 @@ test.describe('demo scenario consistency', () => {
     const sum = ocBottomOffsets.reduce((a, b) => a + b, 0);
     expect(sum).toBe(0);
     expect(new Set(ocBottomOffsets).size).toBe(3);
+  });
+
+  test('scenario C before/after hops match runtime egress deny then allow', () => {
+    expect(SCENARIO_C_BEFORE_STEPS).toHaveLength(6);
+    expect(SCENARIO_C_AFTER_STEPS).toHaveLength(6);
+    expect(SCENARIO_C_BEFORE_STEPS[3].text).toContain('denies');
+    expect(SCENARIO_C_AFTER_STEPS[3].text).toContain('forwards');
+    expect(SCENARIO_C_AFTER_STEPS[3].color).toBe(COLORS.secure);
+    expect(SCENARIO_C_AFTER_STEPS[4].text).toContain('HTTP 200');
   });
 
   test('standalone security scenarios have matching steps and mutations', () => {

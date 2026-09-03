@@ -29,6 +29,7 @@
     </p>
     <nav class="nr-step-nav" data-nr-nav aria-label="Demo steps"></nav>
     <div data-nr-card></div>
+    <div data-nr-yaml></div>
     <div data-nr-observability></div>
   </main>
 </div>
@@ -39,7 +40,7 @@ import { initObservabilityPanel } from "../v1/observability-panel.js?v=25";
 import { initScriptRunner } from "./script-runner.js";
 
 const root = document.getElementById("nr-root");
-const observability = initObservabilityPanel({ root });
+const observability = initObservabilityPanel({ root, defaultCollapsed: true });
 initNarrativeV2UI({ root });
 initScriptRunner({ root, observability });
 </script>

@@ -1,0 +1,313 @@
+/* Shared in-document layout for overall architecture diagrams (standalone + v3 embed). */
+
+.fs-overall-in-doc-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock {
+  order: 0;
+  flex: 0 0 auto;
+}
+
+.fs-overall-in-doc-inner > .fs-overall-canvas-wrap {
+  order: 2;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.fs-overall-in-doc-inner > .fs-layers-dock {
+  order: 3;
+  flex: 0 0 auto;
+}
+
+/* In-doc layers layouts (Bottom → Off → Top cycle) */
+.fs-overall-in-doc-inner.fs-overall-layers-off > .fs-layers-dock {
+  display: none !important;
+}
+
+.fs-overall-in-doc-inner.fs-overall-layers-top > .fs-layers-dock {
+  order: 1;
+}
+
+.fs-overall-in-doc-inner.fs-overall-layers-top > .fs-overall-canvas-wrap {
+  order: 2;
+}
+
+.fs-overall-in-doc-inner.fs-overall-layers-bottom > .fs-layers-dock {
+  order: 3;
+}
+
+/* Flow bar — static row in document flow */
+.fs-overall-in-doc-inner > .fs-top-dock {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  z-index: auto !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock .fs-panel {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: auto;
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-bar button,
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-bar select {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--fs-border, #30363d);
+  border-radius: 6px;
+  background: var(--fs-bg, #0d1117);
+  color: var(--fs-text, #c9d1d9);
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-bar select {
+  flex: 1 1 auto;
+  min-width: 7.5rem;
+  max-width: none;
+  padding: 6px 8px;
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-nav #fs-prev,
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-nav #fs-next {
+  flex: 0 0 30px;
+  min-width: 30px;
+  padding: 6px 4px;
+}
+
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-nav #fs-play,
+.fs-overall-in-doc-inner > .fs-top-dock .fs-flow-nav .fs-start {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 6px 8px;
+}
+
+/* Canvas block — diagram + inset legend aligned to top (v3 + standalone in-doc) */
+.fs-overall-canvas-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--fs-border, #30363d);
+  border-radius: 8px;
+  background: #0d1117;
+  --fs-overall-legend-ratio: 1;
+}
+
+.fs-overall-canvas-wrap #fs-canvas {
+  display: block;
+  max-width: 100%;
+}
+
+.fs-overall-in-doc-inner .fs-legend--diagram-inset,
+.fs-overall-canvas-wrap .fs-legend--diagram-inset {
+  position: absolute !important;
+  top: 8px;
+  left: 8px;
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  width: calc(168px * var(--fs-overall-legend-ratio, 1));
+  max-width: calc(100% - 16px);
+  max-height: min(240px, calc(100% - 16px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: calc(6px * var(--fs-overall-legend-ratio, 1)) calc(8px * var(--fs-overall-legend-ratio, 1));
+  margin: 0;
+  font-size: calc(10px * var(--fs-overall-legend-ratio, 1));
+  line-height: 1.35;
+  pointer-events: auto;
+  background: rgba(13, 17, 23, 0.88);
+  border: 1px solid var(--fs-border, #30363d);
+  border-radius: calc(6px * var(--fs-overall-legend-ratio, 1));
+}
+
+.fs-overall-in-doc-inner .fs-legend--diagram-inset .fs-legend-title,
+.fs-overall-canvas-wrap .fs-legend--diagram-inset .fs-legend-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 0.35em;
+}
+
+.fs-overall-in-doc-inner .fs-legend--diagram-inset .fs-legend-item,
+.fs-overall-canvas-wrap .fs-legend--diagram-inset .fs-legend-item {
+  font-size: 1em;
+  margin: 0.15em 0;
+  gap: 0.45em;
+}
+
+.fs-overall-in-doc-inner .fs-legend--diagram-inset .fs-legend-dot,
+.fs-overall-canvas-wrap .fs-legend--diagram-inset .fs-legend-dot {
+  width: 0.8em;
+  height: 0.8em;
+  flex-shrink: 0;
+}
+
+/* Layers dock — same height model as demo.css fs-has-top-panel (content-driven --fs-layers-panel-height) */
+.fs-overall-in-doc-inner > .fs-layers-dock {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: calc(var(--fs-layers-panel-height, 10rem) * 2);
+  max-height: none;
+  z-index: auto !important;
+  border: 1px solid var(--fs-border, #30363d);
+  border-radius: 8px;
+  background: var(--fs-bg-surface, #161b22);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.fs-overall-in-doc-inner .fs-layers-stack {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fs-overall-in-doc-inner .fs-layers-stack .fs-steps,
+.fs-overall-in-doc-inner .fs-layers-stack .fs-inspector {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 50%;
+  overflow-x: hidden;
+}
+
+.fs-overall-in-doc-inner .fs-layers-stack .fs-steps {
+  padding: 8px 12px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--fs-border, #30363d);
+}
+
+.fs-overall-in-doc-inner .fs-layers-stack .fs-inspector {
+  padding: 8px 12px;
+  overflow-y: hidden;
+}
+
+body.fs-overall-in-doc.fs-layers-ui--off .fs-overall-in-doc-inner > .fs-layers-dock,
+body.nr-v3.fs-layers-ui--off .fs-overall-in-doc-inner > .fs-layers-dock {
+  display: none !important;
+}
+
+/* Standalone full-page shell */
+body.fs-overall-in-doc {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+}
+
+body.fs-overall-in-doc .fs-overall-in-doc-inner {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 52px 14px 12px;
+  box-sizing: border-box;
+}
+
+body.fs-overall-in-doc #fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+}
+
+body.fs-overall-in-doc #fs-highlight-box:not([hidden]) {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+}
+
+body.fs-overall-in-doc .fs-credit {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 100;
+}
+
+body.fs-overall-in-doc .fs-theme-toggle {
+  top: 10px;
+  right: 16px;
+}
+
+body.fs-overall-in-doc .fs-header-stack {
+  top: 10px;
+  z-index: 200;
+}
+
+/* Standalone presenter — canvas wrap tracks diagram area (legend inset like v3) */
+body.fs-has-top-panel .fs-overall-canvas-wrap {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  --fs-overall-legend-ratio: 1;
+}
+
+body.fs-has-top-panel.fs-layers-pos-right:not(.fs-layers-ui--off) .fs-overall-canvas-wrap {
+  right: var(--fs-layers-right-width, 380px);
+}
+
+body.fs-has-top-panel .fs-overall-canvas-wrap #fs-canvas,
+body.fs-has-top-panel .fs-overall-canvas-wrap .fs-legend--diagram-inset {
+  pointer-events: auto;
+}
+
+body.fs-has-top-panel .fs-overall-canvas-wrap .fs-legend--diagram-inset {
+  position: absolute !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: calc(168px * var(--fs-overall-legend-ratio, 1));
+  max-width: calc(100% - 16px);
+}

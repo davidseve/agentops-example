@@ -93,15 +93,20 @@ export function initObservabilityPanel({
   mount,
   proxyUrl = DEFAULT_PROXY_URL,
   pollMs = POLL_MS,
+  /** Step ids (e.g. "0") where the panel is hidden and polling is paused. */
+  hiddenSteps = [],
+  /** Start with body collapsed (v2/v3 compact companions). */
+  defaultCollapsed = false,
 } = {}) {
   const host = mount ?? root?.querySelector("[data-nr-observability]");
   if (!host) return null;
 
+  const hiddenStepIds = new Set(hiddenSteps);
   let components = [];
   let activeId = "openclaw";
   let activeStepId = null;
   let hiddenTabIds = new Set();
-  let collapsed = false;
+  let collapsed = defaultCollapsed;
   let pollTimer = null;
   let refreshInFlight = false;
   let mlflowBaseUrl = "";
@@ -147,6 +152,12 @@ export function initObservabilityPanel({
   const clearBtn = host.querySelector(".nr-obs-clear");
   const refreshBtn = host.querySelector(".nr-obs-refresh");
   const collapseBtn = host.querySelector(".nr-obs-collapse");
+
+  if (defaultCollapsed) {
+    host.classList.add("nr-obs-collapsed");
+    collapseBtn.textContent = "▸";
+    collapseBtn.title = "Expand panel";
+  }
 
   function getState(id = activeId) {
     if (!stateByComponent.has(id)) {
@@ -645,6 +656,20 @@ export function initObservabilityPanel({
     if (pollTimer) startPolling();
   }
 
+  function isPanelHidden() {
+    return activeStepId != null && hiddenStepIds.has(activeStepId);
+  }
+
+  function syncPanelVisibility() {
+    const hide = isPanelHidden();
+    host.hidden = hide;
+    if (hide) {
+      stopPolling();
+    } else if (!document.hidden) {
+      startPolling();
+    }
+  }
+
   filterBtn.addEventListener("click", () => {
     const state = getState(activeId);
     const next = !state.hideNoise;
@@ -691,10 +716,19 @@ export function initObservabilityPanel({
     collapseBtn.textContent = collapsed ? "▸" : "▾";
     collapseBtn.title = collapsed ? "Expand panel" : "Collapse panel";
     if (!collapsed && isFollowScroll(activeId)) scrollToEnd();
+    host.dispatchEvent(
+      new CustomEvent("nr:obs-collapse-change", {
+        bubbles: true,
+        detail: { collapsed },
+      })
+    );
   });
 
   root?.addEventListener("nr:step-change", (event) => {
     activeStepId = event.detail?.stepId ?? null;
+    syncPanelVisibility();
+    if (isPanelHidden()) return;
+
     const focus = event.detail?.observabilityFocus ?? null;
     const hidden = event.detail?.observabilityHidden ?? [];
     applyStepObservability({ focus, hidden });
@@ -708,7 +742,7 @@ export function initObservabilityPanel({
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       stopPolling();
-    } else {
+    } else if (!isPanelHidden()) {
       refreshActive({ updateView: isFollowScroll(activeId) });
       startPolling();
     }
@@ -722,7 +756,9 @@ export function initObservabilityPanel({
     syncClearButton();
     updateHintsBar();
     await refreshActive({ updateView: true });
-    startPolling();
+    if (!isPanelHidden()) {
+      startPolling();
+    }
   })();
 
   return {
