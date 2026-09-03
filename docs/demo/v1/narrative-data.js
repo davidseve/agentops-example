@@ -43,8 +43,8 @@ export const NAV_GROUPS = [
   { id: "close", label: "Close", steps: ["close"] },
 ];
 
-/** Steps omitted from v3 live companion step nav (see narrative-v3-ui.js). */
-export const V3_EXCLUDED_NAV_IDS = new Set(["close", "ML"]);
+/** Steps omitted from v3/v4 live companion step nav (see narrative-v3-ui.js, narrative-v4-ui.js). */
+export const LIVE_COMPANION_EXCLUDED_NAV_IDS = new Set(["close", "ML"]);
 
 const LAYERS_INITIAL = {
   credentials: "locked",
@@ -205,7 +205,7 @@ export const YAML_PANELS = {
     defaultOpen: false,
     note: "openshell policy set applies the policy live — no sandbox rebuild.",
   },
-  egressAfterV3: {
+  egressAfterV4: {
     title: "Baseline — OpenShell sandbox policy · network egress allowed",
     fileBefore: "config/openshell/default.yaml",
     fileAfter: "config/openshell/google-egress.yaml",
@@ -235,6 +235,22 @@ export const YAML_PANELS = {
       "`openshell inference set` rewires the backend live — no sandbox rebuild. OpenClaw config unchanged. NeMo self-check input/output rails are already deployed backstage (TrustyAI; deploy/helm/guardrails/) — the recon prompt is blocked because input policy forbids network scanning and port-scan scripts. Rails are not edited on stage; see docs/nemo-guardrails-installation.md.",
   },
   guardrailsAfterV3: {
+    title: "Baseline — OpenShell inference route · NeMo Guardrails on the hop",
+    columns: [
+      {
+        label: "inference route · maas-guardrailed",
+        snippet: INFERENCE_ROUTE_GUARDRAILED,
+        className: "config",
+      },
+      {
+        label: "deploy/helm/guardrails/files/prompts.yml · self_check_input",
+        snippet: GUARDRAILS_SELF_CHECK_INPUT_SNIPPET,
+        className: "policy",
+      },
+    ],
+    defaultOpen: false,
+  },
+  guardrailsAfterV4: {
     title: "Baseline — OpenShell inference route · NeMo Guardrails on the hop",
     columns: [
       {
@@ -395,7 +411,7 @@ export const NARRATIVE = {
         ],
       },
       yamlPanel: YAML_PANELS.egress,
-      yamlPanelV3: YAML_PANELS.egressAfterV3,
+      yamlPanelV4: YAML_PANELS.egressAfterV4,
       subStep: { group: "C", phase: "after", index: 1, total: 2 },
       observabilityFocus: "sandbox",
     },
@@ -461,6 +477,7 @@ export const NARRATIVE = {
       },
       yamlPanel: YAML_PANELS.guardrails,
       yamlPanelV3: YAML_PANELS.guardrailsAfterV3,
+      yamlPanelV4: YAML_PANELS.guardrailsAfterV4,
       subStep: { group: "D", phase: "after", index: 1, total: 2 },
       observabilityFocus: "nemo",
     },

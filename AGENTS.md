@@ -182,7 +182,7 @@ agentops-showcase/
 │   ├── AGENT-SANDBOX-AND-OPENSHELL.md  # Sandbox architecture + launch flow
 │   ├── stack-decisions.md         # ADR executive summary (by layer)
 │   ├── adr/                       # Architecture Decision Records
-│   ├── demo/                      # Presenter UI + overall-demo-architecture.html
+│   ├── demo/                      # Presenter UI (v3 recommended live companion; v4 experimental)
 │   ├── demo-script.md             # Live demo script (English)
 │   ├── demo-narrative-v1.md       # Active live demo narrative (Spanish)
 │   ├── demo-narrative-v2.md       # EvalHub/Garak extension (nice-to-have)

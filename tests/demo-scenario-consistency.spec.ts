@@ -5,7 +5,13 @@
  * and tests/demo-prompts.ts — see docs/demo-scenario-considerations.md.
  */
 import { test, expect } from '@playwright/test';
-import { NARRATIVE, NAV_GROUPS, STEP_IDS, V3_EXCLUDED_NAV_IDS, YAML_PANELS } from '../docs/demo/v1/narrative-data.js';
+import {
+  LIVE_COMPANION_EXCLUDED_NAV_IDS,
+  NARRATIVE,
+  NAV_GROUPS,
+  STEP_IDS,
+  YAML_PANELS,
+} from '../docs/demo/v1/narrative-data.js';
 import {
   SCENARIO_A_MUTATIONS,
   SCENARIO_A_STEPS,
@@ -33,7 +39,7 @@ import {
   OVERALL_OVERLAYS,
   OVERALL_RESPONSES,
 } from '../docs/demo/scenarios/overall-response-maps.js';
-import { SCENARIO_CANVAS_CONFIG } from '../docs/demo/v3/scenario-canvas-config.js';
+import { SCENARIO_CANVAS_CONFIG } from '../docs/demo/v4/scenario-canvas-config.js';
 import { PROMPT_A, PROMPT_B, PROMPT_C, PROMPT_D } from './demo-prompts';
 
 const EXPECTED_FLOW_IDS = [
@@ -164,17 +170,17 @@ test.describe('demo scenario consistency', () => {
     expect(after).toContain('/usr/bin/curl');
   });
 
-  test('step C-after v3 yaml panel shows egress diff without terminal or expected output', () => {
+  test('step C-after v4 yaml panel shows egress diff without terminal or expected output', () => {
     const stepCAfter = NARRATIVE.steps['C-after'];
-    expect(stepCAfter.yamlPanelV3).toBe(YAML_PANELS.egressAfterV3);
-    expect(stepCAfter.yamlPanelV3?.title).toContain('network egress allowed');
-    expect(stepCAfter.yamlPanelV3?.fileBefore).toBe('config/openshell/default.yaml');
-    expect(stepCAfter.yamlPanelV3?.fileAfter).toBe('config/openshell/google-egress.yaml');
-    expect(stepCAfter.yamlPanelV3?.command).toBeUndefined();
-    expect(stepCAfter.yamlPanelV3?.expectedOutput).toBeUndefined();
-    expect(stepCAfter.yamlPanelV3?.defaultOpen).toBe(false);
-    expect(stepCAfter.yamlPanelV3?.note).toContain('openshell policy set');
-    const after = stepCAfter.yamlPanelV3?.after ?? '';
+    expect(stepCAfter.yamlPanelV4).toBe(YAML_PANELS.egressAfterV4);
+    expect(stepCAfter.yamlPanelV4?.title).toContain('network egress allowed');
+    expect(stepCAfter.yamlPanelV4?.fileBefore).toBe('config/openshell/default.yaml');
+    expect(stepCAfter.yamlPanelV4?.fileAfter).toBe('config/openshell/google-egress.yaml');
+    expect(stepCAfter.yamlPanelV4?.command).toBeUndefined();
+    expect(stepCAfter.yamlPanelV4?.expectedOutput).toBeUndefined();
+    expect(stepCAfter.yamlPanelV4?.defaultOpen).toBe(false);
+    expect(stepCAfter.yamlPanelV4?.note).toContain('openshell policy set');
+    const after = stepCAfter.yamlPanelV4?.after ?? '';
     expect(after).toContain('demo_egress_google');
     expect(after).toContain('google.com');
   });
@@ -205,14 +211,14 @@ test.describe('demo scenario consistency', () => {
     expect(after).toContain('NeMo Guardrails → MaaS');
   });
 
-  test('step D-after v3 yaml panel shows guardrailed route and prompts.yml filter', () => {
+  test('step D-after v4 yaml panel shows guardrailed route and prompts.yml filter', () => {
     const stepDAfter = NARRATIVE.steps['D-after'];
-    expect(stepDAfter.yamlPanelV3).toBe(YAML_PANELS.guardrailsAfterV3);
-    expect(stepDAfter.yamlPanelV3?.title).toContain('NeMo Guardrails on the hop');
-    expect(stepDAfter.yamlPanelV3?.command).toBeUndefined();
-    expect(stepDAfter.yamlPanelV3?.expectedOutput).toBeUndefined();
-    expect(stepDAfter.yamlPanelV3?.defaultOpen).toBe(false);
-    const columns = stepDAfter.yamlPanelV3?.columns ?? [];
+    expect(stepDAfter.yamlPanelV4).toBe(YAML_PANELS.guardrailsAfterV4);
+    expect(stepDAfter.yamlPanelV4?.title).toContain('NeMo Guardrails on the hop');
+    expect(stepDAfter.yamlPanelV4?.command).toBeUndefined();
+    expect(stepDAfter.yamlPanelV4?.expectedOutput).toBeUndefined();
+    expect(stepDAfter.yamlPanelV4?.defaultOpen).toBe(false);
+    const columns = stepDAfter.yamlPanelV4?.columns ?? [];
     expect(columns).toHaveLength(2);
     expect(columns[0]?.label).toBe('inference route · maas-guardrailed');
     expect(columns[0]?.snippet).toContain('maas-guardrailed');
@@ -221,18 +227,18 @@ test.describe('demo scenario consistency', () => {
     expect(columns[1]?.snippet).toContain('self_check_input');
     expect(columns[1]?.snippet).toContain('network scanning');
     expect(columns[1]?.snippet).toContain('security reconnaissance');
-    expect(stepDAfter.yamlPanelV3?.note).toContain('openshell inference set');
-    expect(stepDAfter.yamlPanelV3?.note).toContain('network scanning');
+    expect(stepDAfter.yamlPanelV4?.note).toContain('openshell inference set');
+    expect(stepDAfter.yamlPanelV4?.note).toContain('network scanning');
   });
 
-  test('v3 nav excludes MLflow and close steps', () => {
-    const v3StepIds = STEP_IDS.filter((id) => !V3_EXCLUDED_NAV_IDS.has(id));
-    const v3NavGroups = NAV_GROUPS.filter((g) => !V3_EXCLUDED_NAV_IDS.has(g.id));
-    expect(v3StepIds).not.toContain('ML');
-    expect(v3StepIds).not.toContain('close');
-    expect(v3NavGroups.map((g) => g.id)).not.toContain('ML');
-    expect(v3NavGroups.map((g) => g.id)).not.toContain('close');
-    expect(v3StepIds).toEqual(v3NavGroups.flatMap((g) => g.steps));
+  test('v3 and v4 live companion nav exclude MLflow and close steps', () => {
+    const stepIds = STEP_IDS.filter((id) => !LIVE_COMPANION_EXCLUDED_NAV_IDS.has(id));
+    const navGroups = NAV_GROUPS.filter((g) => !LIVE_COMPANION_EXCLUDED_NAV_IDS.has(g.id));
+    expect(stepIds).not.toContain('ML');
+    expect(stepIds).not.toContain('close');
+    expect(navGroups.map((g) => g.id)).not.toContain('ML');
+    expect(navGroups.map((g) => g.id)).not.toContain('close');
+    expect(stepIds).toEqual(navGroups.flatMap((g) => g.steps));
   });
 
   test('scenario C after oc ↔ gw lanes are centered on OpenClaw', () => {
@@ -315,11 +321,11 @@ test.describe('demo scenario consistency', () => {
     }
   });
 
-  test('v3 scenario canvas config maps to valid overall flows', () => {
+  test('v4 scenario canvas config maps to valid overall flows', () => {
     const flows = buildOverallFlows();
 
     for (const [stepId, { flowId, buildOptions }] of Object.entries(SCENARIO_CANVAS_CONFIG)) {
-      expect(flows[flowId], `missing overall flow for v3 step ${stepId}`).toBeTruthy();
+      expect(flows[flowId], `missing overall flow for v4 step ${stepId}`).toBeTruthy();
       expect(flows[flowId].steps.length, `${stepId} flow steps`).toBeGreaterThan(0);
       expect(buildOptions.title.length, `${stepId} title`).toBeGreaterThan(0);
       expect(EXPECTED_FLOW_IDS, `${stepId} flowId registered`).toContain(flowId);

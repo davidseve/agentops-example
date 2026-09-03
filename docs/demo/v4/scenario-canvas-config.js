@@ -1,5 +1,5 @@
 /**
- * v3 scenario tab → FlowStory flow mapping (testable without browser embed deps).
+ * v4 scenario tab → FlowStory flow mapping (testable without browser embed deps).
  */
 
 import { LAYER_NAMES } from "../scenarios/scenario-layout.js";

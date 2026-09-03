@@ -71,7 +71,7 @@ When using `demo-presenter-serve.sh`, `v3/live.html` includes a **Cluster observ
 | NeMo Guardrails | TrustyAI-managed pod (`nemo-guardrails-*`) |
 | MLflow | Recent traces from experiment `openclaw-tracing` |
 
-The panel polls `http://127.0.0.1:8766` and suggests a tab when you advance demo steps (A/B → OpenClaw, C → OpenShell, D → NeMo, MLflow step → MLflow). Per tab: **↓** pauses live updates (remembered per component).
+The panel polls `http://127.0.0.1:8766` and suggests a tab when you advance demo steps (A/B → OpenClaw, C → OpenShell, D → NeMo). Open the **MLflow** tab from the panel at any scenario step to review traces (no dedicated ML nav item in v3/v4). Per tab: **↓** pauses live updates (remembered per component).
 
 ## Split screen layout
 

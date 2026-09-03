@@ -27,7 +27,7 @@ python3 -m http.server 8765
 
 ```
 docs/demo/
-├── index.html           # Launcher (v1–v3 flows)
+├── index.html           # Launcher (v1–v4 flows)
 ├── index.css            # Launcher-only styles
 ├── overall-demo-architecture.html  # Phase 0 — full stack map (+ links to A–D)
 ├── scenarios/           # Focused FlowStory panels per test A–D
@@ -55,10 +55,18 @@ docs/demo/
 │   ├── baseline-diagram.js
 │   ├── baseline-embed.css
 │   └── baseline-layout-variants.css
-└── v3/                  # Recommended — step 0 = full overall map; tabs A–D = scenario canvas
+├── v3/                  # Recommended — step 0 = full overall map; tabs A–D = scenario canvas
+│   ├── live.html
+│   ├── narrative-v3.css
+│   ├── narrative-v3-ui.js
+│   ├── overall-embed.js
+│   ├── scenario-canvas-embed.js
+│   ├── scenario-canvas-embed.css
+│   └── script-runner.js
+└── v4/                  # Experimental — compact canvas + collapsible instructions
     ├── live.html
-    ├── narrative-v3.css
-    ├── narrative-v3-ui.js
+    ├── narrative-v4.css
+    ├── narrative-v4-ui.js
     ├── overall-embed.js
     ├── scenario-canvas-embed.js
     ├── scenario-canvas-embed.css
@@ -156,7 +164,8 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 
 | Flow | URL | When |
 |------|-----|------|
-| v3 | [v3/live.html](v3/live.html) | **Recommended** — tab **Overall Demo** embeds the baseline stack map in-card (layers dock, legend; flow chosen via step nav); tabs **A–D** (C/D sub-steps before/after) mount in-card FlowStory canvas maps (`scenario-a` … `scenario-d-after`) plus baseline/change YAML panels; MLflow traces via observability panel on any step (no dedicated ML nav item); **close** omitted from step nav |
+| v3 | [v3/live.html](v3/live.html) | **Recommended** — tab **Overall Demo** embeds the baseline stack map in-card (layers dock, legend; flow chosen via step nav); tabs **A–D** (C/D sub-steps before/after) mount in-card FlowStory canvas maps (`scenario-a` … `scenario-d-after`) plus baseline/change YAML panels; MLflow traces via observability panel only (no ML nav item); **close** omitted from step nav |
+| v4 | [v4/live.html](v4/live.html) | Experimental — same embed model as v3 with **compact canvas** layout (diagram first, collapsible instructions); MLflow traces via observability panel only (no ML nav item); v4 YAML panels on C-after / D-after |
 | v1 | [v1/live.html](v1/live.html) | Deprecated — split panel: narrative steps, matrix, diagram, YAML, cluster observability |
 | v2 | [v2/live.html](v2/live.html) | Deprecated — compact variant; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); superseded by v3 |
 
