@@ -39,13 +39,6 @@ jobs:
       - name: Export README architecture diagram
         run: ./scripts/export-readme-architecture.sh
 
-      - name: Upload exported architecture diagram (debug)
-        uses: actions/upload-artifact@v4
-        with:
-          name: exported-architecture-png
-          path: assets/overall-architecture.png
-          if-no-files-found: error
-
       - name: Verify architecture diagram is up to date
         run: git diff --exit-code assets/overall-architecture.png
 
