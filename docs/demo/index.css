@@ -18,6 +18,38 @@
   font-size: 14px;
 }
 
+.launcher-table--phase0 {
+  table-layout: fixed;
+}
+
+.launcher-table--phase0 td:first-child {
+  width: 40%;
+  vertical-align: top;
+}
+
+.launcher-table--companion {
+  table-layout: fixed;
+}
+
+.launcher-table--companion th:first-child,
+.launcher-table--companion td:first-child {
+  width: 10.5rem;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.launcher-table--companion th:nth-child(2),
+.launcher-table--companion td:nth-child(2) {
+  width: 8.5rem;
+  vertical-align: top;
+}
+
+.launcher-table--companion th:last-child,
+.launcher-table--companion td:last-child {
+  width: 4.5rem;
+  white-space: nowrap;
+}
+
 .launcher th,
 .launcher td {
   border: 1px solid var(--nr-border);
@@ -80,7 +112,8 @@
   margin-left: 8px;
 }
 
-.badge-soon {
+.badge-soon,
+.badge-tbd {
   border-color: var(--nr-dim);
   color: var(--nr-dim);
 }

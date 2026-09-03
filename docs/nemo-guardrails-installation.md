@@ -11,7 +11,7 @@ OpenClaw → inference.local → [maas-direct | maas-guardrailed] → MaaS
 
 For the live demo narrative, inference starts on **direct MaaS** (`INFERENCE_BACKEND=direct`). NeMo is deployed in backstage; the presenter runs `./scripts/demo-enable-guardrails.sh` for Change 2 (jailbreak blocked by self-check rails).
 
-Demo sandbox policy: create with [`config/openshell/default.yaml`](../config/openshell/default.yaml) (MLflow-only egress). Allow google.com live with `./scripts/demo-allow-google-egress.sh`. Reset between rehearsals: `./scripts/demo-reset.sh`. See [`demo-narrativa-v1.md`](../docs/demo-narrativa-v1.md).
+Demo sandbox policy: create with [`config/openshell/default.yaml`](../config/openshell/default.yaml) (MLflow-only egress). Allow google.com live with `./scripts/demo-allow-google-egress.sh`. Reset between rehearsals: `./scripts/demo-reset.sh`. See [`demo-narrative-v1.md`](../docs/demo-narrative-v1.md).
 
 ### Install via Cursor skills
 

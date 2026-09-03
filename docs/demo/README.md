@@ -171,7 +171,7 @@ Proxy endpoints: `GET /api/demo/actions`, `POST /api/demo/run` with body `{"acti
 
 **v2 layout lab** (deprecated; v3 uses full overall embed on step 0): dropdown on step 0 or `?layout=<id>`. IDs: `current`, `stack`, `unified`, `legend-footer`, `legend-inset`. Persists in `localStorage` (`v2-baseline-layout`).
 
-Narrative (Spanish): [demo-narrativa-v1.md](../demo-narrativa-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
+Narrative (Spanish): [demo-narrative-v1.md](../demo-narrative-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
 
 ## Design notes
 

@@ -9,7 +9,7 @@ description: >-
 
 # Demo Verify
 
-Validate deployment matches [`demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md) **initial state** (before live Change 1 and 2).
+Validate deployment matches [`demo-narrative-v1.md`](../../docs/demo-narrative-v1.md) **initial state** (before live Change 1 and 2).
 
 **Do not** use `VERIFY_PROFILE=full` alone for demo backstage prep — it runs the full E2E suite with hardened egress expectations.
 

@@ -1,7 +1,7 @@
 # Demo scenario considerations
 
 Living notes on what each test actually proves, gaps vs narrative, and live-demo viability.
-Not the presenter script — see [demo-narrativa-v1.md](demo-narrativa-v1.md) and [demo-script.md](demo-script.md).
+Not the presenter script — see [demo-narrative-v1.md](demo-narrative-v1.md) and [demo-script.md](demo-script.md).
 
 **Policy naming:** **demo-initial** (conceptual) = [`config/openshell/default.yaml`](../config/openshell/default.yaml) (`mlflow_direct` only; default deny egress). **Post–Change 1** = [`config/openshell/google-egress.yaml`](../config/openshell/google-egress.yaml) (`demo_egress_google` / `demo-permissive-google`). Replaces the former `policies/openclaw-demo-initial.yaml` path.
 
@@ -127,7 +127,7 @@ Audit that every hop (order, band 1–4, `LAYER_NAMES` nodes), every message (po
 
 - Multiple partial sources of truth: deep-link pages ~6–8 hops vs overall map ~9–14; [narrative-data.js](demo/v1/narrative-data.js) sometimes simplifies (e.g. Scenario A: `oc → ir` only); messages duplicated inline in HTML and in JS response maps.
 - Prompts duplicated in [demo-prompts.ts](../tests/demo-prompts.ts) and [narrative-data.js](demo/v1/narrative-data.js) with a manual sync comment — no shared module.
-- [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts) is the E2E reference for demo-narrativa-v1 (reset → A → B → C before → Change 1 → C after → D before → Change 2 → D after) but validates **outcomes only** — not diagram hops, layer board, or MLflow phase.
+- [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts) is the E2E reference for demo-narrative-v1 (reset → A → B → C before → Change 1 → C after → D before → Change 2 → D after) but validates **outcomes only** — not diagram hops, layer board, or MLflow phase.
 - **Executed for Scenario A:** `hasCredentialProbeEvidence()` in [ui-helpers.ts](../tests/ui-helpers.ts); isolated [scenario-a-regression.spec.ts](../tests/scenario-a-regression.spec.ts); static [validate-scenario-a-baseline.sh](../scripts/validate-scenario-a-baseline.sh) (`make validate-scenario-a-baseline`); log classification fixtures in [observability-log-rules.spec.ts](../tests/observability-log-rules.spec.ts).
 - **Executed for B–D (log panel):** step-aware highlight rules in [observability-log-rules.js](demo/v1/observability-log-rules.js) with unit tests — see [demo-scenario-logs.md](demo/demo-scenario-logs.md#sandbox-panel-highlight-rules).
 - Point-in-time gaps remain (e.g. Scenario A MaaS hop in `narrative-data.js` step diagram) — noted per scenario below.
@@ -145,7 +145,7 @@ Run per scenario (A–D) and per variant where applicable (C/D before/after):
 7. **Demo tests:** per scenario (A–D) and variant where applicable (C/D before/after):
    - **Prompts:** `PROMPT_*` in [demo-prompts.ts](../tests/demo-prompts.ts) identical to [narrative-data.js](demo/v1/narrative-data.js) and the prompt cited in the scenario entry.
    - **Assertions:** what [demo-narrative.spec.ts](../tests/demo-narrative.spec.ts) checks matches **What it proves / does not prove** for that scenario (e.g. A: probe output with no real key — not model refusal as the defense).
-   - **Flow order:** spec sequence reflects demo-narrativa-v1 (`demo-reset.sh` before C-before → tests → `demo-allow-google-egress.sh` / `demo-enable-guardrails.sh` between C and D).
+   - **Flow order:** spec sequence reflects demo-narrative-v1 (`demo-reset.sh` before C-before → tests → `demo-allow-google-egress.sh` / `demo-enable-guardrails.sh` between C and D).
    - **Preconditions:** [validate-demo-initial](../deploy/Makefile) and [demo-reset.sh](../scripts/demo-reset.sh) align with backstage state the diagrams assume (`default.yaml` policy, direct MaaS); run via `VERIFY_PROFILE=demo` in [verify.sh](../scripts/verify.sh).
    - **Coverage gaps:** document what tests **do not** cover (UI hops, layer board, MLflow phase) so a green `make test-demo` is not mistaken for full narrative validation.
 
@@ -156,7 +156,8 @@ Run per scenario (A–D) and per variant where applicable (C/D before/after):
 | Deep-link security | Hops + popup/panel messages | [test-a-credentials.html](demo/scenarios/test-a-credentials.html) … `test-d-guardrails.html` |
 | Overall map | Composed hops (security + inference + trace) | [overall-flows.js](demo/scenarios/overall-flows.js), [overall-demo-architecture.html](demo/overall-demo-architecture.html) |
 | Per-hop messages | Node / inspector text | [scenario-responses.js](demo/scenarios/scenario-responses.js), [overall-response-maps.js](demo/scenarios/overall-response-maps.js) |
-| Presenter v1 | Layer board + step diagrams | [narrative-data.js](demo/v1/narrative-data.js), [live.html](demo/v1/live.html) |
+| Presenter v3 (recommended) | Embedded FlowStory maps + observability + script runner | [v3/live.html](demo/v3/live.html), [narrative-v3-ui.js](demo/v3/narrative-v3-ui.js) |
+| Presenter v1 (deprecated) | Layer board + step diagrams | [narrative-data.js](demo/v1/narrative-data.js), [live.html](demo/v1/live.html) |
 | Shared labels | Layer names and nav | [scenario-layout.js](demo/scenarios/scenario-layout.js), [shared-scenario.js](demo/scenarios/shared-scenario.js) (`LAYER_NAMES`) |
 | Runtime reference | Actual call sequence | [launch-openclaw.sh](../scripts/launch-openclaw.sh), [openclaw.json.tpl](../config/openclaw.json.tpl), policies, MLflow traces |
 | Log evidence | Per-scenario search + panel rules | [demo-scenario-logs.md](demo/demo-scenario-logs.md), [observability-log-rules.js](demo/v1/observability-log-rules.js) |
@@ -166,7 +167,7 @@ Run per scenario (A–D) and per variant where applicable (C/D before/after):
 ### Benefits for demo narrative
 
 - Presenter clicker steps do not contradict what the agent does live on stage.
-- Rehearsal on overall map, `v1/live.html`, and deep-links surfaces mismatches before the session.
+- Rehearsal on `v3/live.html` (or overall map + deep-links) surfaces mismatches before the session.
 - `VERIFY_PROFILE=demo` catches drift between what the presenter shows and what CI/rehearsal validates before the event.
 
 ### Risks / constraints
@@ -190,7 +191,7 @@ Run per scenario (A–D) and per variant where applicable (C/D before/after):
 
 ### Topic
 
-Surface **live cluster logs** and **MLflow traces** per component in the v1 live companion (`v1/live.html`), without replacing Gen AI Studio or FlowStory scripted responses.
+Surface **live cluster logs** and **MLflow traces** per component in the v3 live companion (`v3/live.html`; v1/v2 deprecated), without replacing Gen AI Studio or FlowStory scripted responses.
 
 **See also:** [demo-scenario-logs.md](demo/demo-scenario-logs.md) — per-scenario log search guide for Tests A–D.
 

@@ -93,4 +93,4 @@ Before any commit touching env files, run the `no-secrets` skill.
 
 - Next: `demo-backstage-install` or `cluster-bootstrap`
 - Scan before commit: `no-secrets`
-- Narrative: [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md)
+- Narrative: [`docs/demo-narrative-v1.md`](../../docs/demo-narrative-v1.md)

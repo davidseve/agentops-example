@@ -89,4 +89,4 @@ Control UI: `https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/`
 - Install: `demo-backstage-install`
 - Pre-stage: `demo-backstage-prep`
 - Present: `demo-present`
-- Narrative: [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md)
+- Narrative: [`docs/demo-narrative-v1.md`](../../docs/demo-narrative-v1.md)

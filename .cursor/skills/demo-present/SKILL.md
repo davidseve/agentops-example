@@ -1,14 +1,14 @@
 ---
 name: demo-present
 description: >-
-  Master runbook for the live demo-narrativa-v1 presentation (~9-10 min):
+  Master runbook for the live demo-narrative-v1 presentation (~9-10 min):
   architecture panel, tests A-D, Change 1 egress, Change 2 NeMo, MLflow traces,
   close. Use when presenting the demo live on stage or following demo-script.md.
 ---
 
 # Demo Present (v1 Runbook)
 
-Live presentation aligned with [`docs/demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md) and [`docs/demo-script.md`](../../docs/demo-script.md).
+Live presentation aligned with [`docs/demo-narrative-v1.md`](../../docs/demo-narrative-v1.md) and [`docs/demo-script.md`](../../docs/demo-script.md).
 
 **Prerequisite:** `demo-backstage-install` + `demo-backstage-prep` complete.
 
@@ -17,7 +17,7 @@ Live presentation aligned with [`docs/demo-narrativa-v1.md`](../../docs/demo-nar
 | Phase | Min | Skill / action | Script |
 |---|---|---|---|
 | 0. Context | 1–2 | `demo-presenter-panel` | `overall-demo-architecture.html` |
-| 1. Tests A–B | 2–3 | Prompts from `v1/live.html` | None |
+| 1. Tests A–B | 2–3 | Prompts from `v3/live.html` | None |
 | 2. Test C + Change 1 | 2 | `demo-allow-google-egress` | `./scripts/demo-allow-google-egress.sh` |
 | 3. Test D + Change 2 | 2–3 | `demo-enable-guardrails` | `./scripts/demo-enable-guardrails.sh` |
 | 4. MLflow | 1–2 | `mlflow-tracing-validate` | GenAI Studio |
@@ -83,7 +83,7 @@ Use `demo-allow-google-egress` skill:
 
 Same prompt. **Expected:** HTTP 200 to google.com.
 
-Advance `v1/live.html` to C-after → egress **open** (selective).
+Advance `v3/live.html` to C-after → egress **open** (selective).
 
 ## Phase 3 — Test D + Change 2 (NeMo)
 
@@ -109,7 +109,7 @@ Use `demo-enable-guardrails` skill:
 
 Same prompt. **Expected:** Rail refusal or filtered response.
 
-Update layer board → Guardrails **on**.
+Update `v3/live.html` step nav → Guardrails **on** (embedded FlowStory maps auto-update).
 
 ## Phase 4 — MLflow (1–2 min)
 

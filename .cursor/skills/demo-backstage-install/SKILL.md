@@ -4,12 +4,12 @@ description: >-
   One-shot backstage install of the full AgentOps demo v1 stack on OpenShift:
   RHOAI, NeMo, OpenShell, UI proxy, OpenClaw with default.yaml policy and
   direct MaaS. Use when deploying the demo, instalar demo completa, backstage
-  setup, or preparing demo-narrativa-v1 before going on stage.
+  setup, or preparing demo-narrative-v1 before going on stage.
 ---
 
 # Demo Backstage Install
 
-Install everything needed **before the audience** for [`demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md). Nothing is toggled live during this phase except confirming direct MaaS.
+Install everything needed **before the audience** for [`demo-narrative-v1.md`](../../docs/demo-narrative-v1.md). Nothing is toggled live during this phase except confirming direct MaaS.
 
 ## Skill sequence (canonical order)
 

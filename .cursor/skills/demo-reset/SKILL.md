@@ -8,7 +8,7 @@ description: >-
 
 # Demo Reset
 
-Restore backstage initial state for [`demo-narrativa-v1.md`](../../docs/demo-narrativa-v1.md).
+Restore backstage initial state for [`demo-narrative-v1.md`](../../docs/demo-narrative-v1.md).
 
 **Script:** [`scripts/demo-reset.sh`](../../scripts/demo-reset.sh)
 

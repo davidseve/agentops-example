@@ -7,7 +7,7 @@
 
 Estado: guion activo. NeMo Guardrails desplegado en backstage; el provider live empieza en MaaS directo. Política inicial de demo con egress cerrado (solo MLflow) — Prueba C empieza con `curl` bloqueado.
 
-Extensión futura con EvalHub/Garak (segundo namespace, evals precomputadas): [`demo-narrativa-v2.md`](demo-narrativa-v2.md).
+Extensión futura con EvalHub/Garak (segundo namespace, evals precomputadas): [`demo-narrative-v2.md`](demo-narrative-v2.md).
 
 ## Mensaje
 
@@ -85,7 +85,7 @@ Así el público no pierde el mapa cuando saltamos al chat, a `oc`/`openshell po
 
 **Intro:** panel FlowStory en [`docs/demo/overall-demo-architecture.html`](demo/overall-demo-architecture.html). Abrir con `python3 -m http.server` desde `docs/demo/`. Detalle en [`docs/demo/README.md`](demo/README.md). Durante A–D, paneles enfocados enlazados desde el mapa global: [`scenarios/test-a-credentials.html`](demo/scenarios/test-a-credentials.html) … D (C y D con Before/After).
 
-**En vivo:** [`docs/demo/v1/live.html`](demo/v1/live.html) — pruebas A–D + prompts para copiar en OpenClaw, pantalla partida con el Control UI. Launcher: [`docs/demo/index.html`](demo/index.html).
+**En vivo:** [`docs/demo/v3/live.html`](demo/v3/live.html) — pruebas A–D + prompts para copiar en OpenClaw, pantalla partida con el Control UI (`v1`/`v2` deprecated). Launcher: [`docs/demo/index.html`](demo/index.html).
 
 ### 1. Configuración inicial — sin tocar nada
 
@@ -188,4 +188,4 @@ El relato activo usa default-deny egress al inicio y **abre** google.com en vivo
 - MLflow: ¿cortes intermedios o un bloque al final? El panel puede llevar el enlace en ambos casos.
 - Host concreto del `curl` (debe verse el bloqueo y luego el 200 a google.com).
 - Verificar que el prompt de reconocimiento de red genera el script sin NeMo y se bloquea con rails.
-- Dónde vive el panel: arquitectura general en [`overall-demo-architecture.html`](demo/overall-demo-architecture.html); companion en [`v1/live.html`](demo/v1/live.html). Enganchar al estado real del sandbox sigue siendo opcional.
+- Dónde vive el panel: companion en [`v3/live.html`](demo/v3/live.html) (step 0 embebe [`overall-demo-architecture.html`](demo/overall-demo-architecture.html); `v1`/`v2` deprecated). Enganchar al estado real del sandbox sigue siendo opcional.

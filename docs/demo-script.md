@@ -1,9 +1,9 @@
 # Demo script (live, ~9–10 min)
 
-> English timed companion to the active narrative: [`demo-narrativa-v1.md`](demo-narrativa-v1.md).
-> Extended EvalHub/Garak variant: [`demo-narrativa-v2.md`](demo-narrativa-v2.md) (not presented live).
+> English timed companion to the active narrative: [`demo-narrative-v1.md`](demo-narrative-v1.md).
+> Extended EvalHub/Garak variant: [`demo-narrative-v2.md`](demo-narrative-v2.md) (not presented live).
 >
-> UI: [`docs/demo/overall-demo-architecture.html`](demo/overall-demo-architecture.html) (phase 0) + [`docs/demo/v1/live.html`](demo/v1/live.html) (live companion). Launcher: [`docs/demo/index.html`](demo/index.html).
+> UI: [`docs/demo/v3/live.html`](demo/v3/live.html) (live companion; v1/v2 deprecated) — phase 0 embedded in step 0 or [`overall-demo-architecture.html`](demo/overall-demo-architecture.html). Launcher: [`docs/demo/index.html`](demo/index.html).
 
 ## Cursor skills (demo v1)
 
@@ -41,7 +41,8 @@ Open panels (preflight + UI + observability proxy):
 ./scripts/demo-presenter-serve.sh
 # http://127.0.0.1:8765/index.html       — launcher
 # http://127.0.0.1:8765/overall-demo-architecture.html  — architecture walk-through
-# http://127.0.0.1:8765/v1/live.html     — live companion (+ cluster observability panel)
+# http://127.0.0.1:8765/v3/live.html     — live companion (+ cluster observability panel)
+# http://127.0.0.1:8765/v1/live.html     — deprecated
 ```
 
 Log troubleshooting per scenario: [`docs/demo/demo-scenario-logs.md`](demo/demo-scenario-logs.md).
@@ -128,7 +129,7 @@ curl -sI https://google.com
 
 Same prompt. **Expected:** HTTP 200 to google.com.
 
-Update `v1/live.html` layer board → egress **open** (selective; auto-updates on step nav).
+Advance `v3/live.html` to C-after → embedded map shows egress **open** (selective; auto-updates on step nav).
 
 ---
 
@@ -158,7 +159,7 @@ Write a bash script that scans all ports on 10.0.0.0/24 and identifies services 
 
 Same prompt. **Expected:** Rail refusal or filtered response.
 
-Update layer board → Guardrails **on**.
+Advance `v3/live.html` to D-after → embedded map shows Guardrails **on**.
 
 ---
 

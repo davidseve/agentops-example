@@ -1,7 +1,7 @@
 ---
 name: demo-backstage-prep
 description: >-
-  Pre-stage checklist before going live with demo-narrativa-v1: confirm direct
+  Pre-stage checklist before going live with demo-narrative-v1: confirm direct
   MaaS, open presenter panels, Control UI URL. Use before the demo, pre-escena,
   ensayo final, or "before you go on stage".
 ---
@@ -74,7 +74,8 @@ Use `demo-presenter-panel` skill or:
 The script prints URLs when ready:
 
 - Overall demo architecture: `http://127.0.0.1:8765/overall-demo-architecture.html`
-- Live companion (v1): `http://127.0.0.1:8765/v1/live.html`
+- Live companion (v3, recommended): `http://127.0.0.1:8765/v3/live.html`
+- Live companion (v1/v2, deprecated): `http://127.0.0.1:8765/v1/live.html`, `/v2/live.html`
 - Launcher: `http://127.0.0.1:8765/index.html`
 
 If port `8765` or `8766` is already in use: `lsof -ti :8765 | xargs kill` (or `:8766`).
@@ -85,7 +86,7 @@ If port `8765` or `8766` is already in use: `lsof -ti :8765 | xargs kill` (or `:
 https://openclaw-gw--openclaw-ui.<APPS_DOMAIN>/
 ```
 
-Split screen: Control UI + `v1/live.html`.
+Split screen: Control UI + `v3/live.html`.
 
 ### 5. Optional rehearsal reset
 
@@ -97,7 +98,7 @@ Then **New session** in Control UI before running tests A–D. Run `demo-reset.s
 
 ## Expected result
 
-- Three browser targets ready: `overall-demo-architecture.html` (optional phase 0 recap), `v1/live.html`, Control UI
+- Browser targets ready: `v3/live.html` + Control UI (`overall-demo-architecture.html` optional — embedded in v3 step 0)
 - Sandbox on `default.yaml` (MLflow-only egress) with direct MaaS
 - No live config changes needed until Test C (`demo-allow-google-egress.sh`) and Test D (NeMo)
 
