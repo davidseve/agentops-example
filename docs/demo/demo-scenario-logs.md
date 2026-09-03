@@ -14,7 +14,7 @@ This guide focuses on **runtime log evidence** — not FlowStory hop narration o
 
 ```bash
 ./scripts/demo-presenter-serve.sh
-# http://127.0.0.1:8765/v3/live.html  — Cluster observability panel
+# http://127.0.0.1:8765/demo/v3/live.html  — Cluster observability panel
 ```
 
 Deprecated: `v1/live.html`, `v2/live.html` (same proxy and panel implementation).

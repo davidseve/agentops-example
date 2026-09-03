@@ -39,10 +39,10 @@ Open panels (preflight + UI + observability proxy):
 ```bash
 ./scripts/demo-presenter-serve.sh --check-only   # optional dry-run
 ./scripts/demo-presenter-serve.sh
-# http://127.0.0.1:8765/index.html       — launcher
-# http://127.0.0.1:8765/overall-demo-architecture.html  — architecture walk-through
-# http://127.0.0.1:8765/v3/live.html     — live companion (+ cluster observability panel)
-# http://127.0.0.1:8765/v1/live.html     — deprecated
+# http://127.0.0.1:8765/demo/index.html       — launcher
+# http://127.0.0.1:8765/demo/overall-demo-architecture.html  — architecture walk-through
+# http://127.0.0.1:8765/demo/v3/live.html     — live companion (+ cluster observability panel)
+# http://127.0.0.1:8765/demo/v1/live.html     — deprecated
 ```
 
 Log troubleshooting per scenario: [`docs/demo/demo-scenario-logs.md`](demo/demo-scenario-logs.md).

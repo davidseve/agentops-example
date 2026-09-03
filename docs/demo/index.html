@@ -14,9 +14,8 @@
 <div class="nr-v3-chrome">
   <header class="nr-header nr-v3-header">
     <h1>AgentOps — Demo UI launcher</h1>
-    <span class="nr-tagline">Live companion v3 · narrative: demo-narrative-v1.md</span>
+    <span class="nr-tagline">Live companion v3 — use v3 for on-stage steps</span>
     <a href="./v3/live.html">Live companion (v3)</a>
-    <a href="../demo-script.md">Script</a>
   </header>
 </div>
 
@@ -29,12 +28,12 @@
     <strong>Live demo</strong> — static UI on <code>:8765</code> plus observability proxy on <code>:8766</code> (preflight, live logs/traces, script runner). Includes <code>python3 -m http.server</code> internally:
   </p>
   <pre>./scripts/demo-presenter-serve.sh
-# http://127.0.0.1:8765/v3/live.html</pre>
+# http://127.0.0.1:8765/demo/v3/live.html</pre>
   <p class="nr-meta nr-meta--tight">
     <strong>Offline rehearsal</strong> — static UI only (no proxy, no cluster logs/traces, no script runner):
   </p>
-  <pre>cd docs/demo && python3 -m http.server 8765
-# http://127.0.0.1:8765/index.html</pre>
+  <pre>cd docs && python3 -m http.server 8765
+# http://127.0.0.1:8765/demo/index.html</pre>
 
   <h2>Overall demo architecture (phase 0) <span class="badge badge-deprecated">deprecated</span></h2>
   <p class="nr-meta nr-meta--tight">
@@ -131,9 +130,9 @@
   </table>
 
   <p class="nr-meta nr-meta--footer">
-    Narrative: <a href="../demo-narrative-v1.md">demo-narrative-v1.md</a> ·
-    Script: <a href="../demo-script.md">demo-script.md</a> ·
-    UI guide: <a href="./README.md">demo/README.md</a>
+    On stage: use <a href="./v3/live.html">v3/live.html</a> (not raw markdown).
+    Backstage docs (open in editor): <code>docs/demo-script.md</code>,
+    <code>docs/demo-narrative-v1.md</code>, <code>docs/demo/README.md</code>.
   </p>
 </div>
 

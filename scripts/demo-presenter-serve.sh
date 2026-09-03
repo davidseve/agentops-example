@@ -7,7 +7,7 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
-DEMO_DIR="${PROJECT_DIR}/docs/demo"
+DOCS_DIR="${PROJECT_DIR}/docs"
 PROXY_SCRIPT="${SCRIPT_DIR}/demo-observability-proxy.py"
 HTTP_PORT="${DEMO_HTTP_PORT:-8765}"
 PROXY_PORT="${DEMO_PROXY_PORT:-8766}"
@@ -151,11 +151,12 @@ print(f"    Cluster: {oc_user} · sandbox reachable: {sandbox} · MLflow experim
 if mlflow_url:
     print(f"    MLflow UI: {mlflow_url}")
 print()
-print(f"    Live companion (v3, recommended): http://127.0.0.1:{http_port}/v3/live.html")
-print(f"    Live companion (v1, deprecated):  http://127.0.0.1:{http_port}/v1/live.html")
-print(f"    Live companion (v2, deprecated):  http://127.0.0.1:{http_port}/v2/live.html")
+print(f"    Launcher:            http://127.0.0.1:{http_port}/demo/index.html")
+print(f"    Live companion (v3, recommended): http://127.0.0.1:{http_port}/demo/v3/live.html")
+print(f"    Live companion (v1, deprecated):  http://127.0.0.1:{http_port}/demo/v1/live.html")
+print(f"    Live companion (v2, deprecated):  http://127.0.0.1:{http_port}/demo/v2/live.html")
 print(f"    Script runner API:   http://127.0.0.1:{proxy_port}/api/demo/run")
-print(f"    Architecture map: http://127.0.0.1:{http_port}/overall-demo-architecture.html")
+print(f"    Architecture map: http://127.0.0.1:{http_port}/demo/overall-demo-architecture.html")
 if apps_domain:
     print(f"    Control UI:       https://{sandbox_name}--openclaw-ui.{apps_domain}/")
 print()
@@ -170,9 +171,9 @@ start_servers() {
   python3 "${PROXY_SCRIPT}" --port "${PROXY_PORT}" &
   PIDS+=("$!")
 
-  echo "==> Live companion UI: http://127.0.0.1:${HTTP_PORT}/v3/live.html (v1/v2 deprecated)"
+  echo "==> Demo UI: http://127.0.0.1:${HTTP_PORT}/demo/v3/live.html (launcher: /demo/index.html)"
   (
-    cd "${DEMO_DIR}"
+    cd "${DOCS_DIR}"
     python3 -m http.server "${HTTP_PORT}"
   ) &
   PIDS+=("$!")

@@ -7,7 +7,7 @@ Interactive FlowStory panel for the AgentOps talk. Not slides.
 ```bash
 # Preflight + static UI + local observability proxy (recommended for live companion)
 ./scripts/demo-presenter-serve.sh
-# http://127.0.0.1:8765/v3/live.html
+# http://127.0.0.1:8765/demo/v3/live.html
 
 # Preflight only (oc/openshell/sandbox/gateway + port check)
 ./scripts/demo-presenter-serve.sh --check-only
@@ -18,9 +18,9 @@ Requires logged-in `oc` and `openshell`. Fails fast if ports `8765`/`8766` are a
 Static UI only (offline / no observability panel):
 
 ```bash
-cd docs/demo
+cd docs
 python3 -m http.server 8765
-# http://127.0.0.1:8765/index.html
+# http://127.0.0.1:8765/demo/index.html
 ```
 
 ## Structure
@@ -171,7 +171,10 @@ Proxy endpoints: `GET /api/demo/actions`, `POST /api/demo/run` with body `{"acti
 
 **v2 layout lab** (deprecated; v3 uses full overall embed on step 0): dropdown on step 0 or `?layout=<id>`. IDs: `current`, `stack`, `unified`, `legend-footer`, `legend-inset`. Persists in `localStorage` (`v2-baseline-layout`).
 
-Narrative (Spanish): [demo-narrative-v1.md](../demo-narrative-v1.md). Timed script (English): [demo-script.md](../demo-script.md).
+**Presenter runbooks (repo / IDE only)** — the static server on `:8765` serves unrendered markdown; do not open these URLs during the live demo. Use [v3/live.html](v3/live.html) on stage.
+
+- Narrative (Spanish): [demo-narrative-v1.md](../demo-narrative-v1.md)
+- Timed script (English): [demo-script.md](../demo-script.md)
 
 ## Design notes
 
