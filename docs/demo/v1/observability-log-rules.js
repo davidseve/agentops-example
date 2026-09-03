@@ -75,13 +75,13 @@ export const SIGNAL_PATTERNS = {
 
 /** Step-specific sandbox overrides applied after global patterns (first match wins). */
 export const STEP_SANDBOX_OVERRIDES = {
-  "C-pre": [
+  "C-before": [
     { re: /OCSF NET:OPEN.*DENIED.*google\.com/i, tier: "warn" },
     { re: /OCSF HTTP:.*DENIED.*google\.com/i, tier: "warn" },
     { re: /google\.com.*no matching policy/i, tier: "warn" },
     { re: /OCSF PROC:LAUNCH.*\/usr\/bin\/curl/i, tier: "signal" },
   ],
-  "C-post": [
+  "C-after": [
     { re: /OCSF NET:OPEN.*ALLOWED.*google\.com/i, tier: "signal" },
     { re: /OCSF NET:CLOSE.*google\.com/i, tier: "signal" },
     { re: /OCSF HTTP:(GET|HEAD|POST).*google\.com/i, tier: "signal" },
@@ -130,10 +130,10 @@ export const STEP_SUPPRESS = {
       /oom_score_adj|\/proc\/self\/oom_score_adj/i,
     ],
   },
-  "C-pre": {
+  "C-before": {
     sandbox: SANDBOX_C_SUPPRESS,
   },
-  "C-post": {
+  "C-after": {
     sandbox: SANDBOX_C_SUPPRESS,
   },
 };
@@ -171,19 +171,19 @@ export const STEP_HINTS = {
     message:
       "Landlock blocked cat /etc/shadow at the filesystem layer — look for Permission denied in OpenClaw. Sandbox: green inference.local + mlflow_direct (model round-trip); ignore Landlock APPLYING/BUILT startup lines and PROC:LAUNCH sleep.",
   },
-  "C-pre": {
+  "C-before": {
     message:
       "Default deny egress — Sandbox OCSF should show amber DENIED google.com:443 and no matching policy. PROC:LAUNCH curl may still appear; the block is at the network policy layer.",
   },
-  "C-post": {
+  "C-after": {
     message:
       "After demo-allow-google-egress.sh, look for green ALLOWED google.com:443 and demo_egress_google policy. HTTP headers appear in OpenClaw session transcript and Control UI.",
   },
-  "D-pre": {
+  "D-before": {
     tab: "OpenClaw",
     terms: ["maas-direct", "inference.local", "recon"],
   },
-  "D-post": {
+  "D-after": {
     tab: "NeMo",
     terms: ["maas-guardrailed", "rail", "refus", "block"],
   },

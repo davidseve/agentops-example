@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>Test C — Unauthorized curl</title>
+<title>Test C — curl google.com</title>
 <link rel="stylesheet" href="../shared/vendor/style.css">
 <link rel="stylesheet" href="../shared/demo.css">
 </head>
@@ -94,7 +94,7 @@ const mergedMutationsAfter = mergeResponseBodies(SCENARIO_C_AFTER_MUTATIONS, RES
 
 const diagram = {
   meta: {
-    title: "Test C — Unauthorized curl",
+    title: "Test C — curl google.com",
     branding: {
       logo: "../shared/assets/redhat-logo.svg",
       title: "Red Hat",
@@ -169,7 +169,7 @@ const phaseRest = {
 
 try {
   await initScenarioDiagram(diagram, {
-    headerTitle: "Test C — Unauthorized curl",
+    headerTitle: "Test C — curl google.com",
     modeFlows: { before: "before", after: "after" },
     phaseRest,
     defaultMode: "before",

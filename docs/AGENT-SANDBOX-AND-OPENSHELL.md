@@ -99,7 +99,7 @@ The `privileged` SCC is granted **only** to the `openshell-sandbox` ServiceAccou
 | SCC RoleBinding | `deploy/helm/openshell/templates/scc-rolebinding.yaml` | Included in `deploy-openshell` |
 | OpenClaw UI Proxy | `deploy/helm/openclaw-ui-proxy/` (nginx mTLS bridge) | `make -C deploy deploy-openclaw-ui-proxy` |
 | Sandbox Policy (default / CI) | `config/openshell/default.yaml` | Applied at `sandbox create` time for `cluster-lifecycle full` |
-| Sandbox Policy (google egress) | `config/openshell/google-egress.yaml` | Live Cambio 1 via `./scripts/demo-allow-google-egress.sh` |
+| Sandbox Policy (google egress) | `config/openshell/google-egress.yaml` | Live Change 1 via `./scripts/demo-allow-google-egress.sh` |
 
 ### Architecture Diagram
 
@@ -563,15 +563,15 @@ The sandbox policy controls what the agent can do at runtime:
 
 | Policy file | Egress posture | Used by |
 |-------------|----------------|---------|
-| `config/openshell/default.yaml` | MLflow only; public egress denied | CI, demo backstage (`demo-backstage-install`, `demo-reset`), C-pre |
-| `config/openshell/google-egress.yaml` | MLflow + `google.com:443` for Test C post–Cambio 1 | Live via `demo-allow-google-egress.sh` |
+| `config/openshell/default.yaml` | MLflow only; public egress denied | CI, demo backstage (`demo-backstage-install`, `demo-reset`), C-before |
+| `config/openshell/google-egress.yaml` | MLflow + `google.com:443` for Test C post–Change 1 | Live via `demo-allow-google-egress.sh` |
 
 **Per-policy binaries** (which executable may open sockets to that endpoint):
 
 | Policy block | Binaries | Purpose |
 |--------------|----------|---------|
 | `mlflow_direct` | `/usr/bin/node` | OpenClaw gateway + `mlflow-openclaw` trace export |
-| `demo_egress_google` (post–Cambio 1 only) | `/usr/bin/curl` | Test C — agent `curl` to `google.com` |
+| `demo_egress_google` (post–Change 1 only) | `/usr/bin/curl` | Test C — agent `curl` to `google.com` |
 
 `curl` is not listed under `mlflow_direct`; MLflow API validation from scripts uses `oc exec` outside the sandbox netns. `inference.local` needs no explicit binary allowlist.
 
@@ -608,9 +608,9 @@ make -C deploy validate-demo-initial
 | Layer | Command | What it proves |
 |-------|---------|----------------|
 | **Infrastructure (CI)** | `make -C deploy validate-security` | nftables/network policy blocks unauthorized egress (`curl` → `000`/`403`) |
-| **Demo backstage** | `make -C deploy validate-demo-initial` | `google.com` and `github.com` blocked before Cambio 1; `inference.local` still OK |
+| **Demo backstage** | `make -C deploy validate-demo-initial` | `google.com` and `github.com` blocked before Change 1; `inference.local` still OK |
 | **Control UI (E2E)** | `make -C deploy test-security` | User-facing agent refuses malicious prompts or shows block evidence in chat |
-| **Demo narrative (E2E)** | `make -C deploy test-demo` | Full live script: Tests A–D + Cambio 1/2 in one Control UI session |
+| **Demo narrative (E2E)** | `make -C deploy test-demo` | Full live script: Tests A–D + Change 1/2 in one Control UI session |
 
 Use both: `validate-security` catches policy misconfiguration; Playwright catches regressions in the agent harness or Control UI path. Security and guardrails Playwright suites click **New session** before each test and stay on that session (`askAgentViaUI` must not navigate back to `/`, which reopens Main Session). The demo narrative suite (`demo-narrative.spec.ts`) keeps a **single chat session** across Tests A–D (no `resetChatSession` between steps), matching the live presenter flow. Assertions read only the latest assistant bubble, not the full chat log.
 
@@ -629,7 +629,7 @@ Copy `secrets/secrets.template.env` to `secrets/secrets.env` and set the **usern
 
 ```bash
 make -C deploy test-e2e           # full suite (CI hardened policy)
-make -C deploy test-demo          # demo-narrative.spec.ts (Tests A–D + Cambio 1/2)
+make -C deploy test-demo          # demo-narrative.spec.ts (Tests A–D + Change 1/2)
 make -C deploy test-security    # sandbox-security.spec.ts
 make -C deploy test-ui          # openclaw-ui.spec.ts (browser → gateway → model → traces)
 make -C deploy test-guardrails  # guardrails-ui.spec.ts (NeMo jailbreak blocked in Control UI)
@@ -680,7 +680,7 @@ mlflow-auth-setup ─────────────┘
 
 - [`tests/openclaw-ui.spec.ts`](../tests/openclaw-ui.spec.ts) — `mode: 'serial'` (chat prompts must not overlap on Main Session)
 - [`tests/sandbox-security.spec.ts`](../tests/sandbox-security.spec.ts) — `mode: 'serial'` (same session; prompts go through the agent LLM)
-- [`tests/demo-narrative.spec.ts`](../tests/demo-narrative.spec.ts) — `mode: 'serial'` (one session for full demo A–D; runs `demo-reset` / Cambio scripts)
+- [`tests/demo-narrative.spec.ts`](../tests/demo-narrative.spec.ts) — `mode: 'serial'` (one session for full demo A–D; runs `demo-reset` / Change scripts)
 
 **Expected speed-up**
 
@@ -749,7 +749,7 @@ APPS_DOMAIN=apps.your-cluster.example.com make deploy-openclaw-ui-proxy
 POLICY_FILE=config/openshell/default.yaml INFERENCE_BACKEND=direct make -C deploy launch-openclaw
 VERIFY_PROFILE=demo ./scripts/verify.sh
 # Before Scenario C: ./scripts/demo-reset.sh
-# Live Cambio 1: ./scripts/demo-allow-google-egress.sh
+# Live Change 1: ./scripts/demo-allow-google-egress.sh
 ```
 
 ### Key Commands
@@ -766,7 +766,7 @@ VERIFY_PROFILE=demo ./scripts/verify.sh
 | Update policy live | `openshell policy set <name> --policy <file> --wait` |
 | Reset demo to initial policy | `./scripts/demo-reset.sh` |
 | Ensure MLflow tracing experiment | `./scripts/ensure-mlflow-experiment.sh` or `make -C deploy ensure-mlflow-experiment` |
-| Allow google.com egress (Cambio 1) | `./scripts/demo-allow-google-egress.sh` |
+| Allow google.com egress (Change 1) | `./scripts/demo-allow-google-egress.sh` |
 | Validate demo backstage | `VERIFY_PROFILE=demo ./scripts/verify.sh` |
 
 ---

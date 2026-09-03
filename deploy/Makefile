@@ -637,7 +637,7 @@ validate-security:
 	fi
 
 validate-demo-initial:
-	@echo "=== Demo Initial Sandbox Policy (MLflow-only egress — Test C before Cambio 1) ==="
+	@echo "=== Demo Initial Sandbox Policy (MLflow-only egress — Test C before Change 1) ==="
 	@openshell gateway select $(GATEWAY_NAME) >/dev/null 2>&1 || true
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
 		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://github.com 2>/dev/null; echo'); \
@@ -665,7 +665,7 @@ validate-demo-initial:
 	fi
 
 validate-demo-google-egress:
-	@echo "=== Demo Post–Cambio 1 Sandbox Policy (google.com allowlisted) ==="
+	@echo "=== Demo Post–Change 1 Sandbox Policy (google.com allowlisted) ==="
 	@openshell gateway select $(GATEWAY_NAME) >/dev/null 2>&1 || true
 	@RESULT=$$(openshell sandbox exec -n $(SANDBOX_NAME) --no-tty -- \
 		bash -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://google.com 2>/dev/null; echo'); \

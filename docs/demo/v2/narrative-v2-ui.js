@@ -12,7 +12,7 @@ import {
 } from "./baseline-diagram.js";
 
 const STEP0_BODY_REPLACEMENT =
-  "Walk the baseline platform map with ← → or Start. BYOA agent → OpenShell sandbox → inference.local → MaaS → MLflow (on from token 1).";
+  "BYOA agent in OpenShell sandbox — inference.local → (NeMo, grey) → MaaS; MLflow traces from the first token.";
 
 export const LAYOUT_STORAGE_KEY = "v2-baseline-layout";
 

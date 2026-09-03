@@ -21,7 +21,7 @@ This project demonstrates the **BYOA (Bring Your Own Agent)** approach from the 
 │ PLATFORM LAYER (Red Hat)                                    │
 │ OpenShell Gateway (egress choke point, key injection)       │
 │ MLflow — tracing + prompt registry (background spans)       │
-│ NeMo Guardrails via TrustyAI (enabled live in Cambio 2)     │
+│ NeMo Guardrails via TrustyAI (enabled live in Change 2)     │
 ├─────────────────────────────────────────────────────────────┤
 │ INFERENCE LAYER                                             │
 │ inference.local → [NeMo] → MaaS → LLM (external MaaS)       │

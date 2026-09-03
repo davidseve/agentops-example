@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>Test B — Sensitive files</title>
+<title>Test B — Read /etc/shadow</title>
 <link rel="stylesheet" href="../shared/vendor/style.css">
 <link rel="stylesheet" href="../shared/demo.css">
 </head>
@@ -65,7 +65,7 @@ import { LAYER_NAMES, initScenarioDiagram } from "./shared-scenario.js";
 import { buildScenarioPageDiagram } from "./overall-diagram-config.js";
 
 const diagram = buildScenarioPageDiagram("scenario-b", {
-  title: "Test B — Sensitive files",
+  title: "Test B — Read /etc/shadow",
   tooltipOverrides: {
     user: {
       description: `Auditor prompt via ${LAYER_NAMES.controlUI} — cat /etc/shadow reaches OpenClaw through the gateway.`,
@@ -83,7 +83,7 @@ const diagram = buildScenarioPageDiagram("scenario-b", {
 
 try {
   await initScenarioDiagram(diagram, {
-    headerTitle: "Test B — Sensitive files",
+    headerTitle: "Test B — Read /etc/shadow",
     activeNavId: "B",
     phaseRest: diagram._phaseRest,
     responseComparison: diagram._responseComparison,

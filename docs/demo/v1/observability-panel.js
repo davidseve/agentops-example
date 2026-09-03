@@ -499,7 +499,7 @@ export function initObservabilityPanel({
 
   function logsFetchUrl(componentId) {
     let lines = logLinesFor(componentId);
-    if (componentId === "sandbox" && (activeStepId === "B" || activeStepId === "C-pre" || activeStepId === "C-post")) {
+    if (componentId === "sandbox" && (activeStepId === "B" || activeStepId === "C-before" || activeStepId === "C-after")) {
       lines = 500;
     }
     let url = `${proxyUrl}/api/logs/${encodeURIComponent(componentId)}?lines=${lines}`;

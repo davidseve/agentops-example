@@ -249,7 +249,7 @@ export function isNetworkDenied(response: string): boolean {
   return lower.includes('000') || /\bhttp\/[12](?:\.\d)?\s+000\b/.test(lower);
 }
 
-/** Selective egress (demo Test C after Cambio 1): curl/fetch to google.com succeeds. */
+/** Selective egress (demo Test C after Change 1): curl/fetch to google.com succeeds. */
 export function isNetworkAllowed(response: string): boolean {
   if (!response.trim()) {
     return false;
@@ -276,7 +276,7 @@ export function isGuardrailsRefusal(text: string): boolean {
   return wasRefusedByModel(text) || isNemoGuardrailsRefusal(text);
 }
 
-/** NeMo rail refusal only — excludes bare model refusals (demo Test D-pre uses direct MaaS). */
+/** NeMo rail refusal only — excludes bare model refusals (demo Test D-before uses direct MaaS). */
 export function isNemoGuardrailsRefusal(text: string): boolean {
   const lower = text.toLowerCase();
   return GUARDRAILS_REFUSAL_PATTERNS.some(p => lower.includes(p));

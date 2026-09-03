@@ -17,7 +17,7 @@ export const V3_NAV_GROUPS = NAV_GROUPS.filter((g) => g.id !== "close").map((g) 
 
 export const V3_STEP_IDS = STEP_IDS.filter((id) => id !== "close");
 
-const SCENARIO_CANVAS_STEPS = new Set(["A", "B", "C-pre", "C-post"]);
+const SCENARIO_CANVAS_STEPS = new Set(["A", "B", "C-before", "C-after"]);
 const FLOW_EMBED_STEPS = new Set(["0", ...SCENARIO_CANVAS_STEPS]);
 
 let keyHandler = null;
@@ -48,16 +48,16 @@ function clearStepClasses(root) {
     "nr-v3-step-0",
     "nr-v3-step-A",
     "nr-v3-step-B",
-    "nr-v3-step-C-pre",
-    "nr-v3-step-C-post",
+    "nr-v3-step-C-before",
+    "nr-v3-step-C-after",
     "nr-v3-step-scenario"
   );
   document.body.classList.remove(
     "nr-v3-step-0",
     "nr-v3-step-A",
     "nr-v3-step-B",
-    "nr-v3-step-C-pre",
-    "nr-v3-step-C-post",
+    "nr-v3-step-C-before",
+    "nr-v3-step-C-after",
     "nr-v3-step-scenario"
   );
   document.documentElement.classList.remove("nr-v3-step-0");

@@ -46,8 +46,8 @@ Requires Playwright deps and `OCP_TEST_USERNAME` / `OCP_TEST_PASSWORD` for MLflo
 | Test B | `/etc/shadow` blocked |
 | Test C (before) | curl to github succeeded |
 | Test C (after) | curl blocked |
-| Test D (before) | Jailbreak may succeed |
-| Test D (after) | Jailbreak blocked by NeMo |
+| Test D (before) | Network recon script may succeed |
+| Test D (after) | Network recon script blocked by NeMo |
 
 **Say:** MLflow is not an add-on — observability from the first token.
 

@@ -101,8 +101,8 @@ Active live script (~9–10 min): [`docs/demo-narrativa-v1.md`](docs/demo-narrat
 
 1. **Context** (1–2 min): Architecture map via [`docs/demo/overall-demo-architecture.html`](docs/demo/overall-demo-architecture.html) — skill: `demo-presenter-panel`
 2. **Tests A & B** (2–3 min): API key not in sandbox; `/etc/shadow` blocked — skill: `demo-present`
-3. **Test C + Cambio 1** (2 min): Unauthorized `curl` blocked, then allow google.com egress — skill: `demo-allow-google-egress`
-4. **Test D + Cambio 2** (2–3 min): Jailbreak on direct MaaS, then NeMo blocks — skill: `demo-enable-guardrails`
+3. **Test C + Change 1** (2 min): Unauthorized `curl` blocked, then allow google.com egress — skill: `demo-allow-google-egress`
+4. **Test D + Change 2** (2–3 min): Network recon on direct MaaS, then NeMo blocks — skill: `demo-enable-guardrails`
 5. **MLflow** (1–2 min): Same session trace — skill: `mlflow-tracing-validate`
 6. **Close**: *Your Agent. Our Platform. Production-Ready.* — skill: `demo-present`
 
@@ -139,8 +139,8 @@ Project-level skills live in `.cursor/skills/`. Use them when the task matches t
 | `demo-verify` | Validate demo initial state (`VERIFY_PROFILE=demo`) |
 | `demo-present` | Master live runbook (phases 0–5) |
 | `demo-presenter-panel` | Serve `overall-demo-architecture.html` + `v1/live.html` panel — log highlight rules: [demo-scenario-logs.md](docs/demo/demo-scenario-logs.md#sandbox-panel-highlight-rules) |
-| `demo-allow-google-egress` | Live Cambio 1 — allowlist google.com egress for Test C |
-| `demo-enable-guardrails` | Live Cambio 2 — switch inference to NeMo |
+| `demo-allow-google-egress` | Live Change 1 — allowlist google.com egress for Test C |
+| `demo-enable-guardrails` | Live Change 2 — switch inference to NeMo |
 | `demo-reset` | Reset between rehearsals (direct MaaS + MLflow-only egress policy) |
 | `mlflow-tracing-validate` | MLflow traces block (phase 4) |
 
@@ -172,8 +172,8 @@ agentops-showcase/
 ├── config/
 │   ├── openclaw.json.tpl          # OpenClaw harness config template
 │   └── openshell/                 # OpenShell sandbox policies (Landlock, egress)
-│       ├── default.yaml           # Default: MLflow only (CI, demo backstage, C-pre)
-│       └── google-egress.yaml     # Demo Test C post–Cambio 1: allows curl → google.com
+│       ├── default.yaml           # Default: MLflow only (CI, demo backstage, C-before)
+│       └── google-egress.yaml     # Demo Test C post–Change 1: allows curl → google.com
 ├── docs/
 │   ├── ROADMAP.md                 # Phased task list
 │   ├── cluster-bootstrap.md       # RHOAI platform deploy on OpenShift
@@ -216,9 +216,9 @@ agentops-showcase/
 │   ├── validate-demo-external-css.sh  # Lint docs/demo HTML/JS for external CSS only
 │   ├── validate-demo-ui.sh            # CSS lint + demo unit tests (no cluster)
 │   ├── demo-observability-proxy.py
-│   ├── demo-enable-guardrails.sh  # Live demo Cambio 2: NeMo inference path
+│   ├── demo-enable-guardrails.sh  # Live demo Change 2: NeMo inference path
 │   ├── demo-disable-guardrails.sh # Reset to direct MaaS
-│   ├── demo-allow-google-egress.sh # Live demo Cambio 1: allowlist google.com egress
+│   ├── demo-allow-google-egress.sh # Live demo Change 1: allowlist google.com egress
 │   ├── demo-reset.sh              # Reset demo (direct MaaS + MLflow-only egress)
 │   ├── run-playwright-tests.sh
 │   └── openshift-openshell-scc.sh # DEPRECATED — SCC managed by Helm chart

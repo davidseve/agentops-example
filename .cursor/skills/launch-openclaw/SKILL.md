@@ -39,7 +39,7 @@ APPS_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.dom
 ./scripts/launch-openclaw.sh
 ```
 
-| Variable | Demo v1 value | Post–Cambio 1 (live only) |
+| Variable | Demo v1 value | Post–Change 1 (live only) |
 |---|---|---|
 | `POLICY_FILE` | `config/openshell/default.yaml` | `google-egress.yaml` via `demo-allow-google-egress.sh` |
 | `INFERENCE_BACKEND` | `direct` | `direct` at launch; guardrailed only via demo script |

@@ -143,7 +143,7 @@ if [[ "$VERIFY_PROFILE" == "full" && "$SKIP_E2E" != "1" ]]; then
     fail "make validate-traces"
   fi
 elif [[ "$VERIFY_PROFILE" == "demo" && "$SKIP_E2E" != "1" ]]; then
-  step "Layer 5: Demo narrative E2E (Tests A–D + Cambio 1/2)"
+  step "Layer 5: Demo narrative E2E (Tests A–D + Change 1/2)"
   ensure_playwright_deps
   export_playwright_env || warn "Playwright env incomplete — E2E may fail"
 

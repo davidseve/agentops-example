@@ -105,7 +105,7 @@ const SCENARIO_A_FIXTURES: FixtureCase[] = [
     component: 'sandbox',
     stepId: 'A',
     tier: 'noise',
-    note: 'google egress is noise on A — green only on C-post',
+    note: 'google egress is noise on A — green only on C-after',
   },
   {
     line: 'OCSF NET:OPEN [INFO] ALLOWED node 127.0.0.1:18789/tcp',
@@ -182,50 +182,50 @@ const C_OVERRIDE_FIXTURES: FixtureCase[] = [
   {
     line: 'OCSF NET:OPEN [MED] DENIED /usr/bin/curl(pid) google.com:443/tcp [reason:no matching policy]',
     component: 'sandbox',
-    stepId: 'C-pre',
+    stepId: 'C-before',
     tier: 'warn',
   },
   {
     line: 'curl to google.com:443 no matching policy for egress',
     component: 'sandbox',
-    stepId: 'C-pre',
+    stepId: 'C-before',
     tier: 'warn',
   },
   {
     line: 'OCSF PROC:LAUNCH [INFO] /usr/bin/curl(pid) argv=curl -sI https://google.com',
     component: 'sandbox',
-    stepId: 'C-pre',
+    stepId: 'C-before',
     tier: 'signal',
   },
   {
     line: 'OCSF NET:OPEN [INFO] ALLOWED node inference.local:443/tcp',
     component: 'sandbox',
-    stepId: 'C-pre',
+    stepId: 'C-before',
     tier: 'noise',
-    note: 'inference egress hidden on C-pre — focus on google curl block',
+    note: 'inference egress hidden on C-before — focus on google curl block',
   },
   {
     line: 'OCSF NET:OPEN [INFO] ALLOWED /usr/bin/curl(pid) google.com:443/tcp [policy:demo-permissive-google]',
     component: 'sandbox',
-    stepId: 'C-post',
+    stepId: 'C-after',
     tier: 'signal',
   },
   {
     line: 'OCSF HTTP:HEAD [INFO] curl https://google.com/',
     component: 'sandbox',
-    stepId: 'C-post',
+    stepId: 'C-after',
     tier: 'signal',
   },
   {
     line: 'OCSF PROC:LAUNCH [INFO] /usr/bin/curl(pid) argv=curl -sI https://google.com',
     component: 'sandbox',
-    stepId: 'C-post',
+    stepId: 'C-after',
     tier: 'signal',
   },
   {
     line: 'OCSF NET:CLOSE [INFO] /usr/bin/curl(pid) google.com:443/tcp',
     component: 'sandbox',
-    stepId: 'C-post',
+    stepId: 'C-after',
     tier: 'signal',
   },
 ];
@@ -446,18 +446,18 @@ test.describe('observability-log-rules — C step overrides', () => {
     });
   }
 
-  test('google ALLOWED is noise on step A but signal on C-post', () => {
+  test('google ALLOWED is noise on step A but signal on C-after', () => {
     const line =
       'OCSF NET:OPEN [INFO] ALLOWED /usr/bin/curl(pid) google.com:443/tcp [policy:demo_egress_google]';
     expect(classifyLine('sandbox', line, 'A')).toBe('noise');
-    expect(classifyLine('sandbox', line, 'C-post')).toBe('signal');
+    expect(classifyLine('sandbox', line, 'C-after')).toBe('signal');
   });
 
-  test('inference.local ALLOWED stays signal on A; hidden on C-pre', () => {
+  test('inference.local ALLOWED stays signal on A; hidden on C-before', () => {
     const line = 'OCSF NET:OPEN [INFO] ALLOWED node inference.local:443/tcp';
     expect(classifyLine('sandbox', line, 'A')).toBe('signal');
-    expect(classifyLine('sandbox', line, 'C-pre')).toBe('noise');
-    expect(classifyLine('sandbox', line, 'C-post')).toBe('noise');
+    expect(classifyLine('sandbox', line, 'C-before')).toBe('noise');
+    expect(classifyLine('sandbox', line, 'C-after')).toBe('noise');
   });
 });
 
@@ -469,8 +469,8 @@ const SCENARIO_C_SANDBOX_LOG = `
 `.trim();
 
 test.describe('observability-log-rules — processLogLines (Filter ON)', () => {
-  test('C-pre sandbox log hides inference noise and keeps curl/google deny signal', () => {
-    const { visible, stats } = processLogLines(SCENARIO_C_SANDBOX_LOG, 'sandbox', true, 'C-pre');
+  test('C-before sandbox log hides inference noise and keeps curl/google deny signal', () => {
+    const { visible, stats } = processLogLines(SCENARIO_C_SANDBOX_LOG, 'sandbox', true, 'C-before');
 
     expect(stats.signal).toBe(1);
     expect(stats.warn).toBe(1);
@@ -495,8 +495,8 @@ test.describe('observability-log-rules — processLogLines (Filter ON)', () => {
     expect(visible.some((row) => /ssh relay/.test(row.line))).toBeFalsy();
   });
 
-  test('C-pre shows google DENIED when Filter ON', () => {
-    const { visible } = processLogLines(SCENARIO_C_SANDBOX_LOG, 'sandbox', true, 'C-pre');
+  test('C-before shows google DENIED when Filter ON', () => {
+    const { visible } = processLogLines(SCENARIO_C_SANDBOX_LOG, 'sandbox', true, 'C-before');
     expect(visible.some((row) => /google\.com/.test(row.line) && row.tier === 'warn')).toBeTruthy();
   });
 
@@ -542,16 +542,16 @@ test.describe('observability-log-rules — presenter hints (step A)', () => {
     expect(formatStepHint('B')).toContain('inference.local');
   });
 
-  test('step C-pre uses narrative presenter message', () => {
-    expect(stepHintUsesCustomMessage('C-pre')).toBeTruthy();
-    expect(formatStepHint('C-pre')).toContain('DENIED');
-    expect(formatStepHint('C-pre')).toContain('google.com');
+  test('step C-before uses narrative presenter message', () => {
+    expect(stepHintUsesCustomMessage('C-before')).toBeTruthy();
+    expect(formatStepHint('C-before')).toContain('DENIED');
+    expect(formatStepHint('C-before')).toContain('google.com');
   });
 
-  test('step C-post uses narrative presenter message', () => {
-    expect(stepHintUsesCustomMessage('C-post')).toBeTruthy();
-    expect(formatStepHint('C-post')).toContain('ALLOWED');
-    expect(formatStepHint('C-post')).toContain('demo-allow-google-egress');
+  test('step C-after uses narrative presenter message', () => {
+    expect(stepHintUsesCustomMessage('C-after')).toBeTruthy();
+    expect(formatStepHint('C-after')).toContain('ALLOWED');
+    expect(formatStepHint('C-after')).toContain('demo-allow-google-egress');
   });
 
   test('unknown step returns default navigation hint', () => {

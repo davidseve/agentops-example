@@ -690,8 +690,8 @@ export function renderStepCard(
   if (step.subStep && navMode !== "select") {
     const { group, phase } = step.subStep;
     subNav = `<div class="nr-sub-nav" data-sub-group="${group}">
-      <button type="button" data-goto="${group}-pre" class="${phase === "before" ? "active" : ""}">Before</button>
-      <button type="button" data-goto="${group}-post" class="${phase === "after" ? "active" : ""}">After</button>
+      <button type="button" data-goto="${group}-before" class="${phase === "before" ? "active" : ""}">Before</button>
+      <button type="button" data-goto="${group}-after" class="${phase === "after" ? "active" : ""}">After</button>
     </div>`;
   }
 
@@ -702,7 +702,7 @@ export function renderStepCard(
   const actionsHtml = renderActionsSection(step, dualActionsRow);
 
   const expectFail = step.expectedFail
-    ? `<p class="nr-expect fail">Before change: <strong>${escapeHtml(step.expectedFail)}</strong></p>`
+    ? `<p class="nr-expect fail">Expected: <strong>${escapeHtml(step.expectedFail)}</strong></p>`
     : "";
   const expectOk = step.expected
     ? `<p class="nr-expect">Expected: <strong>${escapeHtml(step.expected)}</strong></p>`
@@ -711,7 +711,7 @@ export function renderStepCard(
   container.innerHTML = `
     ${subNav}
     <div class="nr-card">
-      <h2>${escapeHtml(step.id === "0" ? "0" : step.id.replace("-", " · "))} — ${escapeHtml(step.title)}</h2>
+      <h2>${escapeHtml(buildStepSelectLabel(step.id))}</h2>
       <p class="nr-meta">${escapeHtml(step.timing)}</p>
       <div class="nr-body">${bodyHtml}</div>
       ${actionsHtml}

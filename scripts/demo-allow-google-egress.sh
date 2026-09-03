@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# demo-allow-google-egress.sh — Live demo Cambio 1: allowlist google.com egress for Test C.
+# demo-allow-google-egress.sh — Live demo Change 1: allowlist google.com egress for Test C.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -11,7 +11,7 @@ command -v openshell >/dev/null 2>&1 || { error "openshell CLI is required"; exi
 
 openshell gateway select "${GATEWAY_NAME}" >/dev/null 2>&1 || true
 
-step "Allowing google.com egress (Cambio 1)"
+step "Allowing google.com egress (Change 1)"
 info "Sandbox: ${SANDBOX_NAME}"
 info "Policy: $(basename "$POLICY_GOOGLE_EGRESS")"
 

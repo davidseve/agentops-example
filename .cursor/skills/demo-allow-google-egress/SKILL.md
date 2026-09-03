@@ -1,12 +1,12 @@
 ---
 name: demo-allow-google-egress
 description: >-
-  Live demo Cambio 1: allowlist google.com egress for Test C after default deny.
-  Use during demo-narrativa-v1 phase 2, abrir egress selectivo, demo-allow-google-egress,
-  or after curl to google.com is blocked on stage.
+  Live demo Change 1: allowlist google.com egress for Test C after default deny.
+  Use during demo-narrativa-v1 phase 2, selective egress change,
+  demo-allow-google-egress, or after curl to google.com is blocked on stage.
 ---
 
-# Demo Allow Google Egress (Cambio 1)
+# Demo Allow Google Egress (Change 1)
 
 Apply the selective sandbox policy live — [`config/openshell/google-egress.yaml`](../../config/openshell/google-egress.yaml).
 

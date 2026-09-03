@@ -68,7 +68,7 @@ function buildTooltips() {
     },
     nemo: {
       title: "NeMo Guardrails",
-      description: "Input/output rails on the inference hop. Off at demo start; enabled live in Cambio 2 (Test D).",
+      description: "Input/output rails on the inference hop. Off at demo start; enabled live in Change 2 (Test D).",
       details: [
         ["Product", "RHOAI · TrustyAI"],
         ["Rails", "NVIDIA NeMo Guardrails"],
@@ -93,7 +93,7 @@ function buildTooltips() {
     },
     internet: {
       title: LAYER_NAMES.internet,
-      description: `Public egress. curl allowed in demo-initial policy (Test C) until Cambio 1.`,
+      description: `Public egress. curl allowed in demo-initial policy (Test C) until Change 1.`,
       details: [
         ["Path", `${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.internet}`],
         ["Policy", "nftables / network_policies"],
