@@ -9,7 +9,7 @@ OpenClaw → inference.local → [maas-direct | maas-guardrailed] → MaaS
                                     └─ guardrailed → NeMo Guardrails → MaaS
 ```
 
-For the live demo narrative, inference starts on **direct MaaS** (`INFERENCE_BACKEND=direct`). NeMo is deployed in backstage; the presenter runs `./scripts/demo-enable-guardrails.sh` for Cambio 2 (jailbreak blocked by self-check rails).
+For the live demo narrative, inference starts on **direct MaaS** (`INFERENCE_BACKEND=direct`). NeMo is deployed in backstage; the presenter runs `./scripts/demo-enable-guardrails.sh` for Change 2 (jailbreak blocked by self-check rails).
 
 Demo sandbox policy: create with [`config/openshell/default.yaml`](../config/openshell/default.yaml) (MLflow-only egress). Allow google.com live with `./scripts/demo-allow-google-egress.sh`. Reset between rehearsals: `./scripts/demo-reset.sh`. See [`demo-narrativa-v1.md`](../docs/demo-narrativa-v1.md).
 
@@ -18,7 +18,7 @@ Demo sandbox policy: create with [`config/openshell/default.yaml`](../config/ope
 | Skill | Path | Use when you want to… |
 |---|---|---|
 | `guardrails-cluster-install` | [`.cursor/skills/guardrails-cluster-install/`](../.cursor/skills/guardrails-cluster-install/SKILL.md) | Deploy, validate, or remove NeMo Guardrails on the cluster |
-| `demo-enable-guardrails` | [`.cursor/skills/demo-enable-guardrails/`](../.cursor/skills/demo-enable-guardrails/SKILL.md) | Live demo Cambio 2 — switch inference to NeMo on stage |
+| `demo-enable-guardrails` | [`.cursor/skills/demo-enable-guardrails/`](../.cursor/skills/demo-enable-guardrails/SKILL.md) | Live demo Change 2 — switch inference to NeMo on stage |
 | `demo-reset` | [`.cursor/skills/demo-reset/`](../.cursor/skills/demo-reset/SKILL.md) | Reset demo to direct MaaS + demo-initial policy between rehearsals |
 
 ## Prerequisites
@@ -78,7 +78,7 @@ After OpenShell is up:
 make -C deploy launch-openclaw   # creates maas-direct + maas-guardrailed providers
 ./scripts/demo-enable-guardrails.sh   # live demo: switch to NeMo path
 ./scripts/demo-disable-guardrails.sh  # reset to direct MaaS
-./scripts/demo-allow-google-egress.sh  # live demo Cambio 1: allowlist google.com egress
+./scripts/demo-allow-google-egress.sh  # live demo Change 1: allowlist google.com egress
 ./scripts/demo-reset.sh               # full demo reset (MaaS direct + demo-initial policy)
 ```
 

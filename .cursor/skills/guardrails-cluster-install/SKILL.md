@@ -54,7 +54,7 @@ make -C deploy undeploy-guardrails
 | Phase | Inference path |
 |---|---|
 | Backstage / minute 0 | `INFERENCE_BACKEND=direct` — NeMo deployed but not in live path |
-| Live Cambio 2 | `demo-enable-guardrails` skill → `./scripts/demo-enable-guardrails.sh` |
+| Live Change 2 | `demo-enable-guardrails` skill → `./scripts/demo-enable-guardrails.sh` |
 | Reset rehearsal | `demo-reset` skill |
 
 ## Troubleshooting

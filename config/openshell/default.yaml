@@ -2,7 +2,7 @@ version: 1
 
 # Default OpenShell sandbox policy: MLflow traces only; no public egress.
 # Default POLICY_FILE in launch-openclaw.sh, CI validate-security, demo-reset,
-# and demo backstage (Test C before Cambio 1). Post–Cambio 1 google egress:
+# and demo backstage (Test C before Change 1). Post–Change 1 google egress:
 # config/openshell/google-egress.yaml via demo-allow-google-egress.sh.
 
 filesystem_policy:

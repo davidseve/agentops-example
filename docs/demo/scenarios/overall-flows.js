@@ -646,7 +646,7 @@ export const SCENARIO_C_AFTER_STEPS = [
     ...ARROW.userToGw,
   },
   {
-    text: "Same curl prompt — retry after Cambio 1",
+    text: "Same curl prompt — retry after Change 1",
     mode: "arrow",
     from: "gw",
     to: "oc",
@@ -702,7 +702,7 @@ export const SCENARIO_D_BEFORE_MUTATIONS = [
   },
   {
     step: 2,
-    label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw} · jailbreak`,
+    label: `1  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw} · recon`,
     actions: [{ id: "p-probe", style: "highlight" }],
   },
   { step: 3, label: `2  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.ir}` },
@@ -711,7 +711,7 @@ export const SCENARIO_D_BEFORE_MUTATIONS = [
     label: `3  ${LAYER_NAMES.ir} → ${LAYER_NAMES.maas} · direct`,
     actions: [{ id: "p-path", style: "highlight" }, { id: "l-rails", style: "highlight" }],
   },
-  { step: 5, label: `2  ${LAYER_NAMES.ir} → ${LAYER_NAMES.openClaw} · may comply` },
+  { step: 5, label: `2  ${LAYER_NAMES.ir} → ${LAYER_NAMES.openClaw} · may generate script` },
   { step: 6, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw} · output` },
   {
     step: 7,
@@ -762,7 +762,7 @@ export const SCENARIO_D_BEFORE_STEPS = [
     ...ARROW.userToGw,
   },
   {
-    text: `${LAYER_NAMES.gw} forwards jailbreak prompt`,
+    text: `${LAYER_NAMES.gw} forwards recon prompt`,
     mode: "arrow",
     from: "gw",
     to: "oc",
@@ -789,7 +789,7 @@ export const SCENARIO_D_BEFORE_STEPS = [
     ...ARROW.irToMaas,
   },
   {
-    text: `Response to ${LAYER_NAMES.openClaw} — model may comply`,
+    text: `Response to ${LAYER_NAMES.openClaw} — model may generate script`,
     mode: "arrow",
     from: "ir",
     to: "oc",
@@ -807,7 +807,7 @@ export const SCENARIO_D_BEFORE_STEPS = [
     ...ARROW_SCENARIO_OC_GW.ocToGwReply,
   },
   {
-    text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · unsafe output possible`,
+    text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · unsafe script possible`,
     mode: "arrow",
     from: "gw",
     to: "user",
@@ -828,7 +828,7 @@ export const SCENARIO_D_AFTER_STEPS = [
     ...ARROW.userToGw,
   },
   {
-    text: "Same jailbreak prompt — retry after Cambio 2",
+    text: "Same recon prompt — retry after Change 2",
     mode: "arrow",
     from: "gw",
     to: "oc",
@@ -864,7 +864,7 @@ export const SCENARIO_D_AFTER_STEPS = [
     ...ARROW.nemoToMaas,
   },
   {
-    text: `Response to ${LAYER_NAMES.openClaw} — rail blocks jailbreak`,
+    text: `Response to ${LAYER_NAMES.openClaw} — rail blocks recon script`,
     mode: "arrow",
     from: "ir",
     to: "oc",
@@ -882,7 +882,7 @@ export const SCENARIO_D_AFTER_STEPS = [
     ...ARROW_SCENARIO_OC_GW.ocToGwReply,
   },
   {
-    text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · jailbreak blocked`,
+    text: `${LAYER_NAMES.gw} → ${LAYER_NAMES.endUser} · recon blocked`,
     mode: "arrow",
     from: "gw",
     to: "user",
@@ -939,7 +939,7 @@ export const LAYER_BOARDS = {
       ...INSPECTOR_HEADERS_C.slice(4),
     ],
     body: [
-      { value: "Cambio 1: ./scripts/demo-allow-google-egress.sh", style: "add", id: "p-cmd" },
+      { value: "Change 1: ./scripts/demo-allow-google-egress.sh", style: "add", id: "p-cmd" },
       { value: "Same curl → HTTP 200 to google.com", style: "add", id: "p-expect" },
     ],
   },
@@ -950,9 +950,9 @@ export const LAYER_BOARDS = {
       ...INSPECTOR_HEADERS_D.slice(5),
     ],
     body: [
-      { value: "Jailbreak: ignore instructions · system prompt", style: "add", id: "p-probe" },
+      { value: "Recon script: port scan 10.0.0.0/24 · CVE lookup", style: "add", id: "p-probe" },
       { value: "Path: inference.local → MaaS (direct)", style: "add", id: "p-path" },
-      { value: "Expected: model may comply (no rails)", style: "add", id: "p-expect" },
+      { value: "Expected: model may generate script (no rails)", style: "add", id: "p-expect" },
     ],
   },
   "scenario-d-after": {
@@ -962,7 +962,7 @@ export const LAYER_BOARDS = {
       ...INSPECTOR_HEADERS_D.slice(5),
     ],
     body: [
-      { value: "Cambio 2: ./scripts/demo-enable-guardrails.sh", style: "add", id: "p-cmd" },
+      { value: "Change 2: ./scripts/demo-enable-guardrails.sh", style: "add", id: "p-cmd" },
       { value: "Path: inference.local → NeMo → MaaS", style: "add", id: "p-path" },
       { value: "Same prompt → refusal / filtered", style: "add", id: "p-expect" },
     ],

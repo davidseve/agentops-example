@@ -90,7 +90,7 @@
 
 ### Progressive network-policy unlock for the Security Attack demo
 
-> **Active demo narrative.** The live script ([`demo-narrativa-v1.md`](demo-narrativa-v1.md)) starts with MaaS + MLflow already reachable and **default-deny egress** (`default.yaml`). Test C runs blocked first; Cambio 1 applies selective google.com allowlist via `demo-allow-google-egress.sh`.
+> **Active demo narrative.** The live script ([`demo-narrativa-v1.md`](demo-narrativa-v1.md)) starts with MaaS + MLflow already reachable and **default-deny egress** (`default.yaml`). Test C runs blocked first; Change 1 applies selective google.com allowlist via `demo-allow-google-egress.sh`.
 
 Found while comparing this project against a related OpenShell/OpenCode reference demo
 ([r3v5/agent-ops,](https://github.com/r3v5/agent-ops/tree/opencode-in-openshell-with-mlflow-on-openshift-demo/demos/opencode-vertex-tracing) `opencode-vertex-tracing`).
@@ -104,7 +104,7 @@ Active v1 demo now aligns with that unlock direction for egress:
 - [x] Live allowlist script — [`scripts/demo-allow-google-egress.sh`](../scripts/demo-allow-google-egress.sh) applies [`config/openshell/google-egress.yaml`](../config/openshell/google-egress.yaml)
 - [x] Narrative + timed script — [`demo-narrativa-v1.md`](demo-narrativa-v1.md), [`demo-script.md`](demo-script.md)
 - [ ] Keep `config/openshell/default.yaml` as CI / `validate-security` baseline (unchanged)
-- [ ] Optional: document per-endpoint `openshell policy update --add-endpoint` as an alternate Cambio 1 presentation
+- [ ] Optional: document per-endpoint `openshell policy update --add-endpoint` as an alternate Change 1 presentation
 
 
 

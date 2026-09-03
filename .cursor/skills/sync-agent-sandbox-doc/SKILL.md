@@ -55,7 +55,7 @@ Sync progress:
 | `deploy/Makefile` (`deploy-openshell`, `validate-*`) | §2 How deploy-openshell works, §8 Validation, §9 Quick Reference |
 | `scripts/launch-openclaw.sh` | §3 Phase 6, **§5 Launch Script** (primary) |
 | `config/openshell/default.yaml` | §1 Landlock / policy, §7 Policy anatomy (CI final) |
-| `config/openshell/google-egress.yaml` | §7 Policy anatomy (Cambio 1 — link to demo-narrativa-v1) |
+| `config/openshell/google-egress.yaml` | §7 Policy anatomy (Change 1 — link to demo-narrativa-v1) |
 | `scripts/demo-*.sh` | §7 Policy anatomy, §9 Quick Reference (demo live scripts) |
 | `config/openclaw.json.tpl` | §5 (auth, plugins, tracing env) |
 | `OPENCLAW_PIN` / image `--from` | §6 Version Pinning |
@@ -71,7 +71,7 @@ Read the actual files — especially:
 - `deploy/helm/openshell/Chart.yaml` + `Chart.lock` — chart pin
 - `deploy/helm/openshell/values.yaml` — SCC, security context, upstream overrides
 - `config/openshell/default.yaml` — CI final policy (github blocked)
-- `config/openshell/google-egress.yaml` — demo v1 Cambio 1 policy (google.com allowed for Test C post)
+- `config/openshell/google-egress.yaml` — demo v1 Change 1 policy (google.com allowed for Test C post)
 - `deploy/Makefile` — `validate-openclaw`, `validate-security`, `validate-demo-initial`, deploy sequence
 
 ### Step 3 — Editing rules

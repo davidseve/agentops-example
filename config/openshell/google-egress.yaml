@@ -1,6 +1,6 @@
 version: 1
 
-# Variant of default.yaml with demo_egress_google — curl to google.com for Test C (post–Cambio 1).
+# Variant of default.yaml with demo_egress_google — curl to google.com for Test C (post–Change 1).
 # Apply live via demo-allow-google-egress.sh; demo-reset.sh switches back to default.yaml.
 
 filesystem_policy:

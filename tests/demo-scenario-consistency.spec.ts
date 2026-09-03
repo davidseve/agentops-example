@@ -48,10 +48,10 @@ const EXPECTED_FLOW_IDS = [
 const PROMPT_STEPS: Record<string, string> = {
   A: PROMPT_A,
   B: PROMPT_B,
-  'C-pre': PROMPT_C,
-  'C-post': PROMPT_C,
-  'D-pre': PROMPT_D,
-  'D-post': PROMPT_D,
+  'C-before': PROMPT_C,
+  'C-after': PROMPT_C,
+  'D-before': PROMPT_D,
+  'D-after': PROMPT_D,
 };
 
 test.describe('demo scenario consistency', () => {
@@ -137,26 +137,26 @@ test.describe('demo scenario consistency', () => {
     expect(snippet).toContain('run_as_user: sandbox');
   });
 
-  test('step C-pre baseline yaml panel documents OpenShell network egress policy', () => {
-    const stepCPre = NARRATIVE.steps['C-pre'];
-    expect(stepCPre.yamlPanel).toBe(YAML_PANELS.egressBaseline);
-    expect(stepCPre.yamlPanel?.title).toContain('network egress (default deny)');
-    const snippet = stepCPre.yamlPanel?.snippet ?? '';
+  test('step C-before baseline yaml panel documents OpenShell network egress policy', () => {
+    const stepCBefore = NARRATIVE.steps['C-before'];
+    expect(stepCBefore.yamlPanel).toBe(YAML_PANELS.egressBaseline);
+    expect(stepCBefore.yamlPanel?.title).toContain('network egress (default deny)');
+    const snippet = stepCBefore.yamlPanel?.snippet ?? '';
     expect(snippet).toContain('network_policies');
     expect(snippet).toContain('mlflow_direct');
     expect(snippet).toContain('rhoai-mlflow-direct-traces');
     expect(snippet).not.toMatch(/^\s*demo_egress_google:/m);
   });
 
-  test('step C-post yaml panel documents egress allowed demo_egress_google policy', () => {
-    const stepCPost = NARRATIVE.steps['C-post'];
-    expect(stepCPost.yamlPanel).toBe(YAML_PANELS.egress);
-    expect(stepCPost.yamlPanel?.title).toContain('network egress allowed');
-    expect(stepCPost.yamlPanel?.fileBefore).toBe('config/openshell/default.yaml');
-    expect(stepCPost.yamlPanel?.fileAfter).toBe('config/openshell/google-egress.yaml');
-    expect(stepCPost.yamlPanel?.command).toBe('./scripts/demo-allow-google-egress.sh');
-    expect(stepCPost.yamlPanel?.defaultOpen).toBe(false);
-    const after = stepCPost.yamlPanel?.after ?? '';
+  test('step C-after yaml panel documents egress allowed demo_egress_google policy', () => {
+    const stepCAfter = NARRATIVE.steps['C-after'];
+    expect(stepCAfter.yamlPanel).toBe(YAML_PANELS.egress);
+    expect(stepCAfter.yamlPanel?.title).toContain('network egress allowed');
+    expect(stepCAfter.yamlPanel?.fileBefore).toBe('config/openshell/default.yaml');
+    expect(stepCAfter.yamlPanel?.fileAfter).toBe('config/openshell/google-egress.yaml');
+    expect(stepCAfter.yamlPanel?.command).toBe('./scripts/demo-allow-google-egress.sh');
+    expect(stepCAfter.yamlPanel?.defaultOpen).toBe(false);
+    const after = stepCAfter.yamlPanel?.after ?? '';
     expect(after).toContain('demo_egress_google');
     expect(after).toContain('demo-permissive-google');
     expect(after).toContain('google.com');

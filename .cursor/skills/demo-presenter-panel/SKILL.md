@@ -53,8 +53,8 @@ Requires logged-in `oc` and `openshell` on the presenter's workstation. The prox
 | Overall demo architecture | `http://127.0.0.1:8765/overall-demo-architecture.html` | Phase 0 + full flows A–D (security + inference + MLflow) |
 | Scenario A (credentials) | `http://127.0.0.1:8765/scenarios/test-a-credentials.html` | Test A — security only (~8 hops) |
 | Scenario B (files) | `http://127.0.0.1:8765/scenarios/test-b-files.html` | Test B — Landlock / `/etc/shadow` |
-| Scenario C (egress) | `http://127.0.0.1:8765/scenarios/test-c-egress.html` | Test C — Before/After Cambio 1 (`1`/`2` or `b`/`a`) |
-| Scenario D (guardrails) | `http://127.0.0.1:8765/scenarios/test-d-guardrails.html` | Test D — Before/After Cambio 2 |
+| Scenario C (egress) | `http://127.0.0.1:8765/scenarios/test-c-egress.html` | Test C — Before/After Change 1 (`1`/`2` or `b`/`a`) |
+| Scenario D (guardrails) | `http://127.0.0.1:8765/scenarios/test-d-guardrails.html` | Test D — Before/After Change 2 |
 | Live companion (v1) | `http://127.0.0.1:8765/v1/live.html` | Recommended — phases 1–5 + cluster observability panel |
 
 ## Cluster observability (v1)

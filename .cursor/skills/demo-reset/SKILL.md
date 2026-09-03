@@ -54,4 +54,4 @@ VERIFY_PROFILE=demo SKIP_E2E=1 ./scripts/verify.sh
 
 - Full install: `demo-backstage-install`
 - Present: `demo-present`
-- Cambio 1 only | Run `demo-allow-google-egress` (no partial undo for egress alone except reset)
+- Change 1 only | Run `demo-allow-google-egress` (no partial undo for egress alone except reset)

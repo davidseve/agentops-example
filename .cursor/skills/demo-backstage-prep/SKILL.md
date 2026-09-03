@@ -93,7 +93,7 @@ Split screen: Control UI + `v1/live.html`.
 ./scripts/demo-reset.sh
 ```
 
-Then **New session** in Control UI before running tests A–D. Run `demo-reset.sh` again immediately before Scenario C (C-pre).
+Then **New session** in Control UI before running tests A–D. Run `demo-reset.sh` again immediately before Scenario C (C-before).
 
 ## Expected result
 

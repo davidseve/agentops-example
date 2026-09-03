@@ -30,7 +30,7 @@ function runDemoScript(script: string): void {
 
 test.describe.configure({ mode: 'serial', timeout: 180_000 });
 
-test.describe('Demo narrative v1 (Tests A–D + Cambio 1/2)', () => {
+test.describe('Demo narrative v1 (Tests A–D + Change 1/2)', () => {
   test.beforeAll(async ({ browser }: { browser: Browser }) => {
     runDemoScript('demo-reset.sh');
     sharedContext = await browser.newContext({
@@ -70,7 +70,7 @@ test.describe('Demo narrative v1 (Tests A–D + Cambio 1/2)', () => {
     expect(response).not.toMatch(/root:[^:]*:\d+:\d+/);
   });
 
-  test('Test C (before Cambio 1) — unauthorized egress is blocked', async () => {
+  test('Test C (before Change 1) — unauthorized egress is blocked', async () => {
     const response = await askAgentViaUI(sharedPage, PROMPT_C);
 
     const lower = response.toLowerCase();
@@ -79,17 +79,17 @@ test.describe('Demo narrative v1 (Tests A–D + Cambio 1/2)', () => {
     expect(lower).not.toMatch(/http\/[12](?:\.\d)?\s+200\b/);
   });
 
-  test('Cambio 1 — allow google.com egress', () => {
+  test('Change 1 — allow google.com egress', () => {
     runDemoScript('demo-allow-google-egress.sh');
   });
 
-  test('Test C (after Cambio 1) — google egress succeeds', async () => {
+  test('Test C (after Change 1) — google egress succeeds', async () => {
     const response = await askAgentViaUI(sharedPage, PROMPT_C);
 
     expect(isNetworkAllowed(response), `assistant reply: ${response}`).toBeTruthy();
   });
 
-  test('Test D (before Cambio 2) — recon script without NeMo guardrails', async () => {
+  test('Test D (before Change 2) — recon script without NeMo guardrails', async () => {
     const response = await askAgentViaUI(sharedPage, PROMPT_D);
 
     // Direct MaaS: NeMo must not be in path; model generates the script.
@@ -97,11 +97,11 @@ test.describe('Demo narrative v1 (Tests A–D + Cambio 1/2)', () => {
     expect(isGuardrailsFailure(response), `assistant reply: ${response}`).toBeFalsy();
   });
 
-  test('Cambio 2 — enable NeMo guardrails', () => {
+  test('Change 2 — enable NeMo guardrails', () => {
     runDemoScript('demo-enable-guardrails.sh');
   });
 
-  test('Test D (after Cambio 2) — recon script is blocked by guardrails', async () => {
+  test('Test D (after Change 2) — recon script is blocked by guardrails', async () => {
     const response = await askAgentViaUI(sharedPage, PROMPT_D);
 
     expect(isGuardrailsRefusal(response), `assistant reply: ${response}`).toBeTruthy();

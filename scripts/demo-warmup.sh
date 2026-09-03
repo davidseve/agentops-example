@@ -126,7 +126,7 @@ check_guardrails() {
     pass "NeMo Guardrails Ready"
     return 0
   fi
-  warn "NeMo Guardrails validate failed — use guardrails-cluster-install if needed for Cambio 2"
+  warn "NeMo Guardrails validate failed — use guardrails-cluster-install if needed for Change 2"
   return 0
 }
 

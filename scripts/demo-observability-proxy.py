@@ -278,7 +278,7 @@ OPENCLAW_STEP_B_GREP = (
     r"/etc/shadow|Permission denied|operation not permitted|cannot open"
     r"|\[session tool exec\]|\[session tool result\]"
 )
-VALID_DEMO_STEPS = frozenset({"A", "B", "C-pre", "C-post", "D"})
+VALID_DEMO_STEPS = frozenset({"A", "B", "C-before", "C-after", "D"})
 
 
 def sandbox_oc_exec_bash(inner: str) -> str:
@@ -433,7 +433,7 @@ DEMO_OBS_STEP=B python3 - "$session_lines" <<'PY'
 {_OPENCLAW_SESSION_TAIL_PY}
 PY
 """
-    if demo_step in ("C-pre", "C-post"):
+    if demo_step in ("C-before", "C-after"):
         return f"""
 session_lines={session_lines}
 echo "--- session transcript (Test C — curl egress) ---"
@@ -471,7 +471,7 @@ def fetch_component_logs(
         tail_cmd = f'tail -n {lines} "$log"'
         if log_filter == "signal":
             tail_cmd += f' | grep -vE "{SANDBOX_SIGNAL_GREP}" || true'
-            if demo_step in ("C-pre", "C-post"):
+            if demo_step in ("C-before", "C-after"):
                 tail_cmd += f' | grep -Ei "{SANDBOX_C_SIGNAL_GREP}" || true'
         inner = (
             'log="/var/log/openshell.$(date -u +%Y-%m-%d).log"; '

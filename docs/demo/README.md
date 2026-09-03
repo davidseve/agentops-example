@@ -111,7 +111,7 @@ Cursor: rule `.cursor/rules/demo-ui-tests.mdc`, skill `demo-ui-tests`. Pure layo
 | NeMo | `/api/logs/nemo` | `oc logs` on `nemo-guardrails-*` pod (dynamic discovery) | 120 |
 | MLflow | `/api/traces/mlflow` | MLflow REST API from sandbox pod ([ADR-0010](../adr/0010-mlflow-tracing-otel.md)) | — |
 
-Tail line limits are tuned in `LOG_LINES_BY_COMPONENT` in [`v1/observability-panel.js`](v1/observability-panel.js) (proxy accepts `?lines=1..500`, sandbox `?filter=all|signal`). Three-tier classification (signal/warn/noise), focus Filter (default ON), step-aware sandbox overrides (e.g. github.com green on C-pre only), and step hints: [`v1/observability-log-rules.js`](v1/observability-log-rules.js).
+Tail line limits are tuned in `LOG_LINES_BY_COMPONENT` in [`v1/observability-panel.js`](v1/observability-panel.js) (proxy accepts `?lines=1..500`, sandbox `?filter=all|signal`). Three-tier classification (signal/warn/noise), focus Filter (default ON), step-aware sandbox overrides (e.g. github.com green on C-before only), and step hints: [`v1/observability-log-rules.js`](v1/observability-log-rules.js).
 
 **Runbook:** [demo-scenario-logs.md](demo-scenario-logs.md) — what to search for in each component during Tests A–D; [§ Sandbox panel highlight rules](demo-scenario-logs.md#sandbox-panel-highlight-rules) documents green/amber/gray tiers and step-aware overrides.
 
@@ -158,14 +158,14 @@ Open from the overall architecture nav bar, scenario header nav, or launcher.
 | Flow | URL | When |
 |------|-----|------|
 | v1 | [v1/live.html](v1/live.html) | Recommended — narrative steps, matrix, diagram, YAML, cluster observability |
-| v2 | [v2/live.html](v2/live.html) | Compact variant — no sidebar; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); **Run against cluster** buttons on Cambio 1/2 (C-post, D-post); full-width narrative + observability on steps A–MLflow |
+| v2 | [v2/live.html](v2/live.html) | Compact variant — no sidebar; step 0 embeds FlowStory baseline map + **layout lab** (`?layout=`); **Run against cluster** buttons on Change 1/2 (C-after, D-after); full-width narrative + observability on steps A–MLflow |
 
 **v2 script runner** — run allowlisted demo scripts from the panel (no terminal switch). Requires `./scripts/demo-presenter-serve.sh` so the observability proxy is up on `127.0.0.1:8766`. Binds localhost only; actions are allowlisted in [`demo-observability-proxy.py`](../../scripts/demo-observability-proxy.py).
 
 | Step | Action | Script |
 |------|--------|--------|
-| C-post | Cambio 1 — allow google.com | `./scripts/demo-allow-google-egress.sh` |
-| D-post | Cambio 2 — enable NeMo | `./scripts/demo-enable-guardrails.sh` |
+| C-after | Change 1 — allow google.com | `./scripts/demo-allow-google-egress.sh` |
+| D-after | Change 2 — enable NeMo | `./scripts/demo-enable-guardrails.sh` |
 
 Proxy endpoints: `GET /api/demo/actions`, `POST /api/demo/run` with body `{"action":"<id>"}`. On success the observability panel refreshes automatically. v1 panel still shows commands as text only.
 
@@ -185,7 +185,7 @@ Living analysis of what each scenario proves, gaps vs narrative, and live-demo v
 |---|---|
 | Serve panels | `demo-presenter-panel` |
 | Live runbook (A–D) | `demo-present` |
-| Cambio 1 / 2 / reset | `demo-allow-google-egress`, `demo-enable-guardrails`, `demo-reset` |
+| Change 1 / 2 / reset | `demo-allow-google-egress`, `demo-enable-guardrails`, `demo-reset` |
 
 See [AGENTS.md](../AGENTS.md) § Demo v1 skills.
 

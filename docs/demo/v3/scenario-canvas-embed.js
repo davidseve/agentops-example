@@ -52,7 +52,7 @@ export const SCENARIO_CANVAS_CONFIG = {
       },
     },
   },
-  "C-pre": {
+  "C-before": {
     flowId: "scenario-c-before",
     buildOptions: {
       title: "C · Egress (before)",
@@ -79,7 +79,7 @@ export const SCENARIO_CANVAS_CONFIG = {
       },
     },
   },
-  "C-post": {
+  "C-after": {
     flowId: "scenario-c-after",
     buildOptions: {
       title: "C · Egress (after)",
@@ -89,7 +89,7 @@ export const SCENARIO_CANVAS_CONFIG = {
       },
       tooltipOverrides: {
         user: {
-          description: `Auditor prompt via ${LAYER_NAMES.controlUI} — same curl probe after Cambio 1.`,
+          description: `Auditor prompt via ${LAYER_NAMES.controlUI} — same curl probe after Change 1.`,
         },
         gw: {
           title: LAYER_NAMES.gw,
@@ -97,7 +97,7 @@ export const SCENARIO_CANVAS_CONFIG = {
         },
         oc: {
           title: "curl probe",
-          description: "curl -sI https://google.com — allowed after demo-allow-google-egress.sh.",
+          description: "curl -sI https://google.com — allowed after google.com egress allowlist.",
         },
         internet: {
           title: LAYER_NAMES.internet,

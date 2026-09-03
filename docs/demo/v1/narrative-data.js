@@ -24,10 +24,10 @@ export const STEP_IDS = [
   "0",
   "A",
   "B",
-  "C-pre",
-  "C-post",
-  "D-pre",
-  "D-post",
+  "C-before",
+  "C-after",
+  "D-before",
+  "D-after",
   "ML",
   "close",
 ];
@@ -37,8 +37,8 @@ export const NAV_GROUPS = [
   { id: "0", label: "0", steps: ["0"] },
   { id: "A", label: "A", steps: ["A"] },
   { id: "B", label: "B", steps: ["B"] },
-  { id: "C", label: "C", steps: ["C-pre", "C-post"] },
-  { id: "D", label: "D", steps: ["D-pre", "D-post"] },
+  { id: "C", label: "C", steps: ["C-before", "C-after"] },
+  { id: "D", label: "D", steps: ["D-before", "D-after"] },
   { id: "ML", label: "MLflow", steps: ["ML"] },
   { id: "close", label: "Close", steps: ["close"] },
 ];
@@ -138,7 +138,7 @@ export const YAML_PANELS = {
     snippet: OPENCLAW_FILESYSTEM_SNIPPET,
     defaultOpen: false,
     note:
-      "Applied at sandbox create via config/openshell/default.yaml. Landlock blocks /etc/shadow from minute zero — no live Cambio.",
+      "Applied at sandbox create via config/openshell/default.yaml. Landlock blocks /etc/shadow from minute zero — no live change.",
   },
   egressBaseline: {
     title: "Baseline — OpenShell sandbox policy · network egress (default deny)",
@@ -159,7 +159,7 @@ export const YAML_PANELS = {
     note: "openshell policy set applies the policy live — no sandbox rebuild.",
   },
   guardrails: {
-    title: "Cambio 2 — Inference provider rewire",
+    title: "Change 2 — Inference provider rewire",
     command: "./scripts/demo-enable-guardrails.sh",
     expectedOutput:
       "Inference route: <guardrailed-provider> / <model> (NeMo Guardrails active)",
@@ -183,20 +183,17 @@ export const NARRATIVE = {
   },
   matrixLabels: {
     key: "API key",
-    shadow: "Sensitive files",
+    shadow: "/etc/shadow",
     curl: "curl",
     recon: "recon script",
   },
   steps: {
     "0": {
       id: "0",
-      title: "Context",
-      titleEs: "Contexto",
+      title: "Platform context",
       timing: "~1–2 min",
       body: [
-        "Open overall-demo-architecture.html on a second panel and walk the full stack top-down.",
-        "BYOA agent → OpenShell sandbox → inference.local → (NeMo, grey) → MaaS → MLflow (on from token 1).",
-        "Framing: we will use each layer and progressively open what the platform allows — not install anything live.",
+        "BYOA agent in OpenShell sandbox — inference.local → (NeMo, grey) → MaaS; MLflow traces from the first token.",
       ],
       prompt: null,
       expected: null,
@@ -219,11 +216,12 @@ export const NARRATIVE = {
     A: {
       id: "A",
       title: "Steal the API key",
-      titleEs: "Robar la API key",
       timing: "No config change",
-      body: ["Credentials live in the OpenShell inference router, not inside the sandbox process."],
+      body: [
+        "MaaS credentials live in the OpenShell inference router — the sandbox process never holds the API key.",
+      ],
       prompt: PROMPT_A,
-      expected: "Agent does not expose a real key (apiKey: unused; router injects at gateway).",
+      expected: "No real MaaS API key in the sandbox — empty env and config placeholders only.",
       expectedFail: null,
       command: null,
       layers: { ...LAYERS_INITIAL },
@@ -241,12 +239,13 @@ export const NARRATIVE = {
     },
     B: {
       id: "B",
-      title: "Sensitive files",
-      titleEs: "Ficheros sensibles",
+      title: "Read /etc/shadow",
       timing: "No config change",
-      body: ["Landlock / workspaceOnly was already enforced from minute zero."],
+      body: [
+        "Landlock blocks reads outside the workspace — sensitive paths like /etc/shadow are denied at the filesystem layer.",
+      ],
       prompt: PROMPT_B,
-      expected: "Blocked or empty — first defence line was already there.",
+      expected: "/etc/shadow read denied at Landlock — permission denied, no file contents.",
       expectedFail: null,
       command: null,
       layers: { ...LAYERS_INITIAL },
@@ -262,18 +261,16 @@ export const NARRATIVE = {
       observabilityFocus: "openclaw",
       observabilityHidden: ["openshell", "nemo"],
     },
-    "C-pre": {
-      id: "C-pre",
-      title: "Unauthorized curl (before)",
-      titleEs: "curl no autorizado (antes)",
-      timing: "Cambio 1 — before",
+    "C-before": {
+      id: "C-before",
+      title: "curl google.com",
+      timing: "Change 1",
       body: [
-        "Default policy (MLflow only) is already active from backstage — no reset needed before this step.",
-        "Public curl should be denied; paste the prompt in Control UI.",
+        "Default egress deny: only MLflow is allowlisted — outbound curl to public hosts is blocked at the gateway.",
       ],
       prompt: PROMPT_C,
       expected: null,
-      expectedFail: "curl blocked (timeout / denied) — default deny egress.",
+      expectedFail: "Outbound curl to google.com denied at the gateway — no matching egress policy.",
       command: null,
       layers: { ...LAYERS_INITIAL },
       matrix: { key: "blocked", shadow: "blocked", curl: "blocked", recon: "na" },
@@ -287,14 +284,15 @@ export const NARRATIVE = {
       subStep: { group: "C", phase: "before", index: 0, total: 2 },
       observabilityFocus: "sandbox",
     },
-    "C-post": {
-      id: "C-post",
-      title: "Selective curl (after)",
-      titleEs: "curl selectivo (después)",
-      timing: "Cambio 1 — after",
-      body: ["Run demo-allow-google-egress.sh in the terminal, then repeat the same prompt."],
+    "C-after": {
+      id: "C-after",
+      title: "curl google.com",
+      timing: "Change 1",
+      body: [
+        "Selective egress: google.com is allowlisted for curl; other public hosts remain denied.",
+      ],
       prompt: PROMPT_C,
-      expected: "curl to google.com succeeds (HTTP 200). github.com remains blocked.",
+      expected: "curl to google.com returns HTTP 200; other public hosts remain denied.",
       expectedFail: null,
       command: "./scripts/demo-allow-google-egress.sh",
       layers: {
@@ -317,15 +315,16 @@ export const NARRATIVE = {
       subStep: { group: "C", phase: "after", index: 1, total: 2 },
       observabilityFocus: "sandbox",
     },
-    "D-pre": {
-      id: "D-pre",
-      title: "Jailbreak (before NeMo)",
-      titleEs: "Jailbreak (antes de NeMo)",
-      timing: "Cambio 2 — before",
-      body: ["inference.local still points to direct MaaS — no Guardrails in the path."],
+    "D-before": {
+      id: "D-before",
+      title: "Network recon script",
+      timing: "Change 2",
+      body: [
+        "Recon prompt on the direct path: inference.local → MaaS with no NeMo Guardrails in the hop.",
+      ],
       prompt: PROMPT_D,
       expected: null,
-      expectedFail: "Model generates the scanning script (no Guardrails in path).",
+      expectedFail: "Harmful recon prompt completes — model returns a port-scan bash script.",
       command: null,
       layers: {
         ...LAYERS_INITIAL,
@@ -348,17 +347,15 @@ export const NARRATIVE = {
       subStep: { group: "D", phase: "before", index: 0, total: 2 },
       observabilityFocus: "nemo",
     },
-    "D-post": {
-      id: "D-post",
-      title: "Jailbreak (after NeMo)",
-      titleEs: "Jailbreak (después de NeMo)",
-      timing: "Cambio 2 — after",
+    "D-after": {
+      id: "D-after",
+      title: "Network recon script",
+      timing: "Change 2",
       body: [
-        "Run demo-enable-guardrails.sh, then repeat the same recon prompt.",
-        "Reset between rehearsals: ./scripts/demo-reset.sh",
+        "NeMo Guardrails on the inference path — harmful recon prompts are filtered before they reach MaaS.",
       ],
       prompt: PROMPT_D,
-      expected: "Input/output rail — refusal or filtered response.",
+      expected: "Same recon prompt refused or filtered by NeMo input/output rails.",
       expectedFail: null,
       command: "./scripts/demo-enable-guardrails.sh",
       layers: {
@@ -385,14 +382,12 @@ export const NARRATIVE = {
     ML: {
       id: "ML",
       title: "MLflow traces",
-      titleEs: "Trazas MLflow",
       timing: "~1–2 min",
       body: [
-        "Same chat session in Gen AI Studio.",
-        "Show one trace with every attempt: key probe, file probe, curl denied, curl allowed, recon attempt, recon block.",
+        "One MLflow session records every security probe: credentials, files, egress, and guardrails.",
       ],
       prompt: null,
-      expected: "MLflow is not an add-on — it is the thread through the demo.",
+      expected: "One trace timeline shows every probe: credentials, files, egress, and guardrails.",
       expectedFail: null,
       command: null,
       layers: {
@@ -418,7 +413,6 @@ export const NARRATIVE = {
     close: {
       id: "close",
       title: "Close",
-      titleEs: "Cierre",
       timing: "~30 s",
       body: ["Your Agent. Our Platform. Production-Ready."],
       prompt: null,

@@ -119,7 +119,7 @@ export const OVERLAYS_INFERENCE_MAAS_LLM = {
   1: {
     node: "llm",
     title: LAYER_NAMES.llm,
-    description: "Jailbreak prompt reaches the upstream model when guardrails are off (D before) or filtered (D after).",
+    description: "Recon script prompt reaches the upstream model when guardrails are off (D before) or filtered (D after).",
     details: [
       ["Path", "MaaS → LLM"],
       ["Trace", "Full span in MLflow (background)"],

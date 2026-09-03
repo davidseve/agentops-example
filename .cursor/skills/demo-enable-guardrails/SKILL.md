@@ -1,13 +1,13 @@
 ---
 name: demo-enable-guardrails
 description: >-
-  Live demo Cambio 2: switch inference.local to NeMo Guardrails provider while
+  Live demo Change 2: switch inference.local to NeMo Guardrails provider while
   OpenClaw keeps calling inference.local. Use during demo-narrativa-v1 phase 3,
   enable guardrails on stage, demo-enable-guardrails, or before repeating security
   reconnaissance Test D.
 ---
 
-# Demo Enable Guardrails (Cambio 2)
+# Demo Enable Guardrails (Change 2)
 
 Rewire OpenShell inference to the guardrailed provider — NeMo Guardrails → MaaS.
 
