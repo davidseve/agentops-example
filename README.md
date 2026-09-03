@@ -8,6 +8,12 @@ This project demonstrates the **BYOA (Bring Your Own Agent)** approach from the 
 
 **Key message**: *Your Agent. Our Platform. Production-Ready.*
 
+## Architecture
+
+![AgentOps platform architecture](assets/overall-architecture.png)
+
+*Interactive map:* [v3/live.html](docs/demo/v3/live.html) step **Overall Demo** (`./scripts/demo-presenter-serve.sh`). Standalone reference: [`overall-demo-architecture.html`](docs/demo/overall-demo-architecture.html). Regenerate after diagram changes: `make export-architecture`.
+
 ## Platform Stack
 
 ```
@@ -74,6 +80,7 @@ make deploy-all && make validate
 ├── Makefile               # Wrapper → deploy/Makefile (make demo, deploy-all, …)
 ├── AGENTS.md              # AI agent context (for Cursor/Claude)
 ├── README.md              # This file
+├── assets/                # README diagrams (overall-architecture.png — see make export-architecture)
 ├── config/                # OpenClaw template + OpenShell sandbox policies
 ├── docs/                  # Guides, ADRs, demo narrative, ROADMAP
 ├── deploy/                # Helm charts + deploy/Makefile

@@ -168,6 +168,17 @@ Demo presentation logic is covered by **no-cluster** unit tests (also run in CI)
 
 Cursor: rule `.cursor/rules/demo-ui-tests.mdc`, skill `demo-ui-tests`. Pure layout constants (importable in Node tests): `scenarios/scenario-layout.js`.
 
+## README architecture image
+
+The repo root [README.md](../../README.md) embeds a static PNG of the v3 live companion step **Overall Demo** ([v3/live.html](v3/live.html)). Regenerate after edits to `scenarios/overall-diagram-config.js`, `overall-flows.js`, or related FlowStory layout:
+
+```bash
+make export-architecture
+# or: ./scripts/export-readme-architecture.sh
+```
+
+Output: [`assets/overall-architecture.png`](../../assets/overall-architecture.png) (baseline flow with all hops revealed). CI re-exports and fails if the committed file is stale.
+
 ## Deprecated (dev / bookmarks only)
 
 Do not use these on stage — v3 embeds the same maps in-card.

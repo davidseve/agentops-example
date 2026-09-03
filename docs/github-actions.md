@@ -16,13 +16,15 @@ Runs on `ubuntu-latest`:
 
 1. Secret-pattern scan on tracked files (`scripts/ci-secret-scan.sh`; complements the `no-secrets` skill)
 2. `./scripts/validate-demo-ui.sh` — external CSS lint + demo unit tests (log rules, scenario consistency, ui-helpers; no cluster)
-3. `make -C deploy lint template` — Helm chart lint and render
+3. `./scripts/export-readme-architecture.sh` — Playwright screenshot of `docs/demo/v3/live.html` step **Overall Demo** → `assets/overall-architecture.png`; CI fails if the PNG is stale (`git diff`)
+4. `make -C deploy lint template` — Helm chart lint and render
 
 Local equivalent:
 
 ```bash
 cd tests && npm ci
 ./scripts/validate-demo-ui.sh
+./scripts/export-readme-architecture.sh   # after overall diagram edits
 make -C deploy lint template
 ```
 
