@@ -13,7 +13,7 @@ import {
   OVERALL_FLOW_ORDER,
   pickNodes,
   TRACE_STEP_STYLE,
-} from "./scenario-layout.js?v=15";
+} from "./scenario-layout.js";
 import { OVERALL_OVERLAYS, OVERALL_RESPONSES } from "./overall-response-maps.js";
 
 const DIRECT_INFERENCE_PATH = `${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}`;
