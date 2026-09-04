@@ -13,7 +13,7 @@ import {
   OVERALL_FLOW_ORDER,
   pickNodes,
   TRACE_STEP_STYLE,
-} from "./scenario-layout.js?v=14";
+} from "./scenario-layout.js?v=15";
 import { OVERALL_OVERLAYS, OVERALL_RESPONSES } from "./overall-response-maps.js";
 
 const DIRECT_INFERENCE_PATH = `${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}`;
@@ -1269,7 +1269,7 @@ const OVERALL_SCENARIO_B = composeOverallFlow([
         from: "landlock",
         to: "file",
         color: COLORS.denied,
-        num: 4,
+        num: 0,
         ...ARROW.landlockToFile,
       },
       { ...SCENARIO_B_STEPS[3], num: 4 },

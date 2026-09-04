@@ -232,6 +232,12 @@ export function installLogoRenderer(viz) {
       const bx = tx(node.x) + (l(node.w) - icon) / 2;
       const by = ty(node.y) + (l(node.h) - icon) / 2;
       drawBadgeAt(ctx, opts, node._logoDenied, bx, by);
+    } else if (!node.label && node?.logo) {
+      const { tx, ty, ts: l } = opts;
+      const icon = l(ICON.badge);
+      const bx = tx(node.x) + (l(node.w) - icon) / 2;
+      const by = ty(node.y) + (l(node.h) - icon) / 2;
+      drawBadgeAt(ctx, opts, node.logo, bx, by);
     } else if (node?.logo) {
       drawBoxBadge(ctx, node, opts, node.logo);
     }

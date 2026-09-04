@@ -4,12 +4,12 @@
  */
 
 import { uninstallLogoRenderer } from "../shared/logo-renderer.js";
-import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=12";
+import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=13";
 import {
   buildOverallResponseComparison,
   PHASE_REST,
-} from "../scenarios/overall-flows.js?v=12";
-import { OVERALL_NODES } from "../scenarios/scenario-layout.js?v=10";
+} from "../scenarios/overall-flows.js?v=13";
+import { OVERALL_NODES } from "../scenarios/scenario-layout.js?v=11";
 import {
   OVERALL_IN_DOC,
   bindOverallInDocResize,
@@ -103,6 +103,18 @@ export async function mountOverallEmbed(container, options = {}) {
     }
 
     activeViz = viz;
+
+    // After validation, null out num on landlock→file arrow so FlowStory skips the badge.
+    // FlowStory shallow-copies steps into state.flows, so patch there (not _diagram).
+    const sbState = viz._engine?.state?.flows?.["scenario-b"];
+    if (sbState) {
+      for (const step of sbState) {
+        if ((step.f === "landlock" || step.from === "landlock") && step.to === "file") {
+          step.num = null;
+        }
+      }
+    }
+
     requestAnimationFrame(() => viz._engine?.resize?.());
     setTimeout(() => viz._engine?.resize?.(), 120);
     setTimeout(() => viz._engine?.resize?.(), 400);
