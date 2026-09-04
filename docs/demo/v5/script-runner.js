@@ -54,29 +54,135 @@ async function executeDemoAction(actionId, { proxyUrl, observability }) {
   return result;
 }
 
-function applyRunResultToBlock(wrap, result, err = null) {
-  if (!wrap) return;
+function findRunBlockForAction(root, actionId) {
+  return root.querySelector(`.nr-script-run[data-action-id="${actionId}"]`);
+}
 
-  const statusEl = wrap.querySelector(".nr-script-run-status");
-  const outputDetails = wrap.querySelector(".nr-script-run-output");
-  const outputPre = wrap.querySelector(".nr-script-run-pre");
+function findQuickRunHeaderWrap(root) {
+  return root.querySelector("[data-nr-instructions] .nr-instructions-quick-actions");
+}
+
+function getLinkedRunTargets(root, actionId) {
+  const bodyBlock = findRunBlockForAction(root, actionId);
+  const headerWrap = findQuickRunHeaderWrap(root);
+  const headerActionId = headerWrap?.dataset.actionId;
+  const headerMatches = !actionId || !headerActionId || headerActionId === actionId;
+
+  return {
+    actionId,
+    bodyBlock,
+    bodyRunBtn: bodyBlock?.querySelector(".nr-script-run-btn"),
+    bodyCopyBtn: bodyBlock?.querySelector(".nr-script-copy-btn"),
+    bodyStatusEl: bodyBlock?.querySelector(".nr-script-run-status"),
+    bodyOutputDetails: bodyBlock?.querySelector(".nr-script-run-output"),
+    headerWrap: headerMatches ? headerWrap : null,
+    headerRunBtn: headerMatches ? headerWrap?.querySelector(".nr-run-cluster-quick") : null,
+    headerStatusEl: headerMatches ? headerWrap?.querySelector(".nr-quick-run-proxy-status") : null,
+  };
+}
+
+function headerStatusClassFromBody(bodyClassName) {
+  const suffix = bodyClassName.replace(/^nr-script-run-status\s*/, "").trim();
+  return suffix ? `nr-quick-run-proxy-status ${suffix}` : "nr-quick-run-proxy-status";
+}
+
+function setLinkedRunStatus(targets, { text, bodyClassName, hideWhenIdle = false }) {
+  if (targets.bodyStatusEl) {
+    targets.bodyStatusEl.textContent = text;
+    targets.bodyStatusEl.className = bodyClassName || "nr-script-run-status";
+  }
+
+  if (!targets.headerStatusEl) return;
+
+  const showHeaderStatus = Boolean(text) && !hideWhenIdle;
+  targets.headerStatusEl.hidden = !showHeaderStatus;
+  if (!showHeaderStatus) {
+    targets.headerStatusEl.textContent = "";
+    targets.headerStatusEl.className = "nr-quick-run-proxy-status";
+    return;
+  }
+
+  targets.headerStatusEl.textContent = text;
+  targets.headerStatusEl.className = headerStatusClassFromBody(bodyClassName || "nr-script-run-status");
+}
+
+function applyLinkedProxyState(targets, proxyState) {
+  if (targets.bodyBlock) targets.bodyBlock.dataset.proxyState = proxyState;
+  if (targets.headerWrap) targets.headerWrap.dataset.proxyState = proxyState;
+  if (targets.headerRunBtn) targets.headerRunBtn.dataset.proxyState = proxyState;
+
+  if (proxyState === "checking") {
+    if (targets.bodyRunBtn) {
+      targets.bodyRunBtn.disabled = true;
+      targets.bodyRunBtn.title = "";
+    }
+    if (targets.headerRunBtn) {
+      targets.headerRunBtn.disabled = true;
+      targets.headerRunBtn.title = "";
+    }
+    setLinkedRunStatus(targets, {
+      text: "Checking proxy…",
+      bodyClassName: "nr-script-run-status checking",
+    });
+    return;
+  }
+
+  if (proxyState === "healthy") {
+    if (targets.bodyRunBtn) {
+      targets.bodyRunBtn.disabled = false;
+      targets.bodyRunBtn.title = "";
+    }
+    if (targets.headerRunBtn) {
+      targets.headerRunBtn.disabled = false;
+      targets.headerRunBtn.title = "";
+    }
+    setLinkedRunStatus(targets, {
+      text: "",
+      bodyClassName: "nr-script-run-status",
+      hideWhenIdle: true,
+    });
+    return;
+  }
+
+  if (targets.bodyRunBtn) {
+    targets.bodyRunBtn.disabled = true;
+    targets.bodyRunBtn.title = PROXY_OFFLINE_TITLE;
+  }
+  if (targets.headerRunBtn) {
+    targets.headerRunBtn.disabled = true;
+    targets.headerRunBtn.title = PROXY_OFFLINE_TITLE;
+  }
+  setLinkedRunStatus(targets, {
+    text: "Proxy offline",
+    bodyClassName: "nr-script-run-status offline",
+  });
+}
+
+function applyRunResultToLinkedTargets(targets, result, err = null) {
+  const wrap = targets.bodyBlock;
 
   if (err) {
-    wrap.classList.remove("success");
-    wrap.classList.add("error");
+    if (wrap) {
+      wrap.classList.remove("success");
+      wrap.classList.add("error");
+    }
+    const outputPre = wrap?.querySelector(".nr-script-run-pre");
+    const outputDetails = wrap?.querySelector(".nr-script-run-output");
     if (outputPre) outputPre.textContent = err?.message || String(err);
     if (outputDetails) {
       outputDetails.hidden = false;
       outputDetails.open = true;
     }
-    if (statusEl) {
-      statusEl.className = "nr-script-run-status error";
-      statusEl.textContent = "Error";
-    }
+    setLinkedRunStatus(targets, {
+      text: "Error",
+      bodyClassName: "nr-script-run-status error",
+    });
     return;
   }
 
   const output = formatOutput(result.stdout, result.stderr);
+  const outputPre = wrap?.querySelector(".nr-script-run-pre");
+  const outputDetails = wrap?.querySelector(".nr-script-run-output");
   if (outputPre) outputPre.textContent = output;
   if (outputDetails) {
     outputDetails.hidden = false;
@@ -84,98 +190,82 @@ function applyRunResultToBlock(wrap, result, err = null) {
   }
 
   if (result.ok) {
-    wrap.classList.remove("error");
-    wrap.classList.add("success");
-    if (statusEl) {
-      statusEl.className = "nr-script-run-status success";
-      statusEl.textContent = `Done (${result.durationMs ?? 0}ms)`;
+    if (wrap) {
+      wrap.classList.remove("error");
+      wrap.classList.add("success");
     }
-  } else {
+    setLinkedRunStatus(targets, {
+      text: `Done (${result.durationMs ?? 0}ms)`,
+      bodyClassName: "nr-script-run-status success",
+    });
+    return;
+  }
+
+  if (wrap) {
     wrap.classList.remove("success");
     wrap.classList.add("error");
-    if (statusEl) {
-      statusEl.className = "nr-script-run-status error";
-      statusEl.textContent = `Failed (exit ${result.exitCode ?? "?"})`;
-    }
   }
-}
-
-function findRunBlockForAction(root, actionId) {
-  return root.querySelector(`.nr-script-run[data-action-id="${actionId}"]`);
-}
-
-function applyProxyStateToRunBlock(wrap, proxyState) {
-  const runBtn = wrap.querySelector(".nr-script-run-btn");
-  const statusEl = wrap.querySelector(".nr-script-run-status");
-  if (!runBtn || !statusEl) return;
-
-  wrap.dataset.proxyState = proxyState;
-
-  if (proxyState === "checking") {
-    runBtn.disabled = true;
-    runBtn.title = "";
-    statusEl.textContent = "Checking proxy…";
-    statusEl.className = "nr-script-run-status checking";
-    return;
-  }
-
-  if (proxyState === "healthy") {
-    runBtn.disabled = false;
-    runBtn.title = "";
-    statusEl.textContent = "";
-    statusEl.className = "nr-script-run-status";
-    return;
-  }
-
-  runBtn.disabled = true;
-  runBtn.title = PROXY_OFFLINE_TITLE;
-  statusEl.textContent = "Proxy offline";
-  statusEl.className = "nr-script-run-status offline";
-}
-
-function applyProxyStateToQuickRunHeader(actionsWrap, proxyState) {
-  const statusEl = actionsWrap?.querySelector(".nr-quick-run-proxy-status");
-  const runBtn = actionsWrap?.querySelector(".nr-run-cluster-quick");
-  if (!statusEl || !runBtn) return;
-
-  actionsWrap.dataset.proxyState = proxyState;
-  runBtn.dataset.proxyState = proxyState;
-
-  if (proxyState === "checking") {
-    runBtn.disabled = true;
-    runBtn.title = "";
-    statusEl.hidden = false;
-    statusEl.textContent = "Checking proxy…";
-    statusEl.className = "nr-quick-run-proxy-status checking";
-    return;
-  }
-
-  if (proxyState === "healthy") {
-    runBtn.disabled = false;
-    runBtn.title = "";
-    statusEl.textContent = "";
-    statusEl.className = "nr-quick-run-proxy-status";
-    statusEl.hidden = true;
-    return;
-  }
-
-  runBtn.disabled = true;
-  runBtn.title = PROXY_OFFLINE_TITLE;
-  statusEl.hidden = false;
-  statusEl.textContent = "Proxy offline";
-  statusEl.className = "nr-quick-run-proxy-status offline";
+  setLinkedRunStatus(targets, {
+    text: `Failed (exit ${result.exitCode ?? "?"})`,
+    bodyClassName: "nr-script-run-status error",
+  });
 }
 
 function applyProxyStateToAllRunBlocks(root, proxyState) {
+  const linkedActionIds = new Set();
+
   root.querySelectorAll(".nr-script-run").forEach((wrap) => {
-    applyProxyStateToRunBlock(wrap, proxyState);
+    const actionId = wrap.dataset.actionId;
+    if (!actionId) return;
+    linkedActionIds.add(actionId);
+    applyLinkedProxyState(getLinkedRunTargets(root, actionId), proxyState);
   });
-  root.querySelectorAll(".nr-instructions-quick-actions").forEach((wrap) => {
-    applyProxyStateToQuickRunHeader(wrap, proxyState);
-  });
+
+  const headerWrap = findQuickRunHeaderWrap(root);
+  const headerActionId = headerWrap?.dataset.actionId;
+  if (headerActionId && !linkedActionIds.has(headerActionId)) {
+    applyLinkedProxyState(getLinkedRunTargets(root, headerActionId), proxyState);
+  }
 }
 
-function createRunBlock(commandText, actionMeta, { proxyState, onRunComplete }) {
+async function runLinkedAction({ root, actionMeta, proxyUrl, observability, runningActions }) {
+  const targets = getLinkedRunTargets(root, actionMeta.id);
+  const proxyState = targets.bodyBlock?.dataset.proxyState ?? targets.headerWrap?.dataset.proxyState;
+
+  if (proxyState !== "healthy") return;
+  if (runningActions.has(actionMeta.id)) return;
+  if (actionMeta.confirm && !window.confirm(actionMeta.confirm)) return;
+
+  runningActions.add(actionMeta.id);
+
+  if (targets.bodyRunBtn) targets.bodyRunBtn.disabled = true;
+  if (targets.headerRunBtn) targets.headerRunBtn.disabled = true;
+  if (targets.bodyCopyBtn) targets.bodyCopyBtn.disabled = true;
+  if (targets.bodyOutputDetails) targets.bodyOutputDetails.hidden = true;
+
+  setLinkedRunStatus(targets, {
+    text: "Running…",
+    bodyClassName: "nr-script-run-status running",
+  });
+
+  try {
+    const result = await executeDemoAction(actionMeta.id, { proxyUrl, observability });
+    applyRunResultToLinkedTargets(targets, result);
+  } catch (err) {
+    applyRunResultToLinkedTargets(targets, null, err);
+  } finally {
+    if (targets.bodyCopyBtn) targets.bodyCopyBtn.disabled = false;
+    const resolvedProxyState =
+      targets.bodyBlock?.dataset.proxyState ?? targets.headerWrap?.dataset.proxyState ?? "offline";
+    if (resolvedProxyState === "healthy") {
+      if (targets.bodyRunBtn) targets.bodyRunBtn.disabled = false;
+      if (targets.headerRunBtn) targets.headerRunBtn.disabled = false;
+    }
+    runningActions.delete(actionMeta.id);
+  }
+}
+
+function createRunBlock(commandText, actionMeta, { proxyState, root, proxyUrl, observability, runningActions }) {
   const wrap = document.createElement("div");
   wrap.className = "nr-script-run";
   wrap.dataset.actionId = actionMeta.id;
@@ -198,10 +288,8 @@ function createRunBlock(commandText, actionMeta, { proxyState, onRunComplete }) 
 
   const runBtn = wrap.querySelector(".nr-script-run-btn");
   const copyBtn = wrap.querySelector(".nr-script-copy-btn");
-  const statusEl = wrap.querySelector(".nr-script-run-status");
-  const outputDetails = wrap.querySelector(".nr-script-run-output");
 
-  applyProxyStateToRunBlock(wrap, proxyState);
+  applyLinkedProxyState(getLinkedRunTargets(root, actionMeta.id), proxyState);
 
   copyBtn.addEventListener("click", () => {
     navigator.clipboard.writeText(commandText).then(() => {
@@ -212,28 +300,8 @@ function createRunBlock(commandText, actionMeta, { proxyState, onRunComplete }) 
     });
   });
 
-  runBtn.addEventListener("click", async () => {
-    if (actionMeta.confirm && !window.confirm(actionMeta.confirm)) {
-      return;
-    }
-
-    runBtn.disabled = true;
-    copyBtn.disabled = true;
-    statusEl.className = "nr-script-run-status running";
-    statusEl.textContent = "Running…";
-    outputDetails.hidden = true;
-
-    try {
-      const result = await onRunComplete(actionMeta.id);
-      applyRunResultToBlock(wrap, result);
-    } catch (err) {
-      applyRunResultToBlock(wrap, null, err);
-    } finally {
-      copyBtn.disabled = false;
-      if (wrap.dataset.proxyState === "healthy") {
-        runBtn.disabled = false;
-      }
-    }
+  runBtn.addEventListener("click", () => {
+    void runLinkedAction({ root, actionMeta, proxyUrl, observability, runningActions });
   });
 
   return wrap;
@@ -251,7 +319,7 @@ function commandContainers(root) {
 function wireQuickRunHeaderButton(
   root,
   stepId,
-  { proxyState, proxyUrl, observability, quickRunHeaderSteps },
+  { proxyState, proxyUrl, observability, quickRunHeaderSteps, runningActions },
 ) {
   root.querySelectorAll(".nr-quick-run-proxy-status").forEach((el) => el.remove());
   root.querySelectorAll(".nr-run-cluster-quick").forEach((el) => el.remove());
@@ -282,6 +350,8 @@ function wireQuickRunHeaderButton(
     actionsWrap.append(copyBtn);
   }
 
+  actionsWrap.dataset.actionId = actionMeta.id;
+
   const statusEl = document.createElement("span");
   statusEl.className = "nr-quick-run-proxy-status";
   statusEl.setAttribute("aria-live", "polite");
@@ -294,56 +364,18 @@ function wireQuickRunHeaderButton(
   actionsWrap.insertBefore(statusEl, copyBtn);
   actionsWrap.insertBefore(runBtn, copyBtn);
 
-  applyProxyStateToQuickRunHeader(actionsWrap, proxyState);
+  applyLinkedProxyState(getLinkedRunTargets(root, actionMeta.id), proxyState);
 
-  runBtn.addEventListener("click", async (event) => {
+  runBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-
-    if (runBtn.disabled) return;
-    if (actionMeta.confirm && !window.confirm(actionMeta.confirm)) {
-      return;
-    }
-
-    const bodyRunBlock = findRunBlockForAction(root, actionMeta.id);
-    const bodyRunBtn = bodyRunBlock?.querySelector(".nr-script-run-btn");
-    const bodyCopyBtn = bodyRunBlock?.querySelector(".nr-script-copy-btn");
-    const bodyStatusEl = bodyRunBlock?.querySelector(".nr-script-run-status");
-    const bodyOutputDetails = bodyRunBlock?.querySelector(".nr-script-run-output");
-
-    runBtn.disabled = true;
-    runBtn.textContent = "Running…";
-    if (bodyRunBtn) bodyRunBtn.disabled = true;
-    if (bodyCopyBtn) bodyCopyBtn.disabled = true;
-    if (bodyStatusEl) {
-      bodyStatusEl.className = "nr-script-run-status running";
-      bodyStatusEl.textContent = "Running…";
-    }
-    if (bodyOutputDetails) bodyOutputDetails.hidden = true;
-
-    try {
-      const result = await executeDemoAction(actionMeta.id, { proxyUrl, observability });
-      applyRunResultToBlock(bodyRunBlock, result);
-      runBtn.textContent = result.ok ? "Done" : "Failed";
-    } catch (err) {
-      applyRunResultToBlock(bodyRunBlock, null, err);
-      runBtn.textContent = "Failed";
-    } finally {
-      if (bodyCopyBtn) bodyCopyBtn.disabled = false;
-      if (bodyRunBtn && bodyRunBlock?.dataset.proxyState === "healthy") {
-        bodyRunBtn.disabled = false;
-      }
-      setTimeout(() => {
-        runBtn.textContent = QUICK_RUN_LABEL;
-        applyProxyStateToQuickRunHeader(actionsWrap, actionsWrap.dataset.proxyState ?? "offline");
-      }, 1500);
-    }
+    void runLinkedAction({ root, actionMeta, proxyUrl, observability, runningActions });
   });
 }
 
 function wireCommandElements(
   root,
-  { proxyState, proxyUrl, observability, runnerEnabled, quickRunHeaderSteps, stepId },
+  { proxyState, proxyUrl, observability, runnerEnabled, quickRunHeaderSteps, stepId, runningActions },
 ) {
   const containers = commandContainers(root);
   if (!containers.length) return;
@@ -351,8 +383,6 @@ function wireCommandElements(
   containers.forEach((container) => {
     container.querySelectorAll(".nr-script-run").forEach((el) => el.remove());
   });
-
-  const onRunComplete = (actionId) => executeDemoAction(actionId, { proxyUrl, observability });
 
   if (runnerEnabled) {
     containers.forEach((container) => {
@@ -366,7 +396,10 @@ function wireCommandElements(
 
         const runBlock = createRunBlock(commandText, actionMeta, {
           proxyState,
-          onRunComplete,
+          root,
+          proxyUrl,
+          observability,
+          runningActions,
         });
         parent.replaceChild(runBlock, cmdEl);
       });
@@ -378,6 +411,7 @@ function wireCommandElements(
     proxyUrl,
     observability,
     quickRunHeaderSteps,
+    runningActions,
   });
 }
 
@@ -420,6 +454,7 @@ export async function initScriptRunner({
   quickRunHeaderSteps = ["C-after", "D-after"],
 } = {}) {
   const skipStepIds = new Set(skipSteps);
+  const runningActions = new Set();
   let currentStepId = parseStepIdFromHash();
   let proxyState = "checking";
 
@@ -436,6 +471,7 @@ export async function initScriptRunner({
       runnerEnabled,
       quickRunHeaderSteps,
       stepId: currentStepId,
+      runningActions,
     });
   };
 

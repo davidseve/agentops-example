@@ -515,12 +515,18 @@ body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status {
   white-space: nowrap;
 }
 
-body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.checking {
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.checking,
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.running {
   color: var(--nr-warn);
 }
 
-body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.offline {
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.offline,
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.error {
   color: #b42318;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.success {
+  color: #2d6a32;
 }
 
 body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status[hidden] {
@@ -793,10 +799,16 @@ body.nr-v5.nr-v5-step-canvas .nr-v5-overall-mounted .fs-layers-stack .fs-inspect
 }
 
 .nr-script-run-btn {
-  background: #ee0000;
-  border-color: #cc0000;
-  color: #fff;
+  background: #8b949e;
+  border-color: #6b7280;
+  color: #ffffff;
   font-weight: 600;
+}
+
+.nr-script-run-btn:hover:not(:disabled) {
+  background: #6b7280;
+  border-color: #4b5563;
+  color: #ffffff;
 }
 
 .nr-script-run-btn:disabled {
@@ -836,8 +848,7 @@ body.nr-v5.nr-v5-step-canvas .nr-v5-overall-mounted .fs-layers-stack .fs-inspect
 .nr-script-run-pre {
   margin: 8px 0 0;
   padding: 8px 10px;
-  max-height: 220px;
-  overflow: auto;
+  overflow: visible;
   font-size: 11px;
   line-height: 1.45;
   background: #1e1e1e;
