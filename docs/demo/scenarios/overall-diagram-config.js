@@ -15,7 +15,7 @@ import {
   layerIdsFromMutations,
   OVERALL_CANVAS,
   OVERALL_FLOW_ORDER,
-} from "./overall-flows.js?v=4";
+} from "./overall-flows.js?v=15";
 
 const DIRECT_INFERENCE_PATH = `${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}`;
 

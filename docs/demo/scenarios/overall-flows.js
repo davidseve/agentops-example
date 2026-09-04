@@ -13,7 +13,7 @@ import {
   OVERALL_FLOW_ORDER,
   pickNodes,
   TRACE_STEP_STYLE,
-} from "./scenario-layout.js?v=2";
+} from "./scenario-layout.js?v=13";
 import { OVERALL_OVERLAYS, OVERALL_RESPONSES } from "./overall-response-maps.js";
 
 const DIRECT_INFERENCE_PATH = `${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}`;
@@ -970,15 +970,12 @@ export const LAYER_BOARDS = {
 };
 
 export const PHASE_REST = {
-  baseline: {
-    nodeColors: { file: COLORS.dim },
-  },
+  baseline: {},
   "scenario-a": {
     nodeColors: {
       nemo: COLORS.dim,
       internet: COLORS.dim,
       landlock: COLORS.dim,
-      file: COLORS.dim,
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
@@ -993,7 +990,6 @@ export const PHASE_REST = {
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
-      file: COLORS.denied,
     },
     glow: ["agentsb"],
     activeNodes: ["landlock", "oc", "file"],
@@ -1008,7 +1004,6 @@ export const PHASE_REST = {
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
-      file: COLORS.dim,
     },
   },
   "scenario-c-after": {
@@ -1021,7 +1016,6 @@ export const PHASE_REST = {
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
-      file: COLORS.dim,
     },
   },
   "scenario-d-before": {
@@ -1033,7 +1027,6 @@ export const PHASE_REST = {
       internet: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
-      file: COLORS.dim,
     },
   },
   "scenario-d-after": {
@@ -1045,7 +1038,6 @@ export const PHASE_REST = {
       internet: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
-      file: COLORS.dim,
     },
   },
 };
@@ -1269,7 +1261,7 @@ const OVERALL_SCENARIO_B = composeOverallFlow([
   },
   {
     steps: [
-      ...SCENARIO_B_STEPS.slice(2, 4).map((s) => ({ ...s, num: 4 })),
+      { ...SCENARIO_B_STEPS[2], num: 4 },
       {
         text: `${LAYER_NAMES.landlock} denies /etc/shadow`,
         mode: "arrow",
@@ -1279,6 +1271,7 @@ const OVERALL_SCENARIO_B = composeOverallFlow([
         num: 4,
         ...ARROW.landlockToFile,
       },
+      { ...SCENARIO_B_STEPS[3], num: 4 },
     ],
     mutations: sliceMutations(SCENARIO_B_MUTATIONS, 3, 4),
   },
@@ -1292,30 +1285,82 @@ const OVERALL_SCENARIO_B = composeOverallFlow([
   },
 ]);
 
+const inferDirectCBefore = buildInferenceDirectBlock();
 const OVERALL_SCENARIO_C_BEFORE = composeOverallFlow([
   {
     steps: SCENARIO_C_BEFORE_STEPS.slice(0, 2),
     mutations: sliceMutations(SCENARIO_C_BEFORE_MUTATIONS, 1, 2),
   },
-  buildInferenceDirectBlock(),
   {
-    steps: SCENARIO_C_BEFORE_STEPS.slice(2),
-    mutations: sliceMutations(SCENARIO_C_BEFORE_MUTATIONS, 3, 6),
+    steps: inferDirectCBefore.steps.map((s) => ({ ...s, num: 2 })),
+    mutations: inferDirectCBefore.mutations,
   },
-  buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
+  {
+    steps: [
+      { ...SCENARIO_C_BEFORE_STEPS[2], num: 3 },
+      SCENARIO_C_BEFORE_STEPS[3],
+      {
+        text: `${LAYER_NAMES.gw} denies outbound — returns blocked`,
+        mode: "arrow",
+        from: "gw",
+        to: "oc",
+        color: COLORS.denied,
+        num: 3,
+        ...ARROW.gwToOcReturn,
+      },
+    ],
+    mutations: sliceMutations(SCENARIO_C_BEFORE_MUTATIONS, 3, 4),
+  },
+  {
+    steps: SCENARIO_C_BEFORE_STEPS.slice(4),
+    mutations: sliceMutations(SCENARIO_C_BEFORE_MUTATIONS, 5, 6),
+  },
+  buildTraceGwBlock(ARROW),
 ]);
 
+const inferDirectCAfter = buildInferenceDirectBlock();
 const OVERALL_SCENARIO_C_AFTER = composeOverallFlow([
   {
     steps: SCENARIO_C_AFTER_STEPS.slice(0, 2),
     mutations: sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 1, 2),
   },
-  buildInferenceDirectBlock(),
   {
-    steps: SCENARIO_C_AFTER_STEPS.slice(2),
-    mutations: sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 3, 6),
+    steps: inferDirectCAfter.steps.map((s) => ({ ...s, num: 2 })),
+    mutations: inferDirectCAfter.mutations,
   },
-  buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
+  {
+    steps: [
+      { ...SCENARIO_C_AFTER_STEPS[2], num: 3 },
+      { ...SCENARIO_C_AFTER_STEPS[3], num: 3 },
+      { ...SCENARIO_C_AFTER_STEPS[4], num: 3 },
+      {
+        text: `${LAYER_NAMES.gw} returns response to ${LAYER_NAMES.openClaw}`,
+        mode: "arrow",
+        from: "gw",
+        to: "oc",
+        color: COLORS.secure,
+        num: 3,
+        ...ARROW.gwToOcReturn,
+      },
+    ],
+    mutations: sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 3, 5),
+  },
+  {
+    steps: [
+      {
+        text: `${LAYER_NAMES.openClaw} answers through ${LAYER_NAMES.gw}`,
+        mode: "arrow",
+        from: "oc",
+        to: "gw",
+        color: COLORS.secure,
+        num: 1,
+        ...ARROW.ocToGwReply,
+      },
+      SCENARIO_C_AFTER_STEPS[5],
+    ],
+    mutations: sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 6, 6),
+  },
+  buildTraceGwBlock(ARROW),
 ]);
 
 const OVERALL_SCENARIO_D_BEFORE = composeOverallFlow([
@@ -1487,7 +1532,6 @@ export function buildOverallNodes() {
       "agentsb",
       "oc",
       "landlock",
-      "file",
       "ir",
       "gw",
       "nemo",

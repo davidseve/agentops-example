@@ -4,11 +4,12 @@
  */
 
 import { uninstallLogoRenderer } from "../shared/logo-renderer.js";
-import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=4";
+import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=11";
 import {
   buildOverallResponseComparison,
   PHASE_REST,
-} from "../scenarios/overall-flows.js?v=4";
+} from "../scenarios/overall-flows.js?v=11";
+import { OVERALL_NODES } from "../scenarios/scenario-layout.js?v=9";
 import {
   OVERALL_IN_DOC,
   bindOverallInDocResize,
@@ -53,6 +54,15 @@ export async function mountOverallEmbed(container, options = {}) {
   wireInDocOverlayClose();
 
   activeDiagram = withEmbedPaths(buildOverallDiagram());
+
+  if (initialFlow === "scenario-b" && OVERALL_NODES.file) {
+    activeDiagram.nodes.file = { ...OVERALL_NODES.file };
+  } else {
+    const sbFlow = activeDiagram.flows?.["scenario-b"];
+    if (sbFlow?.steps) {
+      sbFlow.steps = sbFlow.steps.filter(s => s.to !== "file" && s.from !== "file");
+    }
+  }
 
   try {
     const viz = await initScenarioDiagram(activeDiagram, {
