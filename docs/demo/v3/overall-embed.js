@@ -49,6 +49,15 @@ export async function mountOverallEmbed(container) {
 
   activeDiagram = withEmbedPaths(buildOverallDiagram());
 
+  // Filter out steps referencing conditional nodes not present in v3
+  for (const [flowId, flow] of Object.entries(activeDiagram.flows || {})) {
+    if (flow?.steps) {
+      flow.steps = flow.steps.filter(
+        (s) => !["file", "guardrailsLlm"].some((n) => s.from === n || s.to === n),
+      );
+    }
+  }
+
   try {
     const viz = await initScenarioDiagram(activeDiagram, {
       headerTitle: "AgentOps - Platform Architecture",
