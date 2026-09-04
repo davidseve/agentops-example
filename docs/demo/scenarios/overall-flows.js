@@ -1230,10 +1230,14 @@ function buildTraceGwBlock(arrows = ARROW) {
 
 const OVERALL_SCENARIO_A = composeOverallFlow([
   {
-    steps: SCENARIO_A_STEPS.slice(0, 5),
-    mutations: sliceMutations(SCENARIO_A_MUTATIONS, 1, 5),
+    steps: SCENARIO_A_STEPS.slice(0, 4),
+    mutations: sliceMutations(SCENARIO_A_MUTATIONS, 1, 4),
   },
   buildInferenceGwMaasBlock(),
+  {
+    steps: [SCENARIO_A_STEPS[4]],
+    mutations: sliceMutations(SCENARIO_A_MUTATIONS, 5, 5),
+  },
   {
     steps: SCENARIO_A_STEPS.slice(5),
     mutations: sliceMutations(SCENARIO_A_MUTATIONS, 6, 8),
@@ -1241,17 +1245,32 @@ const OVERALL_SCENARIO_A = composeOverallFlow([
   buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
 ]);
 
+const inferDirectB = buildInferenceDirectBlock();
 const OVERALL_SCENARIO_B = composeOverallFlow([
   {
-    steps: SCENARIO_B_STEPS.slice(0, 4),
-    mutations: sliceMutations(SCENARIO_B_MUTATIONS, 1, 4),
+    steps: SCENARIO_B_STEPS.slice(0, 2),
+    mutations: sliceMutations(SCENARIO_B_MUTATIONS, 1, 2),
   },
-  buildInferenceDirectBlock(),
+  {
+    steps: [{ ...inferDirectB.steps[0], num: 2 }],
+    mutations: sliceMutations(inferDirectB.mutations, 1, 1),
+  },
+  {
+    steps: inferDirectB.steps.slice(1),
+    mutations: sliceMutations(inferDirectB.mutations, 2, 5),
+  },
+  {
+    steps: SCENARIO_B_STEPS.slice(2, 4).map((s) => ({ ...s, num: 4 })),
+    mutations: sliceMutations(SCENARIO_B_MUTATIONS, 3, 4),
+  },
   {
     steps: SCENARIO_B_STEPS.slice(4),
     mutations: sliceMutations(SCENARIO_B_MUTATIONS, 5, 6),
   },
-  buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
+  {
+    ...buildTraceGwBlock(ARROW_SCENARIO_OC_GW),
+    steps: buildTraceGwBlock(ARROW_SCENARIO_OC_GW).steps.map((s) => ({ ...s, num: 5 })),
+  },
 ]);
 
 const OVERALL_SCENARIO_C_BEFORE = composeOverallFlow([

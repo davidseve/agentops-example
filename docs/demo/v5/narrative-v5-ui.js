@@ -5,7 +5,7 @@
 
 import { LIVE_COMPANION_EXCLUDED_NAV_IDS, NAV_GROUPS, STEP_IDS } from "../v1/narrative-data.js";
 import { initNarrativeUI } from "../v1/narrative-ui.js?v=57";
-import { destroyOverallEmbed, mountOverallEmbed } from "./overall-embed.js?v=2";
+import { destroyOverallEmbed, mountOverallEmbed } from "./overall-embed.js?v=3";
 import {
   captureV4ScenarioCanvasHeight as captureV5ScenarioCanvasHeight,
   releaseV4ScenarioCanvasHeight as releaseV5ScenarioCanvasHeight,
