@@ -417,7 +417,7 @@ export async function initScriptRunner({
   /** Narrative step ids where script runner UI is suppressed. */
   skipSteps = ["0"],
   /** Step ids that show Run against cluster in the instructions header. */
-  quickRunHeaderSteps = ["C-after"],
+  quickRunHeaderSteps = ["C-after", "D-after"],
 } = {}) {
   const skipStepIds = new Set(skipSteps);
   let currentStepId = parseStepIdFromHash();
