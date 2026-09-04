@@ -14,8 +14,8 @@
 <div class="nr-v3-chrome">
   <header class="nr-header nr-v3-header">
     <h1>AgentOps — Demo UI launcher</h1>
-    <span class="nr-tagline">Live companion v3 — use v3 for on-stage steps</span>
-    <a href="./v3/live.html">Live companion (v3)</a>
+    <span class="nr-tagline">Live companion v5 — use v5 for on-stage steps</span>
+    <a href="./v5/live.html">Live companion (v5)</a>
   </header>
 </div>
 
@@ -28,7 +28,7 @@
     <strong>Live demo</strong> — static UI on <code>:8765</code> plus observability proxy on <code>:8766</code> (preflight, live logs/traces, script runner). Includes <code>python3 -m http.server</code> internally:
   </p>
   <pre>./scripts/demo-presenter-serve.sh
-# http://127.0.0.1:8765/demo/v3/live.html</pre>
+# http://127.0.0.1:8765/demo/v5/live.html</pre>
   <p class="nr-meta nr-meta--tight">
     <strong>Offline rehearsal</strong> — static UI only (no proxy, no cluster logs/traces, no script runner):
   </p>
@@ -37,7 +37,7 @@
 
   <h2>Overall demo architecture (phase 0) <span class="badge badge-deprecated">deprecated</span></h2>
   <p class="nr-meta nr-meta--tight">
-    Standalone FlowStory pages superseded by <a href="./v3/live.html">v3/live.html</a> step <strong>Overall Demo</strong> (architecture map embedded in-card).
+    Standalone FlowStory pages superseded by <a href="./v5/live.html">v5/live.html</a> step <strong>Overall Demo</strong> (architecture map embedded in-card).
   </p>
   <table class="launcher-table launcher-table--phase0">
     <tbody>
@@ -54,7 +54,7 @@
 
   <h2>Scenario diagrams (tests A–D) <span class="badge badge-deprecated">deprecated</span></h2>
   <p class="nr-meta nr-meta--tight">
-    Standalone security-focused FlowStory pages (~6–8 hops). Superseded by <a href="./v3/live.html">v3/live.html</a> — tests A–D via step nav with in-card scenario canvas embeds.
+    Standalone security-focused FlowStory pages (~6–8 hops). Superseded by <a href="./v5/live.html">v5/live.html</a> — tests A–D via step nav with in-card scenario canvas embeds.
   </p>
   <table>
     <thead>
@@ -91,33 +91,33 @@
     </thead>
     <tbody>
       <tr class="recommended">
-        <td>v3 <span class="badge">recommended</span></td>
-        <td><code>v3/live.html</code></td>
-        <td>Single secondary panel: <strong>Overall Demo</strong> step (architecture map), A–D with before/after sub-steps, copy-paste prompts, YAML diff on Change 1/2, cluster observability (logs + MLflow traces), script runner on C-after / D-after. Requires <code>demo-presenter-serve.sh</code> (proxy on :8766).</td>
-        <td><a href="./v3/live.html">Open</a></td>
-      </tr>
-      <tr class="stub">
-        <td>v5 <span class="badge badge-tbd">presentation</span></td>
+        <td>v5 <span class="badge">recommended</span></td>
         <td><code>v5/live.html</code></td>
-        <td>Presentation-optimized: maximized diagram area, compact chrome. Architecture labels legible on projectors / split-screen. Based on v4.</td>
+        <td>Presentation-optimized live companion: maximized diagram, compact chrome, <strong>Overall Demo</strong> + A–D with before/after steps, copy-paste prompts, YAML snippets on Change 1/2, header + terminal script runner on C-after / D-after, cluster observability (logs + MLflow traces). Requires <code>demo-presenter-serve.sh</code> (proxy on :8766).</td>
         <td><a href="./v5/live.html">Open</a></td>
       </tr>
       <tr class="stub">
-        <td>v4 <span class="badge badge-tbd">experimental</span></td>
+        <td>v3 <span class="badge badge-deprecated">deprecated</span></td>
+        <td><code>v3/live.html</code></td>
+        <td>Previous recommended companion — superseded by v5 for on-stage use.</td>
+        <td><a href="./v3/live.html">Open</a></td>
+      </tr>
+      <tr class="stub">
+        <td>v4 <span class="badge badge-deprecated">deprecated</span></td>
         <td><code>v4/live.html</code></td>
-        <td>Compact canvas variant under evaluation — layout and on-stage UX not finalized; use v3 for live demos.</td>
+        <td>Compact canvas variant — superseded by v5.</td>
         <td><a href="./v4/live.html">Open</a></td>
       </tr>
       <tr class="stub">
         <td>v1 <span class="badge badge-deprecated">deprecated</span></td>
         <td><code>v1/live.html</code></td>
-        <td>Split panel — superseded by v3</td>
+        <td>Split panel — superseded by v5</td>
         <td><a href="./v1/live.html">Open</a></td>
       </tr>
       <tr class="stub">
         <td>v2 <span class="badge badge-deprecated">deprecated</span></td>
         <td><code>v2/live.html</code></td>
-        <td>Compact panel with layout lab — superseded by v3</td>
+        <td>Compact panel with layout lab — superseded by v5</td>
         <td><a href="./v2/live.html">Open</a></td>
       </tr>
     </tbody>
@@ -127,11 +127,11 @@
   <table>
     <tbody>
       <tr><td>Primary</td><td>OpenClaw Control UI</td></tr>
-      <tr class="recommended"><td>Secondary</td><td><a href="./v3/live.html">v3/live.html</a> <span class="badge">recommended</span></td></tr>
+      <tr class="recommended"><td>Secondary</td><td><a href="./v5/live.html">v5/live.html</a> <span class="badge">recommended</span></td></tr>
     </tbody>
   </table>
 
-  <h2>Keyboard shortcuts (v3 live companion)</h2>
+  <h2>Keyboard shortcuts (v5 live companion)</h2>
   <table>
     <tbody>
       <tr><td><code>→</code> / <code>Page Down</code></td><td>Next step (C/D: before → after)</td></tr>
@@ -142,7 +142,7 @@
   </table>
 
   <p class="nr-meta nr-meta--footer">
-    On stage: use <a href="./v3/live.html">v3/live.html</a> (not raw markdown).
+    On stage: use <a href="./v5/live.html">v5/live.html</a> (not raw markdown).
     Backstage docs (open in editor): <code>docs/demo-script.md</code>,
     <code>docs/demo-narrative-v1.md</code>, <code>docs/demo/README.md</code>.
   </p>
