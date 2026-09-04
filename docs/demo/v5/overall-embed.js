@@ -4,12 +4,12 @@
  */
 
 import { uninstallLogoRenderer } from "../shared/logo-renderer.js";
-import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=11";
+import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=12";
 import {
   buildOverallResponseComparison,
   PHASE_REST,
-} from "../scenarios/overall-flows.js?v=11";
-import { OVERALL_NODES } from "../scenarios/scenario-layout.js?v=9";
+} from "../scenarios/overall-flows.js?v=12";
+import { OVERALL_NODES } from "../scenarios/scenario-layout.js?v=10";
 import {
   OVERALL_IN_DOC,
   bindOverallInDocResize,
@@ -61,6 +61,15 @@ export async function mountOverallEmbed(container, options = {}) {
     const sbFlow = activeDiagram.flows?.["scenario-b"];
     if (sbFlow?.steps) {
       sbFlow.steps = sbFlow.steps.filter(s => s.to !== "file" && s.from !== "file");
+    }
+  }
+
+  if (initialFlow === "scenario-d-after" && OVERALL_NODES.guardrailsLlm) {
+    activeDiagram.nodes.guardrailsLlm = { ...OVERALL_NODES.guardrailsLlm };
+  } else {
+    const daFlow = activeDiagram.flows?.["scenario-d-after"];
+    if (daFlow?.steps) {
+      daFlow.steps = daFlow.steps.filter(s => s.to !== "guardrailsLlm" && s.from !== "guardrailsLlm");
     }
   }
 
