@@ -4,6 +4,7 @@
 
 import { DEMO_SCRIPT_ACTIONS, getStep } from "../v1/narrative-data.js";
 import { showProxyOfflineToast } from "../shared/proxy-offline-toast.js";
+import { buildYamlSnippetsHtml, resolveYamlPanelForStep } from "./yaml-snippet-html.js";
 
 const DEFAULT_PROXY_URL = "http://127.0.0.1:8766";
 const FETCH_TIMEOUT_MS = 130_000;
@@ -211,6 +212,56 @@ function applyRunResultToLinkedTargets(targets, result, err = null) {
   });
 }
 
+function openLinkedRunOutput(targets, placeholder = "Running…") {
+  const outputDetails = targets.bodyOutputDetails;
+  const outputPre = targets.bodyBlock?.querySelector(".nr-script-run-pre");
+  if (outputDetails) {
+    outputDetails.hidden = false;
+    outputDetails.open = true;
+  }
+  if (outputPre) outputPre.textContent = placeholder;
+}
+
+function expandInstructionsPanel(root) {
+  const panel = root.querySelector("[data-nr-instructions] .nr-instructions-panel");
+  if (panel) panel.open = true;
+}
+
+function clearInstructionsRunSnippets(root) {
+  root.querySelectorAll("[data-nr-instructions] .nr-instructions-run-snippets").forEach((slot) => {
+    slot.remove();
+  });
+}
+
+function ensureInstructionsSnippetSlot(panel) {
+  let slot = panel.querySelector(".nr-instructions-run-snippets");
+  if (!slot) {
+    slot = document.createElement("div");
+    slot.className = "nr-instructions-run-snippets";
+    slot.hidden = true;
+    panel.appendChild(slot);
+  }
+  return slot;
+}
+
+function showInstructionsRunSnippets(root, stepId, quickRunHeaderSteps) {
+  if (!isQuickRunHeaderStep(stepId, quickRunHeaderSteps)) return;
+
+  const step = getStep(stepId);
+  const yamlPanel = resolveYamlPanelForStep(step);
+  const html = buildYamlSnippetsHtml(yamlPanel);
+  if (!html) return;
+
+  const panel = root.querySelector("[data-nr-instructions] .nr-instructions-panel");
+  if (!panel) return;
+
+  const slot = ensureInstructionsSnippetSlot(panel);
+  slot.innerHTML = html;
+  slot.hidden = false;
+
+  expandInstructionsPanel(root);
+}
+
 function applyProxyStateToAllRunBlocks(root, proxyState) {
   const linkedActionIds = new Set();
 
@@ -228,7 +279,15 @@ function applyProxyStateToAllRunBlocks(root, proxyState) {
   }
 }
 
-async function runLinkedAction({ root, actionMeta, proxyUrl, observability, runningActions }) {
+async function runLinkedAction({
+  root,
+  actionMeta,
+  proxyUrl,
+  observability,
+  runningActions,
+  stepId,
+  quickRunHeaderSteps,
+}) {
   const targets = getLinkedRunTargets(root, actionMeta.id);
   const proxyState = targets.bodyBlock?.dataset.proxyState ?? targets.headerWrap?.dataset.proxyState;
 
@@ -241,7 +300,10 @@ async function runLinkedAction({ root, actionMeta, proxyUrl, observability, runn
   if (targets.bodyRunBtn) targets.bodyRunBtn.disabled = true;
   if (targets.headerRunBtn) targets.headerRunBtn.disabled = true;
   if (targets.bodyCopyBtn) targets.bodyCopyBtn.disabled = true;
-  if (targets.bodyOutputDetails) targets.bodyOutputDetails.hidden = true;
+
+  expandInstructionsPanel(root);
+  openLinkedRunOutput(targets);
+  showInstructionsRunSnippets(root, stepId, quickRunHeaderSteps);
 
   setLinkedRunStatus(targets, {
     text: "Running…",
@@ -265,7 +327,11 @@ async function runLinkedAction({ root, actionMeta, proxyUrl, observability, runn
   }
 }
 
-function createRunBlock(commandText, actionMeta, { proxyState, root, proxyUrl, observability, runningActions }) {
+function createRunBlock(
+  commandText,
+  actionMeta,
+  { proxyState, root, proxyUrl, observability, runningActions, stepId, quickRunHeaderSteps },
+) {
   const wrap = document.createElement("div");
   wrap.className = "nr-script-run";
   wrap.dataset.actionId = actionMeta.id;
@@ -301,7 +367,15 @@ function createRunBlock(commandText, actionMeta, { proxyState, root, proxyUrl, o
   });
 
   runBtn.addEventListener("click", () => {
-    void runLinkedAction({ root, actionMeta, proxyUrl, observability, runningActions });
+    void runLinkedAction({
+      root,
+      actionMeta,
+      proxyUrl,
+      observability,
+      runningActions,
+      stepId,
+      quickRunHeaderSteps,
+    });
   });
 
   return wrap;
@@ -369,7 +443,15 @@ function wireQuickRunHeaderButton(
   runBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    void runLinkedAction({ root, actionMeta, proxyUrl, observability, runningActions });
+    void runLinkedAction({
+      root,
+      actionMeta,
+      proxyUrl,
+      observability,
+      runningActions,
+      stepId,
+      quickRunHeaderSteps,
+    });
   });
 }
 
@@ -379,6 +461,8 @@ function wireCommandElements(
 ) {
   const containers = commandContainers(root);
   if (!containers.length) return;
+
+  clearInstructionsRunSnippets(root);
 
   containers.forEach((container) => {
     container.querySelectorAll(".nr-script-run").forEach((el) => el.remove());
@@ -400,6 +484,8 @@ function wireCommandElements(
           proxyUrl,
           observability,
           runningActions,
+          stepId,
+          quickRunHeaderSteps,
         });
         parent.replaceChild(runBlock, cmdEl);
       });

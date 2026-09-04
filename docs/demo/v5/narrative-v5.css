@@ -449,6 +449,40 @@ body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-panel {
   background: var(--nr-bg);
 }
 
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-run-snippets {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--nr-border);
+  background: var(--nr-bg);
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-run-snippets[hidden] {
+  display: none;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-run-snippets .nr-yaml-diff {
+  gap: 8px;
+  margin: 0;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-run-snippets .nr-yaml-col h4 {
+  font-size: 10px;
+  margin: 0 0 4px;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-run-snippets .nr-yaml-pre {
+  font-size: 10px;
+  line-height: 1.4;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-run-snippets .nr-yaml-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
 body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-summary {
   display: flex;
   align-items: center;
