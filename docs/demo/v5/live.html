@@ -43,7 +43,13 @@ const root = document.getElementById("nr-root");
 const navEl = document.querySelector("[data-nr-nav]");
 const observability = initObservabilityPanel({ root, hiddenSteps: ["0"], defaultCollapsed: true });
 initNarrativeV5UI({ root, navEl });
-initScriptRunner({ root, navEl, observability, skipSteps: ["0"], quickRunHeaderSteps: ["C-after"] });
+initScriptRunner({
+  root,
+  navEl,
+  observability,
+  skipSteps: ["0"],
+  quickRunHeaderSteps: ["C-after", "D-after"],
+});
 </script>
 </body>
 </html>
