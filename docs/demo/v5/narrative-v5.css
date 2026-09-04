@@ -516,7 +516,7 @@ body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status {
 }
 
 body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.checking {
-  color: #0066cc;
+  color: var(--nr-warn);
 }
 
 body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.offline {
@@ -811,7 +811,7 @@ body.nr-v5.nr-v5-step-canvas .nr-v5-overall-mounted .fs-layers-stack .fs-inspect
 
 .nr-script-run-status.checking,
 .nr-script-run-status.running {
-  color: #0066cc;
+  color: var(--nr-warn);
 }
 
 .nr-script-run-status.success {
