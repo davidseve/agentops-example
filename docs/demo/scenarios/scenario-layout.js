@@ -109,7 +109,7 @@ export const OVERALL_NODES = {
     fontSize: NODE_FS,
   },
   file: {
-    x: COL_R + BOX.w + 28,
+    x: COL_R + BOX.w + 20,
     y: 162,
     w: 40,
     h: 40,
