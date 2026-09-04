@@ -13,7 +13,7 @@ import {
   OVERALL_FLOW_ORDER,
   pickNodes,
   TRACE_STEP_STYLE,
-} from "./scenario-layout.js";
+} from "./scenario-layout.js?v=2";
 import { OVERALL_OVERLAYS, OVERALL_RESPONSES } from "./overall-response-maps.js";
 
 const DIRECT_INFERENCE_PATH = `${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}`;
@@ -970,12 +970,15 @@ export const LAYER_BOARDS = {
 };
 
 export const PHASE_REST = {
-  baseline: {},
+  baseline: {
+    nodeColors: { file: COLORS.dim },
+  },
   "scenario-a": {
     nodeColors: {
       nemo: COLORS.dim,
       internet: COLORS.dim,
       landlock: COLORS.dim,
+      file: COLORS.dim,
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
@@ -990,9 +993,10 @@ export const PHASE_REST = {
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
+      file: COLORS.denied,
     },
     glow: ["agentsb"],
-    activeNodes: ["landlock", "oc"],
+    activeNodes: ["landlock", "oc", "file"],
   },
   "scenario-c-before": {
     glow: ["gw"],
@@ -1004,6 +1008,7 @@ export const PHASE_REST = {
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
+      file: COLORS.dim,
     },
   },
   "scenario-c-after": {
@@ -1016,6 +1021,7 @@ export const PHASE_REST = {
       maas: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
+      file: COLORS.dim,
     },
   },
   "scenario-d-before": {
@@ -1027,6 +1033,7 @@ export const PHASE_REST = {
       internet: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
+      file: COLORS.dim,
     },
   },
   "scenario-d-after": {
@@ -1038,6 +1045,7 @@ export const PHASE_REST = {
       internet: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
+      file: COLORS.dim,
     },
   },
 };
@@ -1260,7 +1268,18 @@ const OVERALL_SCENARIO_B = composeOverallFlow([
     mutations: sliceMutations(inferDirectB.mutations, 2, 5),
   },
   {
-    steps: SCENARIO_B_STEPS.slice(2, 4).map((s) => ({ ...s, num: 4 })),
+    steps: [
+      ...SCENARIO_B_STEPS.slice(2, 4).map((s) => ({ ...s, num: 4 })),
+      {
+        text: `${LAYER_NAMES.landlock} denies /etc/shadow`,
+        mode: "arrow",
+        from: "landlock",
+        to: "file",
+        color: COLORS.denied,
+        num: 4,
+        ...ARROW.landlockToFile,
+      },
+    ],
     mutations: sliceMutations(SCENARIO_B_MUTATIONS, 3, 4),
   },
   {
@@ -1468,6 +1487,7 @@ export function buildOverallNodes() {
       "agentsb",
       "oc",
       "landlock",
+      "file",
       "ir",
       "gw",
       "nemo",
