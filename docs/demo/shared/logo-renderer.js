@@ -46,6 +46,7 @@ export function attachLogos(diagramOrViz) {
     nemo: `${I}/nvidia.svg`,
     maas: `${I}/openshift-ai.svg`,
     llm: `${I}/ai-experience.svg`,
+    guardrailsLlm: `${I}/ai-experience.svg`,
     mlflow: `${I}/mlflow.svg`,
     internet: `${I}/globe.svg`,
     file: `${I}/file.svg`,

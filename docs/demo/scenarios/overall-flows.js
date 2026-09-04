@@ -13,7 +13,7 @@ import {
   OVERALL_FLOW_ORDER,
   pickNodes,
   TRACE_STEP_STYLE,
-} from "./scenario-layout.js?v=13";
+} from "./scenario-layout.js?v=14";
 import { OVERALL_OVERLAYS, OVERALL_RESPONSES } from "./overall-response-maps.js";
 
 const DIRECT_INFERENCE_PATH = `${LAYER_NAMES.ir} → ${LAYER_NAMES.gw} → ${LAYER_NAMES.maas} → ${LAYER_NAMES.llm}`;
@@ -1031,10 +1031,11 @@ export const PHASE_REST = {
   },
   "scenario-d-after": {
     glow: ["nemo"],
-    activeNodes: ["nemo", "ir"],
+    activeNodes: ["nemo", "ir", "guardrailsLlm"],
     nodeColors: {
       nemo: COLORS.nemo,
       maas: COLORS.secure,
+      guardrailsLlm: COLORS.nemo,
       internet: COLORS.dim,
       llm: COLORS.dim,
       mlflow: COLORS.dim,
@@ -1381,7 +1382,20 @@ const OVERALL_SCENARIO_D_AFTER = composeOverallFlow([
     steps: SCENARIO_D_AFTER_STEPS.slice(0, 5),
     mutations: sliceMutations(SCENARIO_D_AFTER_MUTATIONS, 1, 5),
   },
-  buildInferenceMaasLlmBlock(),
+  {
+    steps: [
+      {
+        text: `${LAYER_NAMES.maas} calls the Guardrails LLM`,
+        mode: "arrow",
+        from: "maas",
+        to: "guardrailsLlm",
+        color: COLORS.nemo,
+        num: INFERENCE_BAND,
+        ...ARROW.maasToGuardrailsLlm,
+      },
+    ],
+    mutations: [{ step: 1, label: `3  ${LAYER_NAMES.maas} → Guardrails LLM` }],
+  },
   {
     steps: SCENARIO_D_AFTER_STEPS.slice(5),
     mutations: sliceMutations(SCENARIO_D_AFTER_MUTATIONS, 6, 8),

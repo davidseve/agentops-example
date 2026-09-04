@@ -169,6 +169,16 @@ export const OVERALL_NODES = {
     stackCount: 2,
     stackOffset: { dx: 8, dy: -7 },
   },
+  guardrailsLlm: {
+    x: COL_L,
+    y: 620,
+    w: BOX.w,
+    h: BOX.h,
+    label: "Guardrails LLM",
+    sublabel: "the guardrail model",
+    color: COLORS.nemo,
+    fontSize: NODE_FS,
+  },
   mlflow: {
     x: COL_L,
     y: 436,
@@ -387,6 +397,7 @@ export const ARROW = {
   gwToMaas: { fromBottom: true, toTop: true, fromXOff: 74, toXOff: -LANE_V },
   maasToLlm: { fromBottom: true, toTop: true, fromXOff: -LANE_V, toXOff: -LANE_V },
   llmToMaas: { fromTop: true, toBottom: true, fromXOff: LANE_V, toXOff: LANE_V },
+  maasToGuardrailsLlm: { fromBottom: true, toTop: true, fromXOff: -LANE_V, toXOff: LANE_V },
   maasToNemo: { fromTop: true, toBottom: true, fromXOff: LANE_V, toXOff: LANE_V },
   nemoToGw: { fromTop: true, toBottom: true, fromXOff: LANE_V, toXOff: 98 },
   /** Band 9 — oc → gw trace (own column; separated from bands 1/8). */
