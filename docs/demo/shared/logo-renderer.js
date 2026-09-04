@@ -48,12 +48,19 @@ export function attachLogos(diagramOrViz) {
     llm: `${I}/ai-experience.svg`,
     mlflow: `${I}/mlflow.svg`,
     internet: `${I}/globe.svg`,
-    file: `${I}/file-locked.svg`,
+    file: `${I}/file.svg`,
     openshell: `${I}/openshell-mark.svg`,
     agentsb: `${I}/sandbox.svg`,
   };
+  const deniedMap = {
+    file: `${I}/file-denied.svg`,
+    internet: `${I}/globe-denied.svg`,
+  };
   for (const [id, src] of Object.entries(map)) {
     if (nodes[id]) nodes[id].logo = src;
+  }
+  for (const [id, src] of Object.entries(deniedMap)) {
+    if (nodes[id]) nodes[id]._logoDenied = src;
   }
   if (nodes.cluster) {
     nodes.cluster.logos = [`${I}/openshift.svg`, `${I}/openshift-ai.svg`];
@@ -68,6 +75,7 @@ export function preloadLogos(diagramOrViz) {
   const urls = new Set();
   for (const node of Object.values(nodes)) {
     if (node.logo) urls.add(node.logo);
+    if (node._logoDenied) urls.add(node._logoDenied);
     for (const src of node.logos || []) urls.add(src);
   }
   return Promise.all([...urls].map((src) => loadImage(src)));
@@ -215,7 +223,36 @@ export function installLogoRenderer(viz) {
 
   r.drawBox = function (ctx, id, node, opts) {
     origBox(ctx, id, node, opts);
-    if (node?.logo) drawBoxBadge(ctx, node, opts, node.logo);
+    const hasDeniedArrow = node?._logoDenied && viz.state?.lines?.some(l => l.to === id && l.color === '#f85149');
+
+    if (!node.label && hasDeniedArrow) {
+      const { tx, ty, ts: l } = opts;
+      const icon = l(ICON.badge);
+      const bx = tx(node.x) + (l(node.w) - icon) / 2;
+      const by = ty(node.y) + (l(node.h) - icon) / 2;
+      drawBadgeAt(ctx, opts, node._logoDenied, bx, by);
+    } else if (node?.logo) {
+      drawBoxBadge(ctx, node, opts, node.logo);
+    }
+
+    if (hasDeniedArrow && node.label) {
+      const { tx, ty, ts: l } = opts;
+      const cx = tx(node.x) + l(node.w) / 2;
+      const cy = ty(node.y) + l(node.h) / 2;
+      const r2 = Math.min(l(node.w), l(node.h)) * 0.45;
+      ctx.save();
+      ctx.strokeStyle = '#f85149';
+      ctx.lineWidth = l(3);
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - r2 * 0.707, cy - r2 * 0.707);
+      ctx.lineTo(cx + r2 * 0.707, cy + r2 * 0.707);
+      ctx.stroke();
+      ctx.restore();
+    }
   };
 
   r.drawContainer = function (ctx, id, node, opts) {
