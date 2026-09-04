@@ -48,6 +48,7 @@ export function attachLogos(diagramOrViz) {
     llm: `${I}/ai-experience.svg`,
     mlflow: `${I}/mlflow.svg`,
     internet: `${I}/globe.svg`,
+    file: `${I}/file-locked.svg`,
     openshell: `${I}/openshell-mark.svg`,
     agentsb: `${I}/sandbox.svg`,
   };

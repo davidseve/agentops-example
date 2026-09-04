@@ -108,6 +108,15 @@ export const OVERALL_NODES = {
     color: "#8b949e",
     fontSize: NODE_FS,
   },
+  file: {
+    x: COL_R + BOX.w + 14,
+    y: 162,
+    w: 52,
+    h: 38,
+    label: "/etc/shadow",
+    color: "#8b949e",
+    fontSize: 8,
+  },
   ir: {
     x: COL_R,
     y: 240,
@@ -344,6 +353,7 @@ export const ARROW = {
   },
   ocToLandlock: { fromRight: true, toLeft: true, yOff: -LANE_H, glow: "agentsb" },
   landlockToOc: { fromLeft: true, toRight: true, yOff: LANE_H, glow: "agentsb" },
+  landlockToFile: { fromRight: true, toLeft: true },
   /** Band 8 — oc → gw (egress outbound; left lane). */
   ocToGw: {
     fromBottom: true,

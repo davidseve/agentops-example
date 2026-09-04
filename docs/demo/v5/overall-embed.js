@@ -4,11 +4,11 @@
  */
 
 import { uninstallLogoRenderer } from "../shared/logo-renderer.js";
-import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=2";
+import { buildOverallDiagram } from "../scenarios/overall-diagram-config.js?v=4";
 import {
   buildOverallResponseComparison,
   PHASE_REST,
-} from "../scenarios/overall-flows.js?v=2";
+} from "../scenarios/overall-flows.js?v=4";
 import {
   OVERALL_IN_DOC,
   bindOverallInDocResize,
