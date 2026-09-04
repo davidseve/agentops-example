@@ -1274,7 +1274,11 @@ const OVERALL_SCENARIO_B = composeOverallFlow([
       },
       { ...SCENARIO_B_STEPS[3], num: 4 },
     ],
-    mutations: sliceMutations(SCENARIO_B_MUTATIONS, 3, 4),
+    mutations: [
+      ...sliceMutations(SCENARIO_B_MUTATIONS, 3, 3),
+      { step: 2, label: `${LAYER_NAMES.landlock} → file access denied` },
+      ...sliceMutations(SCENARIO_B_MUTATIONS, 4, 4).map((m) => ({ ...m, step: 3 })),
+    ],
   },
   {
     steps: SCENARIO_B_STEPS.slice(4),
@@ -1310,7 +1314,10 @@ const OVERALL_SCENARIO_C_BEFORE = composeOverallFlow([
         ...ARROW.gwToOcReturn,
       },
     ],
-    mutations: sliceMutations(SCENARIO_C_BEFORE_MUTATIONS, 3, 4),
+    mutations: [
+      ...sliceMutations(SCENARIO_C_BEFORE_MUTATIONS, 3, 4),
+      { step: 3, label: `3  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw} denied` },
+    ],
   },
   {
     steps: SCENARIO_C_BEFORE_STEPS.slice(4),
@@ -1344,7 +1351,10 @@ const OVERALL_SCENARIO_C_AFTER = composeOverallFlow([
         ...ARROW.gwToOcReturn,
       },
     ],
-    mutations: sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 3, 5),
+    mutations: [
+      ...sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 3, 5),
+      { step: 4, label: `3  ${LAYER_NAMES.gw} → ${LAYER_NAMES.openClaw}` },
+    ],
   },
   {
     steps: [
@@ -1359,7 +1369,10 @@ const OVERALL_SCENARIO_C_AFTER = composeOverallFlow([
       },
       SCENARIO_C_AFTER_STEPS[5],
     ],
-    mutations: sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 6, 6),
+    mutations: [
+      { step: 1, label: `1  ${LAYER_NAMES.openClaw} → ${LAYER_NAMES.gw}` },
+      ...sliceMutations(SCENARIO_C_AFTER_MUTATIONS, 6, 6).map((m) => ({ ...m, step: 2 })),
+    ],
   },
   buildTraceGwBlock(ARROW),
 ]);
