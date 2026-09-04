@@ -500,7 +500,35 @@ body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-collapse:ho
   color: var(--nr-accent);
 }
 
-body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-copy-prompt-quick {
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: #5c6573;
+  white-space: nowrap;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.checking {
+  color: #0066cc;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status.offline {
+  color: #b42318;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-quick-run-proxy-status[hidden] {
+  display: none;
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-copy-prompt-quick,
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-run-cluster-quick {
   flex: 0 0 auto;
   padding: 4px 8px;
   font-size: 11px;
@@ -512,9 +540,15 @@ body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-copy-prompt-quick {
   cursor: pointer;
 }
 
-body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-copy-prompt-quick:hover {
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-copy-prompt-quick:hover,
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-run-cluster-quick:hover:not(:disabled) {
   border-color: var(--nr-accent);
   color: var(--nr-accent);
+}
+
+body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-run-cluster-quick:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 body.nr-v5.nr-v5-step-canvas [data-nr-instructions] .nr-instructions-body {
